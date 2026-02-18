@@ -1,0 +1,11 @@
+{
+  "name": "personal",
+  "version": "0.1.0",
+  "description": "Personal skills, agents, and hooks for Claude Code",
+  "author": {
+    "name": "sammasak",
+    "url": "https://github.com/sammasak"
+  },
+  "repository": "https://github.com/sammasak/claude-code-skills",
+  "license": "MIT"
+}
