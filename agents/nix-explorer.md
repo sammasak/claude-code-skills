@@ -19,7 +19,7 @@ When exploring a NixOS configuration:
    - `mkIf`, `mkMerge`, `mkDefault`, `mkForce` — priority and conditionality
 
 3. **Identify patterns**: Look for:
-   - Custom option namespaces (e.g., `sam.profile`, `homelab.*`)
+   - Custom option namespaces (e.g., `myproject.*`, `homelab.*`)
    - Role-based composition
    - Host variable files
    - Secret management (SOPS, agenix)
