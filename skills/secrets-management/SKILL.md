@@ -1,7 +1,7 @@
 ---
 name: secrets-management
 description: "Use when handling secrets, encryption keys, credentials, tokens, or sensitive configuration. Guides SOPS encryption workflows, Kubernetes secret patterns, and secret hygiene."
-allowed-tools: Bash Read Grep Glob
+allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Secrets Management
@@ -70,38 +70,42 @@ generate --> configure --> create --> encrypt --> commit --> deploy --> rotate -
 3. **Create secret file** (plain YAML with sensitive values)
 4. **Encrypt in place**
    ```bash
-   sops -e -i secret.yaml
+   sops encrypt -i secret.yaml
    ```
 5. **Commit encrypted file** to Git (plaintext never touches a commit)
 6. **Deploy** -- Flux SOPS kustomize-controller decrypts at apply time
 7. **Rotate keys**
    ```bash
-   sops updatekeys secret.yaml
+   sops updatekeys secret.yaml          # sync recipients from .sops.yaml
+   sops rotate -i secret.yaml           # rotate data encryption key
    ```
+   Both steps are needed when removing a recipient.
 8. **Verify decryption**
    ```bash
-   sops -d secret.yaml
+   sops decrypt secret.yaml
    ```
 
 ### Quick-reference commands
 
 | Task | Command |
 |---|---|
-| Encrypt file in place | `sops -e -i <file>` |
-| Decrypt to stdout | `sops -d <file>` |
-| Edit encrypted file | `sops <file>` |
-| Rotate data key | `sops -r -i <file>` |
+| Encrypt file in place | `sops encrypt -i <file>` |
+| Decrypt to stdout | `sops decrypt <file>` |
+| Edit encrypted file | `sops edit <file>` |
+| Rotate data key | `sops rotate -i <file>` |
 | Update recipients | `sops updatekeys <file>` |
-| Encrypt specific keys | `sops -e --encrypted-regex '^(data\|stringData)$' -i <file>` |
+| Encrypt specific keys | `sops encrypt --encrypted-regex '^(data\|stringData)$' -i <file>` |
 
 ## Patterns We Use
 
-- **age over PGP** -- simpler key management, no key servers, no expiry headaches
+- **age over PGP** -- simpler key management, no key servers, no expiry headaches. age v1.3+ adds post-quantum hybrid keys (`age1pq1...`; cannot mix with classic `age1...` recipients); SOPS does not yet support PQ keys
 - **SOPS for all GitOps secrets** -- works with Flux natively, encrypted files live alongside manifests
 - **Flux kustomize-controller** with SOPS decryption provider -- secrets decrypted only at deploy time in-cluster
 - **Separate age identity per environment** -- dev, staging, prod each hold their own key; compromise is isolated
 - **Kubernetes Secrets** for service credentials -- DB passwords, API tokens, managed via SOPS-encrypted manifests
 - **cert-manager** for TLS certificates -- automated issuance and renewal, no manual cert management
+- For vault-backed dynamic secrets, consider **External Secrets Operator (ESO)** as an alternative to encrypt-in-Git
+- **Flux v2.7+** global SOPS decryption -- `--sops-age-secret` controller flag eliminates per-Kustomization decryption config
 
 ## Anti-Patterns
 
@@ -113,12 +117,14 @@ generate --> configure --> create --> encrypt --> commit --> deploy --> rotate -
 | Never-rotated tokens | Assume breach; rotate proactively |
 | Secrets in CI pipeline logs | Mask all secret variables in CI configuration |
 | Hardcoded secrets in source code | Use environment variables or config injection |
+| No secret scanning | Run `gitleaks` in pre-commit hooks and CI to catch plaintext before it reaches the repository |
 | base64 as "encryption" | K8s Secrets are base64-encoded, not encrypted -- anyone with API access reads them |
+| Unencrypted etcd | Kubernetes etcd does not encrypt Secrets at rest by default -- configure `EncryptionConfiguration` or KMS provider |
 
 ## References
 
-- [SOPS](https://github.com/getsops/sops) -- encrypted file editor supporting age, AWS KMS, GCP KMS, Azure Key Vault
+- [SOPS](https://github.com/getsops/sops) (CNCF Sandbox) -- encrypted file editor supporting age, AWS KMS, GCP KMS, Azure Key Vault
 - [age](https://github.com/FiloSottile/age) -- simple, modern file encryption
 - [Flux SOPS guide](https://fluxcd.io/flux/guides/mozilla-sops/) -- integrating SOPS with Flux GitOps
 - [OWASP Secrets Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
-- "Security Chaos Engineering" -- Kennedy, Nolan
+- [Kubernetes Secrets good practices](https://kubernetes.io/docs/concepts/security/secrets-good-practices/)

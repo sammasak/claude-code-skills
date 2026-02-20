@@ -2,12 +2,13 @@
 name: clean-code-principles
 description: "Use when writing code, reviewing PRs, refactoring, or making architectural decisions. Enforces readability, testability, and maintainability standards across all languages."
 user-invocable: false
-allowed-tools: Bash Read Grep Glob
+allowed-tools: Bash, Read, Grep, Glob
 ---
 
 # Clean Code Principles
 
 Code is read far more often than it is written. Optimize for the reader.
+Review AI-generated code with the same rigor as human code — verify naming, test coverage, and absence of dead code.
 
 ## Principles
 
@@ -24,9 +25,9 @@ Code is read far more often than it is written. Optimize for the reader.
 ## Standards
 
 ### Size and Shape
-- [ ] Functions under 20 lines (prefer under 10)
+- [ ] Functions short enough to serve a single purpose — typically under 20-30 lines. Avoid extracting every block into its own function; each extraction should reduce cognitive load, not add indirection.
 - [ ] Max 3 parameters — group into a struct/dataclass if more
-- [ ] No boolean parameters — use enums or named types (`Mode::Dry` not `dry_run: bool`)
+- [ ] Avoid boolean parameters on public APIs when the call site becomes ambiguous. Prefer enums (`DryRun::Yes`) or separate functions (`deploy()` / `deploy_dry_run()`).
 - [ ] Early returns over nested ifs — reduce indentation depth to 2 levels max
 
 ### Dependencies and State
@@ -43,7 +44,7 @@ Code is read far more often than it is written. Optimize for the reader.
 
 ### Naming and Structure
 - Test names describe **behavior**, not implementation: `test_expired_token_returns_401` not `test_validate`
-- One assertion per test — test exactly one thing
+- One behavior per test — multiple assertions verifying facets of the same behavior are fine.
 - Follow **Arrange-Act-Assert** in every test
 
 ### Coverage Strategy
@@ -60,7 +61,7 @@ If yes, the test is coupled to implementation. Rewrite it.
 
 | Tool | Purpose |
 |---|---|
-| Strict linters | Automated enforcers — Rust: `clippy::all = deny`; Python: `ruff` + `ty` |
+| Strict linters | Enable strict linting in every language and treat warnings as errors in CI (e.g., `clippy`, `ruff`, `ESLint`, `golangci-lint`) |
 | `just` | Universal task runner across all repos (`just check`, `just test`, `just fmt`) |
 | Pre-commit hooks | Safety net: format, lint, type-check, test — runs before every commit |
 | Multi-stage Docker builds | Minimal deployable artifacts — build deps separate from app code |
@@ -70,18 +71,19 @@ If yes, the test is coupled to implementation. Rewrite it.
 
 | Do Not | Why |
 |---|---|
-| Comments that restate the code | Stale comments are worse than no comments. The code is the source of truth. |
+| Comments that restate the code | Stale comments are worse than no comments. The code is the source of truth. **Do** comment the "why" behind non-obvious decisions, workarounds for external bugs, and algorithmic complexity notes. |
 | Dead code left "just in case" | Version control remembers. Delete it. Resurrection is one `git log` away. |
+| Refactoring without a reason | Don't refactor working code without a concrete driver (bug, new requirement, measurable complexity). |
 | Premature abstraction | Wait for 3 concrete cases before abstracting. Duplication is cheaper than the wrong abstraction. |
 | God objects/functions (>100 lines) | Split it. If you can't name what it does in 5 words, it does too much. |
 | Stringly-typed APIs | Use enums and newtypes. The compiler cannot check strings. |
-| Silencing linter warnings without explanation | Every `#[allow(...)]` or `# noqa` needs a comment explaining **why**. No exceptions. |
+| Silencing linter warnings without explanation | Every suppression directive needs a comment explaining **why**. No exceptions. |
 
 ## References
 
 - "A Philosophy of Software Design" — Ousterhout (best single book on managing complexity)
 - "Refactoring" — Fowler (the catalog of safe transformations)
-- Google Engineering Practices guide — especially the code review section
-- "Clean Code" — Martin (chapters 1-6 only; skip the later chapters)
-- Rust API Guidelines — https://rust-lang.github.io/api-guidelines/
-- Python PEP 20 — `import this` (the Zen of Python)
+- "Tidy First?" — Kent Beck (2023) (incremental tidyings before behavioral changes)
+- Google Engineering Practices — https://google.github.io/eng-practices/review/
+- "Clean Code" — Martin (chapters 1-6; note the Ousterhout-Martin debate on function length — approach prescriptive line-count advice skeptically)
+- The Zen of Python (PEP 20) — applicable beyond Python: explicit > implicit, simple > complex
