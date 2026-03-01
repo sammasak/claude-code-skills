@@ -64,28 +64,19 @@ openfang does NOT `kubectl apply` directly. All changes go through git → Flux.
 
 ### 4a. Prerequisites — Configure Your Local openfang-ctl
 
-Check whether the worker bootstrap secret has an `api_key` configured for openfang server auth:
+Get the openfang API key from the worker bootstrap secret (same key for all worker VMs):
 
 ```bash
 sops -d ~/homelab-gitops/apps/workstations/secrets/openfang-worker-bootstrap.secret.yaml | grep api_key
 ```
 
-**If a key is returned:** add it to your local config:
+Add it to your local config:
 ```bash
 mkdir -p ~/.config/openfang
 cat > ~/.config/openfang/config.toml <<EOF
 api_key = "<value-from-grep>"
 EOF
 ```
-
-**If no key is returned:** the worker bootstrap has no openfang API key configured yet.
-To add one, edit the bootstrap secret:
-```bash
-sops ~/homelab-gitops/apps/workstations/secrets/openfang-worker-bootstrap.secret.yaml
-# Add to the config.toml write_files block:
-#   api_key = "<generate a random key, e.g. openssl rand -hex 32>"
-```
-Then update your local config with the same value.
 
 You'll override the endpoint per-instance with `--api-endpoint`. The key is always the same across all worker VMs.
 
