@@ -105,6 +105,58 @@ EOF
 
 Naming convention: `openfang-<project-slug>` — e.g., `openfang-harbor-metrics`, `openfang-jarvis-v2`.
 
+### 4b-alt. Spawn an agent via direct API (openfang 0.2.3)
+
+`openfang-ctl` 0.1.0 in the golden image is incompatible with `openfang` server 0.2.3. Use direct API calls until the image is updated.
+
+The 0.2.3 API requires a `manifest_toml` body with a `[[hands]]` block. Available hands with `shell_exec`: `collector`, `lead`, `predictor`, `researcher`. Use `collector` for GitOps/infrastructure work.
+
+```bash
+LB_IP=$(kubectl get svc openfang-<name>-ssh -n workstations \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+
+OPENFANG_KEY=$(sops -d ~/homelab-gitops/apps/workstations/secrets/openfang-worker-bootstrap.secret.yaml \
+  | grep -oP 'api_key = "\K[^"]+')
+
+# Create agent
+AGENT_ID=$(curl -s -X POST "http://$LB_IP:4200/api/agents" \
+  -H "Authorization: Bearer $OPENFANG_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"manifest_toml\": \"name = \\\"my-agent\\\"\nmodule = \\\"collector\\\"\n\n[model]\nprovider = \\\"anthropic\\\"\nmodel = \\\"claude-sonnet-4-20250514\\\"\n\n[[hands]]\nid = \\\"collector\\\"\"}" \
+  | jq -r '.agent_id')
+
+echo "Agent ID: $AGENT_ID"
+
+# Send task
+curl -s -X POST "http://$LB_IP:4200/api/agents/$AGENT_ID/message" \
+  -H "Authorization: Bearer $OPENFANG_KEY" \
+  -H "Content-Type: application/json" \
+  -d "{\"message\": \"<task text here>\"}"
+
+# Check state
+curl -s -H "Authorization: Bearer $OPENFANG_KEY" \
+  "http://$LB_IP:4200/api/agents/$AGENT_ID" | jq .
+
+# Kill agent
+curl -s -X DELETE \
+  -H "Authorization: Bearer $OPENFANG_KEY" \
+  "http://$LB_IP:4200/api/agents/$AGENT_ID"
+```
+
+Minimal manifest_toml (unescaped for reference):
+
+```toml
+name = "my-agent"
+module = "collector"
+
+[model]
+provider = "anthropic"
+model = "claude-sonnet-4-20250514"
+
+[[hands]]
+id = "collector"
+```
+
 ### 4c. Wait for Ready
 
 ```bash
@@ -273,3 +325,5 @@ Post-completion checklist:
 | kubectl fails inside VM | kubeconfig issue | `ssh lukas@$LB_IP kubectl get nodes` |
 | LB_IP returns null/empty | Service not yet assigned | Wait 30s and retry; check kubectl get svc -n workstations |
 | Port 4200 unreachable on LB_IP | Controller fix not yet deployed | SSH to VM and run openfang-ctl locally (localhost:4200) |
+| `openfang-ctl agents spawn` fails with "missing field manifest_toml" | openfang-ctl 0.1.0 is incompatible with openfang server 0.2.3; API changed | Use direct curl API calls: `POST /api/agents` with `{"manifest_toml": "..."}` body — see Section 4b-alt |
+| Agent Running but LLM auth fails (401 invalid x-api-key) | ANTHROPIC_API_KEY in bootstrap secret is an expired OAuth token (`sk-ant-oat01-...`) | Rotate: generate fresh regular API key from https://console.anthropic.com → API Keys → Create new key; update bootstrap secret with `sops`; commit and push; delete and recreate the VM (bootstrap is read at cloud-init time) |
