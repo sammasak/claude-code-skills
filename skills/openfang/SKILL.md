@@ -64,20 +64,30 @@ openfang does NOT `kubectl apply` directly. All changes go through git → Flux.
 
 ### 4a. Prerequisites — Configure Your Local openfang-ctl
 
-Set the worker API key in your local config (same key for all worker instances):
+Check whether the worker bootstrap secret has an `api_key` configured for openfang server auth:
 
 ```bash
-# The API key is in the openfang-worker-bootstrap secret
-# Decrypt to find it:
 sops -d ~/homelab-gitops/apps/workstations/secrets/openfang-worker-bootstrap.secret.yaml | grep api_key
+```
 
+**If a key is returned:** add it to your local config:
+```bash
 mkdir -p ~/.config/openfang
 cat > ~/.config/openfang/config.toml <<EOF
-api_key = "<worker-api-key>"
+api_key = "<value-from-grep>"
 EOF
 ```
 
-You'll override the endpoint per-instance. The key is always the same.
+**If no key is returned:** the worker bootstrap has no openfang API key configured yet.
+To add one, edit the bootstrap secret:
+```bash
+sops ~/homelab-gitops/apps/workstations/secrets/openfang-worker-bootstrap.secret.yaml
+# Add to the config.toml write_files block:
+#   api_key = "<generate a random key, e.g. openssl rand -hex 32>"
+```
+Then update your local config with the same value.
+
+You'll override the endpoint per-instance with `--api-endpoint`. The key is always the same across all worker VMs.
 
 ### 4b. Create a VM
 
@@ -88,7 +98,7 @@ curl -s -X POST https://workstations-api.sammasak.dev/api/v1/workspaces \
     "name": "openfang-project-name",
     "containerDiskImage": "registry.sammasak.dev/agents/openfang-agent:latest",
     "bootstrapSecretName": "openfang-worker-bootstrap",
-    "instancetypeName": "openfang-central",
+    "instancetypeName": "openfang-agent",
     "runStrategy": "Always",
     "exposedPorts": [
       {"name": "ssh", "port": 22, "protocol": "TCP"},
@@ -186,7 +196,7 @@ AGENT_ID=$(openfang-ctl agents spawn \
 [paste full project brief here]
 EOF
 )" \
-  --model sonnet)
+  --model sonnet | grep -oP 'ID: \K[^\s]+')
 
 echo "Agent ID: $AGENT_ID"
 ```
