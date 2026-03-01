@@ -67,14 +67,16 @@ openfang does NOT `kubectl apply` directly. All changes go through git → Flux.
 Get the openfang API key from the worker bootstrap secret (same key for all worker VMs):
 
 ```bash
-sops -d ~/homelab-gitops/apps/workstations/secrets/openfang-worker-bootstrap.secret.yaml | grep api_key
+OPENFANG_KEY=$(sops -d ~/homelab-gitops/apps/workstations/secrets/openfang-worker-bootstrap.secret.yaml \
+  | grep -oP 'api_key = "\K[^"]+')
+echo "Key: $OPENFANG_KEY"
 ```
 
 Add it to your local config:
 ```bash
 mkdir -p ~/.config/openfang
 cat > ~/.config/openfang/config.toml <<EOF
-api_key = "<value-from-grep>"
+api_key = "$OPENFANG_KEY"
 EOF
 ```
 
