@@ -1,3 +1,10 @@
+> **See the `openfang` skill** for the full VM + agent lifecycle workflow:
+> provision a VM, write project briefs, spawn agents, monitor, intervene, and complete tasks.
+>
+> This document is the **openfang-ctl CLI quick-reference**.
+
+---
+
 # OpenFang Agent Orchestration
 
 Manage OpenFang agents using the openfang-ctl CLI tool.
