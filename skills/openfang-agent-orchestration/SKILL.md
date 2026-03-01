@@ -19,7 +19,7 @@ Manage OpenFang agents using the openfang-ctl CLI tool.
 ## Prerequisites
 
 - openfang-ctl installed (available on homelab hosts via NixOS)
-- OpenFang central API running at openfang-central.sammasak.dev
+- An openfang VM running and its LoadBalancer IP known (see the `openfang` skill for provisioning)
 - Configuration file at ~/.config/openfang/config.toml (or use environment variables)
 
 ## Core Operations
@@ -101,8 +101,14 @@ Prompts for confirmation. Use `--force` to skip.
 Location: `~/.config/openfang/config.toml`
 
 ```toml
-api_endpoint = "http://openfang-central-api.workstations.svc.cluster.local:4200"
+# No default endpoint — override per-instance:
 api_key = "your-api-key-here"
+```
+
+Endpoint is set per-command using `--api-endpoint`:
+
+```bash
+openfang-ctl --api-endpoint http://<LB_IP>:4200 agents list
 ```
 
 ### Environment Variables
@@ -166,19 +172,18 @@ openfang-ctl agents list | grep stopped | awk '{print $1}' | xargs -I {} openfan
 **Symptom:** `Failed to connect to API`
 
 **Solution:**
-1. Verify OpenFang API is running:
+1. Check openfang API on the target VM:
    ```bash
-   kubectl get pods -n workstations -l app=openfang-central-api
+   # Check openfang API on the target VM
+   curl http://<LB_IP>:4200/api/agents
+
+   # If VM is Running but API not responding, SSH in:
+   ssh lukas@<LB_IP> 'sudo systemctl status openfang'
    ```
 
 2. Check API endpoint in config:
    ```bash
    cat ~/.config/openfang/config.toml
-   ```
-
-3. Test connectivity (from cluster node):
-   ```bash
-   curl http://openfang-central-api.workstations.svc.cluster.local:4200/health
    ```
 
 ### Authentication Failed
@@ -195,19 +200,14 @@ openfang-ctl agents list | grep stopped | awk '{print $1}' | xargs -I {} openfan
 **Symptom:** Agent status stuck in "pending"
 
 **Solution:**
-1. Check OpenFang central logs:
-   ```bash
-   kubectl logs -n workstations -l app=openfang-central -f
-   ```
-
-2. Verify agent resources:
+1. Verify agent resources:
    ```bash
    openfang-ctl agents status <agent-id>
    ```
 
 ## Notes
 
-- Agents run on OpenFang central node (openfang-central.sammasak.dev)
+- Agents run on a per-project on-demand VM provisioned via the `openfang` skill
 - Log streaming polls every 2 seconds (not real-time WebSocket)
 - API key required for authentication (stored in config file or env var)
 - Confirm before stopping agents (prevents accidental termination)
