@@ -85,21 +85,22 @@ You'll override the endpoint per-instance with `--api-endpoint`. The key is alwa
 ### 4b. Create a VM
 
 ```bash
-curl -s -X POST https://workstations-api.sammasak.dev/api/v1/workspaces \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "openfang-project-name",
-    "containerDiskImage": "registry.sammasak.dev/agents/openfang-agent:latest",
-    "bootstrapSecretName": "openfang-worker-bootstrap",
-    "instancetypeName": "openfang-agent",
-    "runStrategy": "Always",
-    "exposedPorts": [
-      {"name": "ssh", "port": 22, "protocol": "TCP"},
-      {"name": "openfang-api", "port": 4200, "protocol": "TCP"}
-    ],
-    "tailscale": {"expose": true, "hostname": "openfang-project-name", "tags": "tag:agent"},
-    "idleHaltAfterMinutes": 1440
-  }' | jq .
+kubectl apply -n workstations -f - <<EOF
+apiVersion: workstations.sammasak.dev/v1alpha1
+kind: WorkspaceClaim
+metadata:
+  name: openfang-project-name
+  namespace: workstations
+spec:
+  containerDiskImage: registry.sammasak.dev/agents/openfang-agent:latest
+  bootstrapSecretName: openfang-worker-bootstrap
+  instancetypeName: openfang-agent
+  runStrategy: Always
+  exposedPorts:
+    - {name: ssh, port: 22, protocol: TCP}
+    - {name: openfang-api, port: 4200, protocol: TCP}
+  idleHaltAfterMinutes: 1440
+EOF
 ```
 
 Naming convention: `openfang-<project-slug>` — e.g., `openfang-harbor-metrics`, `openfang-jarvis-v2`.
@@ -107,19 +108,28 @@ Naming convention: `openfang-<project-slug>` — e.g., `openfang-harbor-metrics`
 ### 4c. Wait for Ready
 
 ```bash
-# Poll until vmStatus = "Running"
-watch -n 5 'curl -s https://workstations-api.sammasak.dev/api/v1/workspaces/openfang-project-name | jq "{phase: .phase, vmStatus: .vmStatus, ip: .loadBalancerIp}"'
+# Poll until VM is Running
+watch -n 5 'kubectl get workspaceclaim openfang-project-name -n workstations \
+  -o jsonpath="{.status.phase} {.status.vmStatus}"'
 ```
 
-Ready when: `phase = "Ready"`, `vmStatus = "Running"`, `loadBalancerIp` is set.
+Ready when: `phase = "Ready"`, `vmStatus = "Running"`.
 
 ### 4d. Capture the Endpoint
 
 ```bash
-LB_IP=$(curl -s https://workstations-api.sammasak.dev/api/v1/workspaces/openfang-project-name | jq -r .loadBalancerIp)
-echo "VM endpoint: http://$LB_IP:4200"
+LB_IP=$(kubectl get svc openfang-project-name-ssh -n workstations \
+  -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+echo "SSH/openfang endpoint: $LB_IP"
+echo "  SSH:         ssh lukas@$LB_IP"
+echo "  openfang API: http://$LB_IP:4200  (once controller fix is deployed)"
+echo "  openfang API: ssh lukas@$LB_IP 'OPENFANG_API_ENDPOINT=http://localhost:4200 openfang-ctl ...'"
+```
 
-# Verify openfang API is up (allow 60-90s after vmStatus=Running for cloud-init)
+Note: port 4200 will be on the LoadBalancer after a controller fix is deployed (tracked). Until then, use SSH to run openfang-ctl locally on the VM.
+
+Verify openfang API is up (allow 60-90s after vmStatus=Running for cloud-init):
+```bash
 curl -s http://$LB_IP:4200/api/agents | jq .
 ```
 
@@ -134,16 +144,18 @@ Resume later with `/start`. The workspace PVC and all committed git work survive
 ### 4f. List All openfang VMs
 
 ```bash
-curl -s https://workstations-api.sammasak.dev/api/v1/workspaces | jq '.[] | select(.name | startswith("openfang")) | {name, phase, vmStatus, ip: .loadBalancerIp}'
+kubectl get workspaceclaim -n workstations \
+  -o custom-columns='NAME:.metadata.name,PHASE:.status.phase,VM:.status.vmStatus' \
+  | grep "^openfang"
 ```
 
 ### 4g. Delete VM (permanent)
 
 ```bash
-curl -s -X DELETE https://workstations-api.sammasak.dev/api/v1/workspaces/openfang-project-name
+kubectl delete workspaceclaim openfang-project-name -n workstations
 ```
 
-This deletes the WorkspaceClaim — controller removes the VM, PVC, and Service.
+This deletes the WorkspaceClaim — controller removes the VM, PVC, and Service via owner-reference cascade.
 
 ---
 
@@ -182,6 +194,8 @@ Model guidance: `sonnet` for most work, `opus` for deep architectural reasoning.
 ```bash
 # Point openfang-ctl at the specific VM
 export OPENFANG_API_ENDPOINT="http://$LB_IP:4200"
+# Note: if port 4200 is not yet on the LoadBalancer, use SSH to run openfang-ctl on the VM:
+# ssh lukas@$LB_IP 'export OPENFANG_API_ENDPOINT=http://localhost:4200 && openfang-ctl agents spawn ...'
 
 AGENT_ID=$(openfang-ctl agents spawn \
   --name "descriptive-kebab-case-name" \
@@ -249,7 +263,7 @@ Post-completion checklist:
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| workspace-api returns 409 | Name already exists | Use different name or delete old one |
+| kubectl apply returns "already exists" | WorkspaceClaim already exists | Use different name or kubectl delete then re-apply |
 | VM stuck in "Pending" | Image pull or scheduling issue | `kubectl describe vm openfang-<name> -n workstations` |
 | openfang API not responding on :4200 | Cloud-init still running | Wait 90s after vmStatus=Running |
 | `openfang-ctl` auth fail | Wrong API key | Re-check worker bootstrap secret API key |
@@ -257,3 +271,5 @@ Post-completion checklist:
 | Agent stuck in loop | Under-specified brief | Stop, add Out of Scope constraints, respawn |
 | git push fails in logs | GH_TOKEN expired | Wait up to 50 min for auto-refresh |
 | kubectl fails inside VM | kubeconfig issue | `ssh lukas@$LB_IP kubectl get nodes` |
+| LB_IP returns null/empty | Service not yet assigned | Wait 30s and retry; check kubectl get svc -n workstations |
+| Port 4200 unreachable on LB_IP | Controller fix not yet deployed | SSH to VM and run openfang-ctl locally (localhost:4200) |
