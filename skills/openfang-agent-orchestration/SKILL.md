@@ -50,6 +50,11 @@ Shows table with: ID, Name, Status, Model, Created timestamp
 
 Create a new agent with a task:
 
+> **Compatibility Note:** `openfang-ctl` 0.1.0 in the current golden image is incompatible with
+> `openfang` server 0.2.3. Running `openfang-ctl agents spawn` will return `422 Unprocessable Entity:
+> missing field manifest_toml`. Use direct curl API calls instead — see the `openfang` skill,
+> Section 4b-alt for the working pattern.
+
 ```bash
 openfang-ctl agents spawn \
   --name "log-analyzer" \
