@@ -3,6 +3,7 @@ name: clean-code-principles
 description: "Use when writing code, reviewing PRs, refactoring, or making architectural decisions. Enforces readability, testability, and maintainability standards across all languages."
 user-invocable: false
 allowed-tools: Bash, Read, Grep, Glob
+injectable: true
 ---
 
 # Clean Code Principles

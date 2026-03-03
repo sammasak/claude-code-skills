@@ -2,6 +2,7 @@
 name: kubernetes-gitops
 description: "Use when working with Kubernetes clusters, GitOps deployments, Flux reconciliation, Helm releases, or cluster troubleshooting. Guides declarative cluster management and GitOps workflows."
 allowed-tools: Bash, Read, Grep, Glob
+injectable: true
 ---
 
 # Kubernetes GitOps

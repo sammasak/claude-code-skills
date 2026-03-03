@@ -2,6 +2,7 @@
 name: secrets-management
 description: "Use when handling secrets, encryption keys, credentials, tokens, or sensitive configuration. Guides SOPS encryption workflows, Kubernetes secret patterns, and secret hygiene."
 allowed-tools: Bash, Read, Grep, Glob
+injectable: true
 ---
 
 # Secrets Management

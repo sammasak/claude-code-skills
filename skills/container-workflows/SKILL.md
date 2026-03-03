@@ -2,6 +2,7 @@
 name: container-workflows
 description: "Use when building container images, writing Dockerfiles, pushing to registries, or optimizing image size and security. Guides rootless builds, multi-stage patterns, and supply chain security."
 allowed-tools: Bash, Read, Grep, Glob
+injectable: true
 ---
 
 # Container Workflows

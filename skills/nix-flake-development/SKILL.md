@@ -2,6 +2,7 @@
 name: nix-flake-development
 description: "Use when working with NixOS configurations, Nix flakes, module composition, system rebuilds, or Home Manager. Guides declarative system management patterns and safe rebuild workflows."
 allowed-tools: Bash Read Grep Glob
+injectable: true
 ---
 
 # Nix Flake Development

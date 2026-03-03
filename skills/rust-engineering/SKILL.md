@@ -2,6 +2,7 @@
 name: rust-engineering
 description: "Use when writing Rust code, configuring Cargo workspaces, setting up clippy lints, designing error handling, or optimizing build profiles. Guides compiler-driven development and idiomatic Rust patterns."
 allowed-tools: Bash, Read, Grep, Glob
+injectable: true
 ---
 
 # Rust Engineering

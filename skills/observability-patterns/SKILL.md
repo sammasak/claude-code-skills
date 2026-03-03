@@ -2,6 +2,7 @@
 name: observability-patterns
 description: "Use when adding metrics, logging, tracing, or alerting to services. Guides the three pillars of observability, structured logging standards, and instrumentation patterns."
 allowed-tools: Bash, Read, Grep, Glob
+injectable: true
 ---
 
 # Observability Patterns

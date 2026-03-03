@@ -2,6 +2,7 @@
 name: python-agentic-development
 description: "Use when building AI agents, designing LLM tool interfaces, working with pydantic-ai, pydantic-graph, or MCP. Guides agentic architecture, tool design, evaluation, and production patterns."
 allowed-tools: Bash, Read, Grep, Glob
+injectable: true
 ---
 
 # Python Agentic Development

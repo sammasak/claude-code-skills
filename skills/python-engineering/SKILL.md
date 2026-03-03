@@ -2,6 +2,7 @@
 name: python-engineering
 description: "Use when writing Python code, configuring tooling, structuring projects, or working with FastAPI, httpx, pytest, or the Astral toolchain (uv, ruff, ty)."
 allowed-tools: Bash, Read, Grep, Glob
+injectable: true
 ---
 
 # Python Engineering
