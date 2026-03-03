@@ -4,7 +4,7 @@ description: "Use when running openfang-ctl CLI commands to manage openfang VMs 
 allowed-tools: Bash
 ---
 
-# openfang-ctl CLI Reference (v0.4.0)
+# openfang-ctl CLI Reference (v0.5.0)
 
 ## Config (`~/.config/openfang/config.toml`)
 
@@ -36,7 +36,8 @@ Naming convention: `openfang-<project-slug>`
 openfang-ctl agents list     --endpoint http://IP:4200
 openfang-ctl agents status   --endpoint http://IP:4200 <agent_id>
 openfang-ctl agents logs     --endpoint http://IP:4200 <agent_id> [--follow]
-openfang-ctl agents message  --endpoint http://IP:4200 <agent_id> "goal text"
+openfang-ctl agents message  --endpoint http://IP:4200 <agent_id> "goal text"          # fire-and-forget
+openfang-ctl agents message  --endpoint http://IP:4200 <agent_id> "goal text" --stream  # live SSE output, blocks until done
 openfang-ctl agents messages --endpoint http://IP:4200 <agent_id> [-n 20]
 openfang-ctl agents stop     --endpoint http://IP:4200 <agent_id> [--force]
 ```
@@ -69,6 +70,26 @@ openfang-ctl skills add --all --endpoint http://IP:4200
 
 Local skills are read from `skills_dir` (default `~/.claude/skills`).
 Each skill must be a subdirectory containing `SKILL.md`.
+
+## Tasks (A2A protocol — structured async with completion state)
+
+```bash
+# Submit a task to an agent — returns a task ID
+openfang-ctl tasks send --endpoint http://IP:4200 <agent_id> "goal text"
+
+# Poll task until completed/failed — exits 0 on success, 1 on failure
+openfang-ctl tasks watch --endpoint http://IP:4200 <task_id>
+```
+
+Task lifecycle: `submitted → working → completed | failed | canceled`
+
+**Preferred workflow for long-running jobs:**
+```bash
+TASK_ID=$(openfang-ctl tasks send --endpoint http://IP:4200 <agent_id> "build twitter clone")
+openfang-ctl tasks watch --endpoint http://IP:4200 "$TASK_ID"
+```
+
+**For interactive/real-time output use `--stream` instead.**
 
 ## API key
 
