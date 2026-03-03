@@ -4,7 +4,7 @@ description: "Use when running openfang-ctl CLI commands to manage openfang VMs 
 allowed-tools: Bash
 ---
 
-# openfang-ctl CLI Reference (v0.5.0)
+# openfang-ctl CLI Reference (v0.5.1)
 
 ## Config (`~/.config/openfang/config.toml`)
 
@@ -22,9 +22,10 @@ Initialize: `openfang-ctl init`
 openfang-ctl workspaces list
 openfang-ctl workspaces create <name>
 openfang-ctl workspaces delete <name>
-openfang-ctl workspaces provision <name>              # create + wait + inject all skills + activate researcher
-openfang-ctl workspaces provision <name> --skills a,b # inject only named skills
-openfang-ctl workspaces provision <name> --no-skills  # skip skill injection
+openfang-ctl workspaces provision <name>                               # create + wait + inject injectable skills + activate researcher
+openfang-ctl workspaces provision <name> --skills a,b                 # inject only named skills
+openfang-ctl workspaces provision <name> --no-skills                  # skip skill injection
+openfang-ctl workspaces provision <name> --instancetype openfang-central  # override VM size (default: openfang-agent 2CPU/4Gi)
 ```
 
 Naming convention: `openfang-<project-slug>`
@@ -85,7 +86,12 @@ Task lifecycle: `submitted → working → completed | failed | canceled`
 
 **Preferred workflow for long-running jobs:**
 ```bash
+# By agent ID
 TASK_ID=$(openfang-ctl tasks send --endpoint http://IP:4200 <agent_id> "build twitter clone")
+openfang-ctl tasks watch --endpoint http://IP:4200 "$TASK_ID"
+
+# By hand name (looks up agent ID automatically)
+TASK_ID=$(openfang-ctl tasks send-to-hand --endpoint http://IP:4200 researcher "build twitter clone")
 openfang-ctl tasks watch --endpoint http://IP:4200 "$TASK_ID"
 ```
 
