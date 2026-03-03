@@ -48,7 +48,7 @@ openfang-ctl agents message <agent_id> \
 
 **Goal format:**
 ```
-Goal: Build a FastAPI pastebin service that stores pastes in Redis with TTL.
+Goal: Build a Rust (Axum) pastebin service that stores pastes in Redis with TTL.
 Success: kubectl get pods -n lab shows 1/1 Running; curl https://paste.sammasak.dev returns HTTP 200.
 Out of scope: Do not modify existing ingress rules. Do not touch harbor.
 ```
