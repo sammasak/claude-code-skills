@@ -132,12 +132,31 @@ nix store gc                                           # store-level GC (does no
 - **Home Manager as NixOS module** — imported via `home-manager.nixosModules.home-manager`; shares the system `nixpkgs` instance
 - **SOPS / agenix for secrets** — encrypted in-repo, decrypted at activation time; never store plaintext secrets in the Nix store
 
+### devShell for musl Rust cross-compilation
+
+```nix
+let musl = pkgs.pkgsCross.musl64; in
+devShells.x86_64-linux.default = pkgs.mkShell {
+  packages = [ musl.buildPackages.rustc musl.buildPackages.cargo pkgs.pkg-config ];
+  CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+  CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER =
+    "${musl.stdenv.cc}/bin/${musl.stdenv.cc.targetPrefix}cc";
+};
+```
+
+**Common mistakes:**
+- `pkgs.rust` — does not exist. Use `musl.buildPackages.rustc`.
+- `pkgs.rust.packages.stable` — only valid when using `rust-overlay` as a flake input.
+- `inputs.nixpkgs.url = "nixpkgs"` — unpinned registry pointer, causes non-reproducibility. Always use `"github:NixOS/nixpkgs/nixos-unstable"` or a pinned rev.
+
+> **Prefer a Containerfile over Nix devShell for musl when buildah is available.** `FROM rust:1-alpine` + `apk add musl-dev` is simpler and faster. See rust-engineering skill.
+
 ## Anti-Patterns
 
 | Don't | Do Instead |
 |---|---|
 | `nix-env -iA` for system packages | Declare in `environment.systemPackages` or Home Manager |
-| Unpinned / floating flake inputs | Pin to branch or commit; use `follows` |
+| `inputs.nixpkgs.url = "nixpkgs"` (unpinned) | `url = "github:NixOS/nixpkgs/nixos-unstable"` |
 | Monolithic `configuration.nix` (500+ lines) | Split into role modules under `modules/` |
 | Import-from-derivation (IFD) at eval time | Pre-generate files or use `builtins.readFile` |
 | Manual edits to `/etc/*` on NixOS | Declare via `environment.etc` or service options |

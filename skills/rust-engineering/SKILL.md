@@ -112,7 +112,12 @@ build:  cargo build --release
 image:  buildah build -t myapp:latest .
 ```
 
-### Dockerfile (multi-stage, musl static linking)
+### musl static linking — choose the right approach
+
+> **In Nix / buildah environments (claude-worker VMs): use the Containerfile approach below.**
+> Do NOT try to set up musl cross-compilation inside a Nix `devShell` — `pkgs.rust` does not exist, and `pkgsCross.musl64` requires precise attribute paths that vary by nixpkgs version. The Containerfile approach is simpler, faster, and always works.
+
+**Containerfile (buildah on NixOS/alpine builder):**
 
 ```dockerfile
 FROM rust:1-alpine AS builder
@@ -126,6 +131,20 @@ COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=builder /src/target/x86_64-unknown-linux-musl/release/api /api
 ENTRYPOINT ["/api"]
 ```
+
+**If you must use a Nix devShell for musl** (e.g. CI without Docker), the correct pattern:
+
+```nix
+let musl = pkgs.pkgsCross.musl64; in
+pkgs.mkShell {
+  packages = [ musl.buildPackages.rustc musl.buildPackages.cargo pkgs.pkg-config ];
+  CARGO_BUILD_TARGET = "x86_64-unknown-linux-musl";
+  CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER =
+    "${musl.stdenv.cc}/bin/${musl.stdenv.cc.targetPrefix}cc";
+}
+```
+
+Note: `pkgs.rust`, `pkgs.rust.packages`, `pkgs.rustPlatform.rust` do **not** provide a usable toolchain in a devShell. Use `musl.buildPackages.rustc` or add `rust-overlay` as a flake input.
 
 ## Anti-Patterns
 
