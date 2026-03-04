@@ -108,6 +108,29 @@ Instrument at service creation. This is the checklist before a service goes to s
 
 **Dashboards:** One Grafana dashboard per service. Four panels minimum: request rate, error rate, p50/p95/p99 latency, active requests.
 
+### Claude Worker VM Logs (LogQL)
+
+Claude-worker VMs ship structured JSONL from `current.log` to Loki via promtail inside the VM. Labels: `job=claude-worker`, `vm=<hostname>`, `type` and `session_id` parsed from JSON.
+
+```logql
+# All activity for a specific VM
+{job="claude-worker", vm="status-page"}
+
+# What Claude decided to do (assistant messages)
+{job="claude-worker"} | json | type="assistant"
+
+# Tool calls only
+{job="claude-worker", vm="status-page"} | json | type="assistant"
+
+# Errors and failures
+{job="claude-worker"} | json | line_format "{{.__line__}}" |= "error"
+
+# Goal completions
+{job="claude-worker"} | json | type="result"
+```
+
+> **NixOS note:** On NixOS, use `services.promtail` (nixpkgs has a module). Grafana Alloy is the long-term replacement for Promtail (EOL 2026-03-02) but the NixOS module is less mature — stick with Promtail in NixOS VMs for now. The cluster-level collector (for pod logs) can use Alloy.
+
 ## Anti-Patterns
 
 | Don't                                          | Why                                              |
