@@ -13,7 +13,10 @@ fi
 PENDING=$(jq '[.[] | select(.status == "pending")] | length' "$GOALS_FILE" 2>/dev/null || echo "0")
 
 if [ "$PENDING" -gt 0 ]; then
-  echo "CONTINUE: $PENDING pending goal(s) remain in $GOALS_FILE. Read the file now, find the next pending goal, update its status to in_progress, and work on it."
+  NEXT_GOAL=$(jq -c '[.[] | select(.status == "pending")][0]' "$GOALS_FILE" 2>/dev/null)
+  NEXT_ID=$(echo "$NEXT_GOAL" | jq -r '.id')
+  NEXT_DESC=$(echo "$NEXT_GOAL" | jq -r '.goal')
+  echo "CONTINUE: $PENDING pending goal(s) remain. Next goal: id=$NEXT_ID goal=\"$NEXT_DESC\". Mark it in_progress with jq and work on it."
 fi
 
 # If PENDING == 0: silent exit → Claude stops cleanly
