@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # PostToolUse Write/Edit hook — Kubernetes manifest validator
 # Checks YAML syntax for any .yaml file written by Claude.
 # Outputs warnings to stdout (informational, does not block).

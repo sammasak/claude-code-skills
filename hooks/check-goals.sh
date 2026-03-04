@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Stop hook — Goal Loop Controller
 # When Claude tries to stop, check for pending goals.
 # If any remain, print a message (causing Claude to continue).
 # If none remain, exit silently (Claude stops cleanly).
 
-GOALS_FILE="/var/lib/claude-worker/goals.json"
+GOALS_FILE="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json"
 
 if [ ! -f "$GOALS_FILE" ]; then
   exit 0
