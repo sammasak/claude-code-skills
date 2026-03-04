@@ -24,7 +24,7 @@ Choose based on what you deployed:
 
 ```bash
 # Returns HTTP status code. Must be 200.
-curl -sf -o /dev/null -w "%{http_code}\n" https://<domain>
+curl -s -w "%{http_code}\n" -o /dev/null https://<domain>
 ```
 
 Pass: prints `200`
@@ -41,6 +41,8 @@ curl -sf https://<domain>/readyz | jq .
 
 ## Tier 2 — Standard (Kubernetes)
 
+You need three values: `<namespace>` (Kubernetes namespace), `<name>` (deployment name), and `<domain>` (public hostname). These come from the deployment manifests you applied.
+
 Run in order. All three must pass.
 
 **1. Pod status:**
@@ -54,10 +56,11 @@ kubectl get pods -n <namespace> -o wide
 kubectl rollout status deployment/<name> -n <namespace> --timeout=120s
 # Expected: "successfully rolled out"
 ```
+If the command exits with code 1 (timeout), check pod status with `kubectl get pods -n <namespace>` to determine if pods are still initializing or stuck in CrashLoopBackOff before retrying.
 
 **3. HTTP reachable:**
 ```bash
-curl -sf -o /dev/null -w "%{http_code}\n" https://<domain>
+curl -s -w "%{http_code}\n" -o /dev/null https://<domain>
 # Expected: 200
 ```
 
@@ -71,6 +74,8 @@ kubectl logs -n <namespace> <pod-name> --previous
 
 ## Tier 3 — Thorough (UI verification with Playwright)
 
+The Playwright MCP browser session starts automatically when you call `browser_navigate` — no explicit initialization needed.
+
 Use the Playwright MCP tools to navigate to the deployed service, confirm the page renders expected content, and capture a screenshot as evidence.
 
 **Step 1: Navigate to the service**
@@ -79,6 +84,9 @@ Use mcp__plugin_playwright_playwright__browser_navigate with url="https://<domai
 ```
 
 **Step 2: Capture accessibility snapshot**
+
+Before starting Tier 3, identify 1-2 text fragments that indicate a successful deployment (e.g., the page title, a unique heading, or version text). Then verify those specific strings appear in the snapshot output.
+
 ```
 Use mcp__plugin_playwright_playwright__browser_snapshot
 ```
