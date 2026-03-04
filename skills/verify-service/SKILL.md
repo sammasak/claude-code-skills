@@ -32,9 +32,9 @@ Fail: anything else, or `curl: (6) Could not resolve host`
 
 For services with a health endpoint:
 ```bash
-curl -sf https://<domain>/healthz | jq .
+curl -s https://<domain>/healthz | jq .
 # or
-curl -sf https://<domain>/readyz | jq .
+curl -s https://<domain>/readyz | jq .
 ```
 
 ---
