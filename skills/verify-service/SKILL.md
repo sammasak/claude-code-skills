@@ -119,6 +119,26 @@ Use Tier 3 directly (Playwright MCP tools) when UI verification is needed — th
 
 ---
 
+## Verifying Monitoring / Aggregator Apps
+
+When the deployed service IS itself a health monitor or status page, checking that it returns HTTP 200 is not sufficient. You must also verify its logic:
+
+**1. Confirm a known-UP service is classified correctly**
+```bash
+curl -s https://<monitor>.sammasak.dev | grep -i "grafana\|harbor"
+# Expected: service shown as UP
+```
+
+**2. Confirm the polling logic only treats 2xx as UP**
+
+Review the source code health check function. Look for `is_success()` (correct) vs checking for any response (wrong). A service returning 404 must be classified DOWN.
+
+**3. Confirm only real services are monitored**
+
+Cross-reference the [Homelab Service Inventory](CLAUDE.md) — every service in the monitor must exist in the inventory. Any service not in the inventory should not appear.
+
+---
+
 ## Report Format
 
 After verifying, always report:
@@ -145,3 +165,5 @@ Do not mark the goal done if Overall is FAIL.
 | Use `curl -k` to skip TLS verification | Hides cert-manager failures; always verify TLS |
 | Assert on HTTP 200 alone for UI apps | App can return 200 with an error page |
 | Skip verification when "it's just a config change" | Config changes break things too |
+| Verify a monitoring/aggregator app only by checking its own HTTP 200 | The monitor can return 200 while classifying all services incorrectly — spot-check its logic |
+| Use homepage URLs (/) as health probes | Use dedicated health endpoints: Grafana `/api/health`, Harbor `/api/v2.0/ping`. Homepages return 200 even when degraded. |
