@@ -3,7 +3,8 @@
 #
 # Phase 1: in_progress goal exists → CONTINUE (resume it)
 # Phase 2: pending goals exist → CONTINUE (start next)
-# Phase 3: unreviewed done goals → run claude -p review, add fix goals if score < 9/10
+# Phase 3: unreviewed done goals → CONTINUE with inline review instructions
+#          (current Claude instance reviews via Bash tool — no subprocess)
 # Phase 4: all reviewed, nothing pending → exit silently (Claude stops cleanly)
 
 GOALS_FILE="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json"
@@ -36,15 +37,10 @@ if [ "$PENDING" -gt 0 ]; then
   exit 0
 fi
 
-# ── Phase 3: review unreviewed done goals ─────────────────────────────────────
-
-# Guard: the review itself spawns a `claude -p` subprocess which also has hooks
-# configured. Without this guard the inner session's stop hook would re-enter
-# Phase 3 and cause a recursive review chain. Any session spawned by this hook
-# inherits CLAUDE_WORKER_REVIEWING=1 and exits immediately from Phase 3 onward.
-if [ -n "$CLAUDE_WORKER_REVIEWING" ]; then
-  exit 0
-fi
+# ── Phase 3: review unreviewed done goals (inline — no subprocess) ────────────
+# Output a CONTINUE prompt so the *current* Claude instance reviews completed
+# goals using its own Bash tool. No new process spawned — avoids the OOM and
+# recursive stop-hook loop that plagued the previous claude -p approach.
 
 UNREVIEWED=$(jq '[.[] | select(.status == "done" and (.reviewed_at == null or .reviewed_at == ""))]' "$GOALS_FILE" 2>/dev/null)
 UNREVIEWED_COUNT=$(echo "$UNREVIEWED" | jq 'length' 2>/dev/null || echo "0")
@@ -53,79 +49,23 @@ if [ "$UNREVIEWED_COUNT" -eq 0 ]; then
   exit 0
 fi
 
-# Build review prompt with goal summaries
-GOALS_JSON=$(echo "$UNREVIEWED" | jq 'map({id, goal, result})')
-REVIEW_PROMPT="You are a strict autonomous agent goal reviewer. Review each completed goal and its result.
+# Write goals to a temp file — avoids shell-expansion issues with arbitrary text in goal/result fields
+GOALS_TMP=$(mktemp /tmp/claude-worker-review-XXXXXX.json)
+echo "$UNREVIEWED" | jq 'map({id, goal, result})' > "$GOALS_TMP"
 
-Score each goal 0-10:
+cat <<EOF
+CONTINUE: All active goals are done. Please review the $UNREVIEWED_COUNT completed goal(s) before finishing.
+
+Read the goals from: $GOALS_TMP
+
+Score each result 0-10:
 - 10: Fully complete, verified working, production-ready
-- 9: Complete with only cosmetic/trivial issues
-- <9: Missing verification, incomplete implementation, unconfirmed result, or incorrect output
+- 9:  Complete with trivial/cosmetic issues only
+- <9: Incomplete, unverified, or incorrect — needs a fix goal
 
-For each score below 9, write a specific actionable follow-up goal that fixes the exact issue.
+Use Bash to update $GOALS_FILE for each goal:
+- Set reviewed_at to the current UTC timestamp (date -u +%Y-%m-%dT%H:%M:%SZ)
+- If score < 9, append a new pending goal object describing the exact fix needed
 
-Return ONLY valid JSON, no markdown fences, no explanation:
-{
-  \"reviews\": [
-    {\"id\": \"<goal_id>\", \"score\": <0-10>, \"issue\": \"<what is missing or wrong>\", \"fix_goal\": \"<specific actionable goal to fix it>\"}
-  ],
-  \"new_goals\": [\"<fix goal text>\"]
-}
-
-Completed goals to review:
-${GOALS_JSON}"
-
-# Run review via claude -p (spawns new headless session).
-# --tools "": pure text reasoning only — no tool execution, much lower memory footprint.
-# --max-turns 3: hard cap prevents runaway context growth (and OOM) from multi-turn loops.
-REVIEW_OUTPUT=$(claude -p "$REVIEW_PROMPT" \
-  --output-format json \
-  --dangerously-skip-permissions \
-  --no-session-persistence \
-  --tools "" \
-  --max-turns 3 \
-  2>/dev/null)
-
-NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-
-# Mark all unreviewed done goals as reviewed — do this before parsing results
-# so a failed review still prevents an infinite loop
-REVIEWED_IDS=$(echo "$UNREVIEWED" | jq -r '.[].id')
-while IFS= read -r rid; do
-  [ -z "$rid" ] && continue
-  jq --arg id "$rid" --arg ts "$NOW" \
-    'map(if .id == $id then .reviewed_at = $ts else . end)' \
-    "$GOALS_FILE" > "${GOALS_FILE}.tmp" && mv "${GOALS_FILE}.tmp" "$GOALS_FILE"
-done <<< "$REVIEWED_IDS"
-
-if [ -z "$REVIEW_OUTPUT" ]; then
-  exit 0
-fi
-
-# Extract response text from claude --output-format json wrapper
-RESPONSE_TEXT=$(echo "$REVIEW_OUTPUT" | jq -r '.result // ""' 2>/dev/null)
-
-# Parse new fix goals (empty if all scored >= 9)
-NEW_GOALS=$(echo "$RESPONSE_TEXT" | jq -r '.new_goals[]?' 2>/dev/null)
-
-# Append fix goals to goals.json
-ADDED=0
-while IFS= read -r goal_text; do
-  [ -z "$goal_text" ] && continue
-  NEW_ID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || uuidgen)
-  NEW_GOAL=$(jq -n \
-    --arg id "$NEW_ID" \
-    --arg goal "$goal_text" \
-    --arg ts "$NOW" \
-    '{id: $id, goal: $goal, status: "pending", created_at: $ts,
-      started_at: null, completed_at: null, reviewed_at: null, result: null}')
-  jq --argjson ng "$NEW_GOAL" '. + [$ng]' \
-    "$GOALS_FILE" > "${GOALS_FILE}.tmp" && mv "${GOALS_FILE}.tmp" "$GOALS_FILE"
-  ADDED=$((ADDED + 1))
-done <<< "$NEW_GOALS"
-
-if [ "$ADDED" -gt 0 ]; then
-  echo "CONTINUE: Review phase added $ADDED fix goal(s) scoring below 9/10. Work on the new pending goals."
-fi
-
-# ADDED == 0 means all goals scored >= 9/10 — exit silently, Claude stops cleanly
+The next stop hook will automatically pick up any new pending fix goals.
+EOF
