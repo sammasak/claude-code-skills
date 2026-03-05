@@ -11,6 +11,14 @@
 
 GOALS_FILE="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json"
 
+emit_event() {
+  local json="$1"
+  curl -sf -X POST "${CLAUDE_WORKER_API:-http://localhost:4200}/events" \
+    -H "Content-Type: application/json" \
+    -d "$json" \
+    --max-time 1 -o /dev/null 2>/dev/null || true
+}
+
 if [ ! -f "$GOALS_FILE" ]; then
   exit 0
 fi
@@ -23,6 +31,7 @@ if [ "$IN_PROGRESS" -gt 0 ]; then
   STUCK=$(jq -c '[.[] | select(.status == "in_progress")][0]' "$GOALS_FILE")
   STUCK_ID=$(echo "$STUCK" | jq -r '.id')
   STUCK_DESC=$(echo "$STUCK" | jq -r '.goal')
+  emit_event "{\"type\":\"goal_loop\",\"phase\":1,\"goal_id\":\"$STUCK_ID\"}"
   jq -n --arg r "Goal id=$STUCK_ID is in_progress and needs completion. goal=\"$STUCK_DESC\". Continue working on it." \
     '{"decision": "block", "reason": $r}'
   exit 0
@@ -36,6 +45,7 @@ if [ "$PENDING" -gt 0 ]; then
   NEXT_GOAL=$(jq -c '[.[] | select(.status == "pending")][0]' "$GOALS_FILE" 2>/dev/null)
   NEXT_ID=$(echo "$NEXT_GOAL" | jq -r '.id')
   NEXT_DESC=$(echo "$NEXT_GOAL" | jq -r '.goal')
+  emit_event "{\"type\":\"goal_loop\",\"phase\":2,\"pending\":$PENDING,\"next_id\":\"$NEXT_ID\"}"
   jq -n --arg r "$PENDING pending goal(s) remain. Next goal: id=$NEXT_ID goal=\"$NEXT_DESC\". Mark it in_progress with jq and work on it." \
     '{"decision": "block", "reason": $r}'
   exit 0
@@ -49,6 +59,7 @@ UNREVIEWED=$(jq '[.[] | select(.status == "done" and (.reviewed_at == null or .r
 UNREVIEWED_COUNT=$(echo "$UNREVIEWED" | jq 'length' 2>/dev/null || echo "0")
 
 if [ "$UNREVIEWED_COUNT" -eq 0 ]; then
+  emit_event "{\"type\":\"session_end\"}"
   exit 0
 fi
 
@@ -71,4 +82,5 @@ Use Bash to update $GOALS_FILE for each goal:
 
 The next stop hook will automatically pick up any new pending fix goals."
 
+emit_event "{\"type\":\"review_start\",\"count\":$UNREVIEWED_COUNT}"
 jq -n --arg r "$REASON" '{"decision": "block", "reason": $r}'

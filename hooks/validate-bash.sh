@@ -6,6 +6,14 @@
 
 CMD=$(echo "$CLAUDE_TOOL_INPUT" | jq -r '.command // ""' 2>/dev/null || echo "")
 
+emit_event() {
+  local json="$1"
+  curl -sf -X POST "${CLAUDE_WORKER_API:-http://localhost:4200}/events" \
+    -H "Content-Type: application/json" \
+    -d "$json" \
+    --max-time 1 -o /dev/null 2>/dev/null || true
+}
+
 if [ -z "$CMD" ]; then
   exit 0
 fi
@@ -40,4 +48,5 @@ if echo "$CMD" | grep -qE "sops.*-e.*/tmp/|sops.*encrypt.*/tmp/"; then
   exit 2
 fi
 
+emit_event "{\"type\":\"tool_start\",\"tool\":\"bash\",\"cmd\":$(echo "$CMD" | head -c 120 | jq -Rs .)}"
 exit 0

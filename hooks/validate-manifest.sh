@@ -5,6 +5,14 @@
 
 FILE=$(echo "$CLAUDE_TOOL_INPUT" | jq -r '.file_path // ""' 2>/dev/null || echo "")
 
+emit_event() {
+  local json="$1"
+  curl -sf -X POST "${CLAUDE_WORKER_API:-http://localhost:4200}/events" \
+    -H "Content-Type: application/json" \
+    -d "$json" \
+    --max-time 1 -o /dev/null 2>/dev/null || true
+}
+
 if [ -z "$FILE" ]; then
   exit 0
 fi
@@ -17,6 +25,8 @@ fi
 if [ ! -f "$FILE" ]; then
   exit 0
 fi
+
+emit_event "{\"type\":\"file_op\",\"op\":\"${CLAUDE_TOOL_NAME:-Write}\",\"path\":$(echo "$FILE" | jq -Rs .)}"
 
 # Check YAML syntax with yq
 if yq eval '.' "$FILE" > /dev/null 2>&1; then
