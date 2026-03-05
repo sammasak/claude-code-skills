@@ -10,6 +10,16 @@ if [ ! -f "$GOALS_FILE" ]; then
   exit 0
 fi
 
+IN_PROGRESS=$(jq '[.[] | select(.status == "in_progress")] | length' "$GOALS_FILE" 2>/dev/null || echo "0")
+
+if [ "$IN_PROGRESS" -gt 0 ]; then
+  STUCK=$(jq -c '[.[] | select(.status == "in_progress")][0]' "$GOALS_FILE")
+  STUCK_ID=$(echo "$STUCK" | jq -r '.id')
+  STUCK_DESC=$(echo "$STUCK" | jq -r '.goal')
+  echo "CONTINUE: Goal id=$STUCK_ID is in_progress and needs completion. goal=\"$STUCK_DESC\". Continue working on it."
+  exit 0
+fi
+
 PENDING=$(jq '[.[] | select(.status == "pending")] | length' "$GOALS_FILE" 2>/dev/null || echo "0")
 
 if [ "$PENDING" -gt 0 ]; then
@@ -19,4 +29,4 @@ if [ "$PENDING" -gt 0 ]; then
   echo "CONTINUE: $PENDING pending goal(s) remain. Next goal: id=$NEXT_ID goal=\"$NEXT_DESC\". Mark it in_progress with jq and work on it."
 fi
 
-# If PENDING == 0: silent exit → Claude stops cleanly
+# If PENDING == 0 and IN_PROGRESS == 0: silent exit → Claude stops cleanly
