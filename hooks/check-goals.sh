@@ -38,6 +38,14 @@ fi
 
 # ── Phase 3: review unreviewed done goals ─────────────────────────────────────
 
+# Guard: the review itself spawns a `claude -p` subprocess which also has hooks
+# configured. Without this guard the inner session's stop hook would re-enter
+# Phase 3 and cause a recursive review chain. Any session spawned by this hook
+# inherits CLAUDE_WORKER_REVIEWING=1 and exits immediately from Phase 3 onward.
+if [ -n "$CLAUDE_WORKER_REVIEWING" ]; then
+  exit 0
+fi
+
 UNREVIEWED=$(jq '[.[] | select(.status == "done" and (.reviewed_at == null or .reviewed_at == ""))]' "$GOALS_FILE" 2>/dev/null)
 UNREVIEWED_COUNT=$(echo "$UNREVIEWED" | jq 'length' 2>/dev/null || echo "0")
 
