@@ -98,6 +98,22 @@ sudo nixos-rebuild switch --flake .#<hostname>         # 4. Activate + set as bo
 
 `nixos-rebuild-ng` is the default rebuild tool starting in NixOS 25.11+.
 
+### Updating a flake input before a build
+
+When you push changes to a repo used as a flake input (e.g., `claude-code-skills`), update the lock before rebuilding:
+
+```bash
+# Update one specific input
+nix flake update claude-code-skills
+
+# Then rebuild (local host or agent image)
+sudo nixos-rebuild switch --flake .#<hostname>
+# or
+just release-agent latest
+```
+
+The build is hermetic — it uses exactly the commit in `flake.lock`. Pushing to GitHub alone has no effect on the built output.
+
 ### nixosTest — define `checks.<system>.<name>` for VM integration tests
 
 ```nix
@@ -163,6 +179,7 @@ devShells.x86_64-linux.default = pkgs.mkShell {
 | `mkForce` to fix option conflicts | Understand merge precedence; restructure modules |
 | Disabling the firewall "temporarily" | Add explicit `networking.firewall.allowedTCPPorts` |
 | `lib.mdDoc` for option descriptions | Removed in 24.11 — Markdown is now the default |
+| Build a NixOS image after updating a flake input without running `nix flake update` first | The build uses the locked revision in `flake.lock` — pushing to GitHub does NOT update the lock. Always `nix flake update <input>` before rebuilding. |
 
 ## References
 
