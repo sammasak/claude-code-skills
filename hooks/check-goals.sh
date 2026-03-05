@@ -67,11 +67,15 @@ Return ONLY valid JSON, no markdown fences, no explanation:
 Completed goals to review:
 ${GOALS_JSON}"
 
-# Run review via claude -p (spawns new headless session)
+# Run review via claude -p (spawns new headless session).
+# --tools "": pure text reasoning only — no tool execution, much lower memory footprint.
+# --max-turns 3: hard cap prevents runaway context growth (and OOM) from multi-turn loops.
 REVIEW_OUTPUT=$(claude -p "$REVIEW_PROMPT" \
   --output-format json \
   --dangerously-skip-permissions \
   --no-session-persistence \
+  --tools "" \
+  --max-turns 3 \
   2>/dev/null)
 
 NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
