@@ -305,6 +305,29 @@ test_check_loop_strong_warning() {
   rm -f "/tmp/claude-loop-${sid}.json"
 }
 
+test_check_loop_counter_reset() {
+  local sid="test-loop-reset-$$"
+  rm -f "/tmp/claude-loop-${sid}.json"
+  local out exit_code=0
+
+  # Run "ls -la" 4 times — streak is 4, no warning
+  for i in 1 2 3 4; do
+    out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
+    assert_output_empty "check-loop: counter-reset: ls-la run $i of 4 → no warning" "$out"
+  done
+
+  # Run a different command "pwd" once — streak resets to 1, no warning
+  out=$(echo '{"tool_input":{"command":"pwd"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
+  assert_output_empty "check-loop: counter-reset: pwd after 4×ls-la → no warning" "$out"
+
+  # Run "ls -la" again once — streak is 1 (not 5!), no warning
+  out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
+  assert_output_empty "check-loop: counter-reset: ls-la after pwd → streak reset to 1, no warning" "$out"
+
+  assert_exit "check-loop: counter-reset → exit 0" 0 "$exit_code"
+  rm -f "/tmp/claude-loop-${sid}.json"
+}
+
 # ── validate-manifest.sh ──────────────────────────────────────────────
 
 test_validate_manifest_non_yaml() {
@@ -459,6 +482,7 @@ test_check_loop_first_occurrence
 test_check_loop_below_threshold
 test_check_loop_at_threshold
 test_check_loop_strong_warning
+test_check_loop_counter_reset
 
 # validate-manifest.sh
 test_validate_manifest_non_yaml
