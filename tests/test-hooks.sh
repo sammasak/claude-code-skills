@@ -257,6 +257,54 @@ test_validate_bash_buildah_not_vm() {
   teardown
 }
 
+# ── check-loop.sh ─────────────────────────────────────────────────────
+
+test_check_loop_first_occurrence() {
+  local sid="test-loop-$$"
+  rm -f "/tmp/claude-loop-${sid}.json"
+  local out exit_code=0
+  out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
+  assert_exit "check-loop: first occurrence → exit 0" 0 "$exit_code"
+  assert_output_empty "check-loop: first occurrence → no output" "$out"
+  rm -f "/tmp/claude-loop-${sid}.json"
+}
+
+test_check_loop_below_threshold() {
+  local sid="test-loop-$$"
+  rm -f "/tmp/claude-loop-${sid}.json"
+  local out exit_code=0
+  for i in 1 2 3 4; do
+    out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
+  done
+  assert_exit "check-loop: 4 times → exit 0" 0 "$exit_code"
+  assert_output_empty "check-loop: 4 times → no output" "$out"
+  rm -f "/tmp/claude-loop-${sid}.json"
+}
+
+test_check_loop_at_threshold() {
+  local sid="test-loop-$$"
+  rm -f "/tmp/claude-loop-${sid}.json"
+  local out exit_code=0
+  for i in 1 2 3 4 5; do
+    out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
+  done
+  assert_exit "check-loop: 5 times → exit 0" 0 "$exit_code"
+  assert_output_contains "check-loop: 5 times → warning" "identical command repeated 5 times consecutively" "$out"
+  rm -f "/tmp/claude-loop-${sid}.json"
+}
+
+test_check_loop_strong_warning() {
+  local sid="test-loop-$$"
+  rm -f "/tmp/claude-loop-${sid}.json"
+  local out exit_code=0
+  for i in 1 2 3 4 5 6 7 8 9 10; do
+    out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
+  done
+  assert_exit "check-loop: 10 times → exit 0" 0 "$exit_code"
+  assert_output_contains "check-loop: 10 times → strong warning" "You appear to be stuck in a loop" "$out"
+  rm -f "/tmp/claude-loop-${sid}.json"
+}
+
 # ── validate-manifest.sh ──────────────────────────────────────────────
 
 test_validate_manifest_non_yaml() {
@@ -405,6 +453,12 @@ test_validate_bash_cargo_no_musl_not_vm
 test_validate_bash_buildah_no_authfile_on_vm
 test_validate_bash_buildah_with_authfile_on_vm
 test_validate_bash_buildah_not_vm
+
+# check-loop.sh
+test_check_loop_first_occurrence
+test_check_loop_below_threshold
+test_check_loop_at_threshold
+test_check_loop_strong_warning
 
 # validate-manifest.sh
 test_validate_manifest_non_yaml
