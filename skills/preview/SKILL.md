@@ -69,5 +69,5 @@ Once port 4300 is responding, tell the user:
 - Always use `--host 0.0.0.0` — without this the server only listens on localhost and doable can't reach it
 - Port **4300** is the fixed preview port — do not use a different port
 - The process runs in the background (`&`) — it stays alive while Claude continues working
-- If you rebuild or restart the dev server, it will automatically refresh in the preview pane
+- If you rebuild or restart the dev server, use the reload button (↻) in the preview pane to reload it
 - CORS: the proxy is same-origin, so no CORS configuration needed in your dev server
