@@ -59,7 +59,7 @@ workspace_api_url = "https://workstations-api.sammasak.dev"
 |---|---|
 | Container image | `registry.sammasak.dev/agents/claude-worker:latest` |
 | Bootstrap secret | `claude-worker-bootstrap` |
-| Instance type | `openfang-agent` |
+| Instance type | `claude-worker` |
 | Run strategy | `Always` |
 | Idle halt | 1440 min (24 h) |
 
