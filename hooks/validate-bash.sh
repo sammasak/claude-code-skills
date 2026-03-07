@@ -37,7 +37,7 @@ fi
 
 # Universal rules: active everywhere
 # Block: force push
-if echo "$CMD" | grep -qE "git push.*(--force|-f\b)"; then
+if echo "$CMD" | grep -qE "git push.*(--force([^-]|$)|-f\b)"; then
   echo "BLOCKED: force push is not allowed." >&2
   exit 2
 fi

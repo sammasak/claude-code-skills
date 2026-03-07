@@ -47,3 +47,4 @@ if yq eval '.kind' "$FILE" 2>/dev/null | grep -qiE "^Deployment$|^StatefulSet$|^
     echo "WARNING: $FILE is missing resource requests/limits."
   fi
 fi
+exit 0

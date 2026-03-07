@@ -85,13 +85,15 @@ test_check_goals_empty_array() {
 test_check_goals_all_done() {
   setup
   mkdir -p "$CLAUDE_WORKER_HOME"
+  # Goals with status "done" but no reviewed_at trigger Phase 3 (review block)
   cat > "$CLAUDE_WORKER_HOME/goals.json" << 'JSON'
 [{"id":"a","goal":"task a","status":"done"},{"id":"b","goal":"task b","status":"done"}]
 JSON
   local out exit_code=0
   out=$("$HOOKS_DIR/check-goals.sh" 2>&1) || exit_code=$?
-  assert_exit "check-goals: all done → exit 0" 0 "$exit_code"
-  assert_output_empty "check-goals: all done → no output" "$out"
+  assert_exit "check-goals: all done (unreviewed) → exit 0" 0 "$exit_code"
+  assert_output_contains "check-goals: all done → block for review" '"decision": "block"' "$out"
+  assert_output_contains "check-goals: all done → review reason" 'completed goal' "$out"
   teardown
 }
 
@@ -104,7 +106,7 @@ JSON
   local out exit_code=0
   out=$("$HOOKS_DIR/check-goals.sh" 2>&1) || exit_code=$?
   assert_exit "check-goals: 1 pending → exit 0" 0 "$exit_code"
-  assert_output_contains "check-goals: 1 pending → CONTINUE" "CONTINUE: 1 pending" "$out"
+  assert_output_contains "check-goals: 1 pending → JSON block" '"decision": "block"' "$out"
   assert_output_contains "check-goals: 1 pending → includes id" "id=abc123" "$out"
   assert_output_contains "check-goals: 1 pending → includes goal" "deploy the app" "$out"
   teardown
@@ -123,7 +125,7 @@ JSON
   local out exit_code=0
   out=$("$HOOKS_DIR/check-goals.sh" 2>&1) || exit_code=$?
   assert_exit "check-goals: mixed → exit 0" 0 "$exit_code"
-  assert_output_contains "check-goals: mixed → count 2" "CONTINUE: 2 pending" "$out"
+  assert_output_contains "check-goals: mixed → JSON block" '"decision": "block"' "$out"
   assert_output_contains "check-goals: mixed → picks first pending" "id=b" "$out"
   assert_output_contains "check-goals: mixed → skips done goals" "next task" "$out"
   teardown

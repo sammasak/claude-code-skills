@@ -84,3 +84,4 @@ The next stop hook will automatically pick up any new pending fix goals."
 
 emit_event "{\"type\":\"review_start\",\"count\":$UNREVIEWED_COUNT}"
 jq -n --arg r "$REASON" '{"decision": "block", "reason": $r}'
+exit 0
