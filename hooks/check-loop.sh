@@ -21,6 +21,8 @@ COMMAND=$(echo "$RAW_CMD" | tr -s '[:space:]' ' ' | sed 's/^ //;s/ $//')
 
 # Session file — use CLAUDE_SESSION_ID if set, else fall back to fixed file
 SESSION_ID="${CLAUDE_SESSION_ID:-default}"
+SESSION_ID="${SESSION_ID//[^a-zA-Z0-9_-]/}"
+[ -z "$SESSION_ID" ] && SESSION_ID="default"
 STATE_FILE="/tmp/claude-loop-${SESSION_ID}.json"
 
 # Load or init state: { "commands": ["cmd1", "cmd2", ...] } (last 20 only)
@@ -35,7 +37,7 @@ NEW_STATE=$(echo "$STATE" | jq --arg cmd "$COMMAND" \
     '.commands += [$cmd] | .commands = (.commands | .[-20:])' \
     2>/dev/null || echo '{"commands":[]}')
 
-echo "$NEW_STATE" > "$STATE_FILE"
+echo "$NEW_STATE" > "$STATE_FILE" 2>/dev/null || true
 
 # Count consecutive identical commands from the end
 COUNT=$(echo "$NEW_STATE" | jq --arg cmd "$COMMAND" '
