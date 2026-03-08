@@ -2,7 +2,7 @@
 # Grader for task-1: HelmRelease remediation
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/remediation.md"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/remediation.md"
 
 if [[ ! -f "$OUTPUT" ]]; then
     echo "FAIL: $OUTPUT not found"

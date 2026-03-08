@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/lints.toml"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/lints.toml"
 if [[ ! -f "$OUTPUT" ]]; then echo "FAIL: $OUTPUT not found"; exit 1; fi
 
 # Must have workspace.lints.rust section

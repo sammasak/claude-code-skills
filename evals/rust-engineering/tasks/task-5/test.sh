@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/Containerfile"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/Containerfile"
 if [[ ! -f "$OUTPUT" ]]; then echo "FAIL: $OUTPUT not found"; exit 1; fi
 
 # Must be multi-stage (at least 2 FROM statements)

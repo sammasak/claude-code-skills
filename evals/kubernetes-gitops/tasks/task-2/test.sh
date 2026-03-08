@@ -2,7 +2,7 @@
 # Grader for task-2: HelmRelease manifest correctness
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/helmrelease.yaml"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/helmrelease.yaml"
 
 if [[ ! -f "$OUTPUT" ]]; then
     echo "FAIL: $OUTPUT not found"

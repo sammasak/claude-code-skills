@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/flake.nix"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/flake.nix"
 if [[ ! -f "$OUTPUT" ]]; then echo "FAIL: $OUTPUT not found"; exit 1; fi
 
 # Must have both hosts

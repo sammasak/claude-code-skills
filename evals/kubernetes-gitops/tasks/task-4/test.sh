@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/kustomization.yaml"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/kustomization.yaml"
 if [[ ! -f "$OUTPUT" ]]; then echo "FAIL: $OUTPUT not found"; exit 1; fi
 
 if ! yq eval '.' "$OUTPUT" > /dev/null 2>&1; then echo "FAIL: invalid YAML"; exit 1; fi

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/fix.md"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/fix.md"
 if [[ ! -f "$OUTPUT" ]]; then echo "FAIL: $OUTPUT not found"; exit 1; fi
 
 # Must explain the double-installation root cause

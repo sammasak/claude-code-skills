@@ -3,3 +3,5 @@
 *.swo
 *~
 .worktrees/
+evals/.venv/
+evals/results/*.json

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/error.rs"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/error.rs"
 if [[ ! -f "$OUTPUT" ]]; then echo "FAIL: $OUTPUT not found"; exit 1; fi
 
 # Must use thiserror

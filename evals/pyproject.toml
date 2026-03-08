@@ -1,0 +1,36 @@
+[project]
+name = "claude-code-skills-evals"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic-evals>=1.67.0",
+    "pydantic-ai>=1.67.0",
+    "gepa>=0.1.0",
+    "pyyaml>=6.0",
+    "anyio>=4.12.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.25",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 99
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "RUF", "C4", "PTH", "TC"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["runner"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+asyncio_default_test_loop_scope = "function"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-OUTPUT="/tmp/eval-output/image-automation.md"
+OUTPUT="${EVAL_OUTPUT_DIR:-/tmp/eval-output}/image-automation.md"
 if [[ ! -f "$OUTPUT" ]]; then echo "FAIL: $OUTPUT not found"; exit 1; fi
 
 # Must identify scan interval as root cause
