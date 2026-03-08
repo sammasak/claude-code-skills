@@ -1,6 +1,6 @@
 ---
 name: observability-patterns
-description: "Use when adding metrics, logging, tracing, or alerting to services. Guides the three pillars of observability, structured logging standards, and instrumentation patterns."
+description: "Use when adding metrics, logging, tracing, or alerting to services. Guides the three pillars of observability, structured logging standards, and instrumentation patterns. Not for language-specific logging setup (e.g., configuring a logger in Rust/Axum) — route those to the relevant language skill."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---

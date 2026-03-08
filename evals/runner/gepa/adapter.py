@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+import threading
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -13,6 +14,20 @@ from runner.trigger.dataset import EVALS_ROOT, build_trigger_dataset
 from runner.trigger.task import build_dispatcher_agent, load_skill_descriptions
 
 SKILLS_ROOT = EVALS_ROOT.parent / "skills"
+
+# Persistent event loop running in a background thread.
+# Reusing one loop across all evaluate() calls prevents httpx connection-pool
+# teardown errors that occur when asyncio.run() closes its loop between calls.
+_BG_LOOP: asyncio.AbstractEventLoop = asyncio.new_event_loop()
+threading.Thread(target=_BG_LOOP.run_forever, daemon=True, name="gepa-eval-loop").start()
+
+
+def _run_async(coro: object) -> object:
+    """Run an async coroutine on the persistent background loop and return its result."""
+    import asyncio as _asyncio
+
+    future = _asyncio.run_coroutine_threadsafe(coro, _BG_LOOP)  # type: ignore[arg-type]
+    return future.result()
 
 
 class SkillDescriptionAdapter(GEPAAdapter):
@@ -40,7 +55,7 @@ class SkillDescriptionAdapter(GEPAAdapter):
         async def _run_all() -> list[tuple[str, str, float]]:
             return list(await asyncio.gather(*[_single(d) for d in batch]))
 
-        triplets = asyncio.run(_run_all())
+        triplets = _run_async(_run_all())  # type: ignore[assignment]
 
         outputs = [t[0] for t in triplets]
         scores = [t[2] for t in triplets]
@@ -87,7 +102,9 @@ class SkillDescriptionAdapter(GEPAAdapter):
                     "failures": skill_failures,
                     "instruction": (
                         f"The skill '{skill}' is being mis-classified in {len(skill_failures)} cases. "
-                        "Revise its description to be more distinctive and precise."
+                        "Revise its description to be more distinctive and precise. "
+                        "Output ONLY the revised description as a single line of plain text — "
+                        "no bullet points, no headings, no newlines."
                     ),
                 }
             ]
@@ -116,6 +133,8 @@ def build_trainset() -> list[dict[str, Any]]:
 def write_back_descriptions(optimized: dict[str, str]) -> None:
     """Write optimized descriptions back to SKILL.md frontmatter files."""
     for skill_name, new_desc in optimized.items():
+        # YAML frontmatter requires single-line values; collapse any newlines from GEPA output
+        new_desc = " ".join(new_desc.split())
         skill_md = SKILLS_ROOT / skill_name / "SKILL.md"
         if not skill_md.exists():
             print(f"  SKIP {skill_name}: SKILL.md not found")

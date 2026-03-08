@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 
-from gepa import MaxMetricCallsStopper, optimize
+from gepa import optimize
+from gepa.utils.stop_condition import MaxCandidateProposalsStopper
 
 from runner.gepa.adapter import (
     SkillDescriptionAdapter,
+    _run_async,
     build_seed_candidate,
     build_trainset,
     write_back_descriptions,
@@ -32,7 +34,7 @@ def _evaluate_candidate(candidate: dict[str, str]) -> float:
         results = await asyncio.gather(*[_single(c) for c in dataset.cases])
         return sum(results) / len(results) if results else 0.0
 
-    return asyncio.run(_run())
+    return _run_async(_run())  # type: ignore[return-value]
 
 
 def main() -> None:
@@ -40,8 +42,8 @@ def main() -> None:
     parser.add_argument(
         "--iterations",
         type=int,
-        default=30,
-        help="Maximum number of metric calls (LLM evaluations) to run",
+        default=10,
+        help="Number of candidate proposals (optimization rollouts) to run",
     )
     parser.add_argument(
         "--dry-run",
@@ -56,8 +58,8 @@ def main() -> None:
     parser.add_argument(
         "--reflection-lm",
         type=str,
-        default="google-gla:gemini-2.0-flash",
-        help="LLM used for reflection/proposal step (default: google-gla:gemini-2.0-flash)",
+        default="gemini/gemini-2.5-flash",
+        help="litellm model string for reflection/proposal step (default: gemini/gemini-2.5-flash)",
     )
     args = parser.parse_args()
 
@@ -65,7 +67,7 @@ def main() -> None:
     trainset = build_trainset()
 
     print(f"Starting GEPA optimization over {len(trainset)} trigger cases")
-    print(f"Max iterations: {args.iterations}")
+    print(f"Rollouts: {args.iterations}")
     print(f"Seed descriptions: {list(seed.keys())}")
 
     # Evaluate seed candidate first
@@ -82,7 +84,7 @@ def main() -> None:
         trainset=trainset,
         adapter=adapter,
         reflection_lm=args.reflection_lm,
-        stop_callbacks=[MaxMetricCallsStopper(max_metric_calls=args.iterations)],
+        stop_callbacks=[MaxCandidateProposalsStopper(max_proposals=args.iterations)],
         display_progress_bar=True,
     )
 
