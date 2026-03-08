@@ -5,3 +5,5 @@
 .worktrees/
 evals/.venv/
 evals/results/*.json
+**/__pycache__/
+**/*.pyc

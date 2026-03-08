@@ -53,6 +53,12 @@ def main() -> None:
         action="store_true",
         help="Write optimized descriptions back to SKILL.md frontmatter",
     )
+    parser.add_argument(
+        "--reflection-lm",
+        type=str,
+        default="google-gla:gemini-2.0-flash",
+        help="LLM used for reflection/proposal step (default: google-gla:gemini-2.0-flash)",
+    )
     args = parser.parse_args()
 
     seed = build_seed_candidate()
@@ -69,11 +75,13 @@ def main() -> None:
 
     adapter = SkillDescriptionAdapter()
 
+    print(f"Reflection LM: {args.reflection_lm}")
+
     result = optimize(
         seed_candidate=seed,
         trainset=trainset,
         adapter=adapter,
-        reflection_lm="anthropic:claude-sonnet-4-6",
+        reflection_lm=args.reflection_lm,
         stop_callbacks=[MaxMetricCallsStopper(max_metric_calls=args.iterations)],
         display_progress_bar=True,
     )
