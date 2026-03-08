@@ -6,7 +6,13 @@ allowed-tools: Bash, mcp__plugin_playwright_playwright__browser_navigate, mcp__p
 
 # Verify Service
 
-**Rule:** A deployment is not done until the service is live and verified end-to-end. Never mark a goal `done` without completing at least Tier 1.
+**CRITICAL: Never mark a goal done before completing at least Tier 1 verification.** A command that exits 0 proves the request was submitted — not that the service is healthy and accepting traffic.
+
+**IMPORTANT: Use dedicated health endpoints, not homepage URLs.** `GET /` can return 200 while the service is degraded. Use `/healthz`, `/readyz`, or the app's documented health endpoint.
+
+**NOTE:** For monitoring/aggregator services, HTTP 200 is not sufficient — the service can return 200 while classifying all its monitored targets incorrectly.
+
+**Rule:** A deployment is not done until the service is live and verified end-to-end. Never mark a goal `done` without completing at least Tier 1. Do not mark a goal done because the deploy command exited 0 — that proves intent was submitted, not that the service is running.
 
 ## Tiers
 

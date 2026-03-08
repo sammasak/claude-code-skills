@@ -1,0 +1,29 @@
+skill: kubernetes-gitops
+
+# Queries that should activate kubernetes-gitops
+positives:
+  - "My Flux HelmRelease is stuck in a reconciliation loop"
+  - "How do I update a Helm chart version in my GitOps repo?"
+  - "What does 'flux get kustomizations' show and why is mine failing?"
+  - "My pod is stuck in CrashLoopBackOff after a Flux reconciliation"
+  - "How do I roll back a failed Helm upgrade using Flux?"
+  - "I need to force Flux to pull the latest changes from Git now"
+  - "How do I set up image update automation in Flux?"
+  - "My Kustomization is showing 'not ready' and I don't know why"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "How do I encrypt a new SOPS secret for my cluster?"             # → secrets-management
+  - "I need to create an age keypair for a new environment"          # → secrets-management
+  - "How do I write a NixOS module for my Kubernetes node?"          # → nix-flake-development
+  - "My Nix flake won't evaluate because of a missing input"         # → nix-flake-development
+  - "I want to add Prometheus scraping to my Kubernetes service"     # → observability-patterns
+  - "How do I set up structured logging in my Axum service?"         # → rust-engineering
+  - "My container image is too large, how do I reduce it?"           # → container-workflows
+
+# Queries that should activate no skill
+true_negatives:
+  - "What is the best way to write async Rust code?"
+  - "Help me debug a Python import error"
+  - "How do I reverse a linked list in JavaScript?"
+  - "What is the difference between TCP and UDP?"

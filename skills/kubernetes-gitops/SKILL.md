@@ -9,6 +9,12 @@ injectable: true
 
 Manage Kubernetes clusters declaratively through Git-driven reconciliation loops.
 
+**CRITICAL: Never push changes directly to the cluster from a workstation in production.** All production changes must go through Git. Direct `kubectl apply` creates invisible drift that the controller will fight against.
+
+**IMPORTANT: Always run `flux diff kustomization <name>` before reconciling.** Preview changes to avoid accidentally applying destructive patches.
+
+**NOTE:** Flux v2.7+ supports global SOPS decryption via `--sops-age-secret` controller flag, eliminating per-Kustomization decryption config.
+
 ## Principles
 
 - **Git is the single source of truth** -- desired state lives in version control
@@ -140,6 +146,7 @@ flux get images all -A
 > cert-manager works with Gateway API via native `gateway.networking.k8s.io` integration.
 
 ## Anti-Patterns
+- **Do not claim a rollout succeeded because `kubectl apply` exited 0.** Always run `kubectl rollout status` before marking done — apply only submits the desired state; pods may still be failing to start.
 - **`kubectl apply` from laptops in prod** -- bypasses Git, creates invisible drift
 - **Mutable image tags** (`:latest`) -- use image automation or pinned digests
 - **Plaintext secrets in Git** -- always SOPS-encrypt; if committed plain, rotate immediately

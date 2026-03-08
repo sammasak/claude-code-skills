@@ -7,6 +7,10 @@ injectable: true
 
 # Rust Engineering
 
+<when_to_use>
+Use this skill when writing new Rust code, adding crates, configuring Cargo workspaces or lints, designing error types, choosing async patterns, or building container images from Rust binaries.
+</when_to_use>
+
 Compiler-driven development: leverage Rust's type system to eliminate bugs before runtime.
 
 ## Principles
@@ -60,6 +64,8 @@ Use `-D warnings` in CI to promote to errors. Cherry-pick `nursery` lints indivi
   [dependencies]
   serde = { workspace = true }
   ```
+
+<workflow>
 
 ## Workflow
 
@@ -146,6 +152,117 @@ pkgs.mkShell {
 
 Note: `pkgs.rust`, `pkgs.rust.packages`, `pkgs.rustPlatform.rust` do **not** provide a usable toolchain in a devShell. Use `musl.buildPackages.rustc` or add `rust-overlay` as a flake input.
 
+</workflow>
+
+<compiler_driven_development>
+
+## Compiler-Driven Development
+
+The compiler is the first and strongest test. Make invalid states fail to compile before writing a single test.
+
+**Do not accept compiler silence as correctness for business logic. The compiler proves types; tests prove behavior.**
+
+### CDD Cycle
+
+```
+1. Model the domain in types (enums, newtypes, typestate)
+2. Let the compiler reject invalid programs
+3. Fill remaining invariants with property tests (proptest)
+4. Cover business logic with unit tests
+5. Prove integration with integration tests
+```
+
+### Pattern Library
+
+**Newtype — enforce domain meaning and validate at construction:**
+
+```rust
+struct SecretName(String);
+
+impl SecretName {
+    pub fn new(s: &str) -> Result<Self, String> {
+        if s.is_empty() || s.len() > 63 || !s.chars().all(|c| c.is_alphanumeric() || c == '-') {
+            return Err(format!("invalid secret name: '{s}'"));
+        }
+        Ok(Self(s.to_owned()))
+    }
+
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+// Private inner field forces all construction through validator.
+```
+
+**Sealed enum — eliminate stringly-typed variants:**
+
+```rust
+#[derive(Clone, Debug, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "PascalCase")]
+pub enum RunStrategy {
+    Always,
+    Halted,
+}
+// No runtime validation needed — serde rejects unknown values at deserialization.
+```
+
+**Typestate — encode lifecycle in the type system:**
+
+```rust
+use std::marker::PhantomData;
+struct Light<S>(PhantomData<S>);
+struct Off;
+struct On;
+
+impl Light<Off> {
+    fn turn_on(self) -> Light<On> { Light(PhantomData) }
+}
+impl Light<On> {
+    fn turn_off(self) -> Light<Off> { Light(PhantomData) }
+    fn brightness(&self) -> u8 { 100 }
+}
+// Light<Off>::brightness() does not exist — compiler rejects calling it.
+```
+
+**State machine — exhaustive match forces all branches:**
+
+```rust
+enum Phase { Pending, Running, Halted, Failed }
+
+fn handle(phase: Phase) -> &'static str {
+    match phase {
+        Phase::Pending => "waiting",
+        Phase::Running => "active",
+        Phase::Halted  => "stopped",
+        Phase::Failed  => "error",
+        // Add a new variant → compiler forces you to handle it here too.
+    }
+}
+```
+
+### Testing Hierarchy
+
+| Layer | Tool | What it proves |
+|-------|------|----------------|
+| 1 — Compiler | `cargo check` | Invalid states don't compile |
+| 2 — Lints | `cargo clippy` | Idiomatic patterns, no obvious bugs |
+| 3 — Property tests | `proptest` | Invariants hold for arbitrary inputs |
+| 4 — Unit tests | `cargo test --lib` | Business logic correctness |
+| 5 — Integration | `cargo test --test` | Component interaction |
+
+### When NOT to Rely on the Compiler
+
+- External system behavior (controller-written status fields, third-party API responses)
+- Numeric range invariants (`minutes >= 5`) — enums can't express ranges
+- Business rules spanning multiple fields simultaneously
+- Timing, ordering, and concurrency properties
+
+For these, write property tests or integration tests. The types looking right is not enough.
+
+</compiler_driven_development>
+
+<restrictions>
+
 ## Anti-Patterns
 
 | Do Not | Do Instead |
@@ -157,6 +274,9 @@ Note: `pkgs.rust`, `pkgs.rust.packages`, `pkgs.rustPlatform.rust` do **not** pro
 | `pub` on everything | Minimize public API; start private, expose deliberately |
 | `Box<dyn Error>` in libraries | Define typed errors with `thiserror` |
 | Stringly-typed APIs | Use enums and newtypes for type safety |
+| Accept compiler silence as full correctness proof | The compiler proves types; tests prove behavior — write property and unit tests for business logic regardless |
+
+</restrictions>
 
 ## References
 

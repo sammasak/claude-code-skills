@@ -1,0 +1,25 @@
+skill: secrets-management
+
+# Queries that should activate secrets-management
+positives:
+  - "How do I encrypt a new Kubernetes secret with SOPS and age?"
+  - "I accidentally committed a plaintext API key to Git, what do I do?"
+  - "How do I rotate SOPS encryption keys after a team member leaves?"
+  - "My Flux kustomize-controller can't decrypt my SOPS secret"
+  - "How do I add a new recipient to an existing SOPS-encrypted file?"
+  - "What's the right way to inject secrets into a container at runtime?"
+  - "How do I generate a new age keypair for a staging environment?"
+  - "I need to audit which secrets have not been rotated in 90+ days"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "My Flux HelmRelease can't find the Kubernetes secret for its values"  # → kubernetes-gitops
+  - "How do I write a Nix module to provision secret files on boot?"        # → nix-flake-development
+  - "How do I store secret environment variables in a Docker build?"        # → container-workflows
+  - "My Rust service needs to read a token from an environment variable"    # → rust-engineering
+
+# Queries that should activate no skill
+true_negatives:
+  - "How do I set up a CI pipeline for my Python project?"
+  - "What is the difference between authentication and authorization?"
+  - "How do I write an integration test for my REST API?"

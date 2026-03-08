@@ -135,6 +135,8 @@ ENTRYPOINT ["python", "-m", "myapp"]
 
 ## Anti-Patterns
 
+**Do not assume a Docker build is secure because it completed without errors.** A successful build proves the image can be constructed — it does not prove the image is free of CVEs. Always run `trivy image <name>` before pushing to a registry.
+
 | Don't | Do instead |
 |---|---|
 | Run as root | `USER nobody` or dedicated UID |

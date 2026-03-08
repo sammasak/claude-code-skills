@@ -7,7 +7,17 @@ injectable: true
 
 # Secrets Management
 
+<when_to_use>
+Use this skill when creating, rotating, or revoking secrets; when deciding how to store credentials; when setting up SOPS encryption for a new repo; when writing Kubernetes Secret manifests; or when auditing secret hygiene.
+</when_to_use>
+
 Protect credentials throughout their lifecycle: generation, storage, deployment, rotation, and revocation.
+
+**CRITICAL: Never commit plaintext secrets to Git.** Encrypted or external, no exceptions. If you accidentally commit plaintext, rotate the secret immediately — deleting the commit is not enough; the history is the problem.
+
+**IMPORTANT: Rotate credentials after any team member departure, system compromise, or environment breach.** Assume the secret is known; act accordingly.
+
+**NOTE:** age v1.3+ supports post-quantum hybrid keys (`age1pq1...`), but SOPS does not yet support them. Stick to classic age recipients in SOPS-managed files.
 
 ## Principles
 
@@ -56,6 +66,8 @@ stringData:
     api-token: ENC[AES256_GCM,data:...,type:str]     # keys stay readable
 ```
 
+<sops_workflow>
+
 ## Workflow
 
 ```
@@ -97,6 +109,10 @@ generate --> configure --> create --> encrypt --> commit --> deploy --> rotate -
 | Update recipients | `sops updatekeys <file>` |
 | Encrypt specific keys | `sops encrypt --encrypted-regex '^(data\|stringData)$' -i <file>` |
 
+</sops_workflow>
+
+<k8s_patterns>
+
 ## Patterns We Use
 
 - **age over PGP** -- simpler key management, no key servers, no expiry headaches. age v1.3+ adds post-quantum hybrid keys (`age1pq1...`; cannot mix with classic `age1...` recipients); SOPS does not yet support PQ keys
@@ -108,7 +124,13 @@ generate --> configure --> create --> encrypt --> commit --> deploy --> rotate -
 - For vault-backed dynamic secrets, consider **External Secrets Operator (ESO)** as an alternative to encrypt-in-Git
 - **Flux v2.7+** global SOPS decryption -- `--sops-age-secret` controller flag eliminates per-Kustomization decryption config
 
+</k8s_patterns>
+
+<restrictions>
+
 ## Anti-Patterns
+
+**Do not skip secret rotation because no breach has occurred.** Assume eventual compromise — rotate proactively. The question is not "has this been breached?" but "would you know if it was?"
 
 | Do not | Why |
 |---|---|
@@ -121,6 +143,8 @@ generate --> configure --> create --> encrypt --> commit --> deploy --> rotate -
 | No secret scanning | Run `gitleaks` in pre-commit hooks and CI to catch plaintext before it reaches the repository |
 | base64 as "encryption" | K8s Secrets are base64-encoded, not encrypted -- anyone with API access reads them |
 | Unencrypted etcd | Kubernetes etcd does not encrypt Secrets at rest by default -- configure `EncryptionConfiguration` or KMS provider |
+
+</restrictions>
 
 ## References
 

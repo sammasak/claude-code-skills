@@ -1,0 +1,251 @@
+# Promptfoo configuration for skill trigger evaluation.
+#
+# Purpose: Verify that skill descriptions correctly trigger the right skill
+# for a given user query, and do not trigger for off-topic queries.
+#
+# Usage:
+#   npm install -g promptfoo
+#   promptfoo eval --config evals/promptfoo.yaml
+#
+# Metrics reported: precision, recall, F1 per skill + confusion matrix.
+# Target: >= 70% trigger recall on top 4 skills.
+
+description: "Claude Code Skills — Trigger Evaluation"
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-6
+    config:
+      max_tokens: 512
+      temperature: 0
+
+prompts:
+  - id: skill-selector
+    raw: |
+      You are a skill dispatcher for an AI coding assistant. Given a user query,
+      determine which skill (if any) should be invoked.
+
+      Available skills and their descriptions:
+      - kubernetes-gitops: Use when working with Kubernetes clusters, GitOps deployments, Flux reconciliation, Helm releases, or cluster troubleshooting. Guides declarative cluster management and GitOps workflows.
+      - rust-engineering: Use when writing Rust code, configuring Cargo workspaces, setting up clippy lints, designing error handling, or optimizing build profiles. Guides compiler-driven development and idiomatic Rust patterns.
+      - nix-flake-development: Use when working with NixOS configurations, Nix flakes, module composition, system rebuilds, or Home Manager. Guides declarative system management patterns and safe rebuild workflows.
+      - secrets-management: Use when handling secrets, encryption keys, credentials, tokens, or sensitive configuration. Guides SOPS encryption workflows, Kubernetes secret patterns, and secret hygiene.
+      - container-workflows: Use when building container images, writing Dockerfiles, pushing to registries, or optimizing image size and security. Guides rootless builds, multi-stage patterns, and supply chain security.
+      - observability-patterns: Use when adding metrics, logging, tracing, or alerting to services. Guides the three pillars of observability, structured logging standards, and instrumentation patterns.
+      - none: The query does not match any available skill.
+
+      User query: "{{query}}"
+
+      Respond with ONLY the skill name (e.g. "kubernetes-gitops") or "none".
+      Do not explain your reasoning.
+
+# Test cases loaded from trigger.yaml files
+# Run: promptfoo eval --config evals/promptfoo.yaml
+
+tests:
+  # kubernetes-gitops positives
+  - vars:
+      query: "My Flux HelmRelease is stuck in a reconciliation loop"
+    assert:
+      - type: equals
+        value: "kubernetes-gitops"
+
+  - vars:
+      query: "How do I update a Helm chart version in my GitOps repo?"
+    assert:
+      - type: equals
+        value: "kubernetes-gitops"
+
+  - vars:
+      query: "What does 'flux get kustomizations' show and why is mine failing?"
+    assert:
+      - type: equals
+        value: "kubernetes-gitops"
+
+  - vars:
+      query: "My pod is stuck in CrashLoopBackOff after a Flux reconciliation"
+    assert:
+      - type: equals
+        value: "kubernetes-gitops"
+
+  - vars:
+      query: "How do I roll back a failed Helm upgrade using Flux?"
+    assert:
+      - type: equals
+        value: "kubernetes-gitops"
+
+  - vars:
+      query: "I need to force Flux to pull the latest changes from Git now"
+    assert:
+      - type: equals
+        value: "kubernetes-gitops"
+
+  # kubernetes-gitops hard negatives
+  - vars:
+      query: "How do I encrypt a new SOPS secret for my cluster?"
+    assert:
+      - type: equals
+        value: "secrets-management"
+
+  - vars:
+      query: "How do I write a NixOS module for my Kubernetes node?"
+    assert:
+      - type: equals
+        value: "nix-flake-development"
+
+  # rust-engineering positives
+  - vars:
+      query: "How do I handle errors idiomatically in a Rust library?"
+    assert:
+      - type: equals
+        value: "rust-engineering"
+
+  - vars:
+      query: "What clippy lints should I enable for a new Rust project?"
+    assert:
+      - type: equals
+        value: "rust-engineering"
+
+  - vars:
+      query: "How do I make illegal states unrepresentable in Rust?"
+    assert:
+      - type: equals
+        value: "rust-engineering"
+
+  - vars:
+      query: "I want to add a newtype wrapper to avoid passing raw strings across API boundaries"
+    assert:
+      - type: equals
+        value: "rust-engineering"
+
+  - vars:
+      query: "My Rust binary is too large, how do I optimize the release profile?"
+    assert:
+      - type: equals
+        value: "rust-engineering"
+
+  - vars:
+      query: "How do I model a state machine using Rust's type system?"
+    assert:
+      - type: equals
+        value: "rust-engineering"
+
+  # rust-engineering hard negatives
+  - vars:
+      query: "How do I build a minimal Docker image for my Rust service?"
+    assert:
+      - type: equals
+        value: "container-workflows"
+
+  - vars:
+      query: "How do I write a Nix flake devShell for Rust development?"
+    assert:
+      - type: equals
+        value: "nix-flake-development"
+
+  # nix-flake-development positives
+  - vars:
+      query: "How do I add a new package to my NixOS system configuration?"
+    assert:
+      - type: equals
+        value: "nix-flake-development"
+
+  - vars:
+      query: "My nixos-rebuild switch is failing with an evaluation error"
+    assert:
+      - type: equals
+        value: "nix-flake-development"
+
+  - vars:
+      query: "How do I pin my Home Manager version in my flake inputs?"
+    assert:
+      - type: equals
+        value: "nix-flake-development"
+
+  - vars:
+      query: "How do I add a new NixOS host to my flake?"
+    assert:
+      - type: equals
+        value: "nix-flake-development"
+
+  - vars:
+      query: "I need to create a custom NixOS module with options and config"
+    assert:
+      - type: equals
+        value: "nix-flake-development"
+
+  # nix-flake-development hard negatives
+  - vars:
+      query: "How do I deploy my NixOS-built container image to Kubernetes?"
+    assert:
+      - type: equals
+        value: "kubernetes-gitops"
+
+  # secrets-management positives
+  - vars:
+      query: "How do I encrypt a new Kubernetes secret with SOPS and age?"
+    assert:
+      - type: equals
+        value: "secrets-management"
+
+  - vars:
+      query: "I accidentally committed a plaintext API key to Git, what do I do?"
+    assert:
+      - type: equals
+        value: "secrets-management"
+
+  - vars:
+      query: "How do I rotate SOPS encryption keys after a team member leaves?"
+    assert:
+      - type: equals
+        value: "secrets-management"
+
+  - vars:
+      query: "My Flux kustomize-controller can't decrypt my SOPS secret"
+    assert:
+      - type: equals
+        value: "secrets-management"
+
+  - vars:
+      query: "How do I add a new recipient to an existing SOPS-encrypted file?"
+    assert:
+      - type: equals
+        value: "secrets-management"
+
+  - vars:
+      query: "How do I generate a new age keypair for a staging environment?"
+    assert:
+      - type: equals
+        value: "secrets-management"
+
+  # True negatives (should be "none")
+  - vars:
+      query: "What is the best way to write async Rust code?"
+    assert:
+      - type: equals
+        value: "rust-engineering"
+
+  - vars:
+      query: "Help me debug a Python import error"
+    assert:
+      - type: equals
+        value: "none"
+
+  - vars:
+      query: "How do I reverse a linked list in JavaScript?"
+    assert:
+      - type: equals
+        value: "none"
+
+  - vars:
+      query: "What is the difference between TCP and UDP?"
+    assert:
+      - type: equals
+        value: "none"
+
+  - vars:
+      query: "What is the best Python library for HTTP requests?"
+    assert:
+      - type: equals
+        value: "none"
+
+outputPath: evals/results/trigger-eval-latest.json
