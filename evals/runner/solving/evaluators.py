@@ -23,6 +23,16 @@ class BashGrader(Evaluator[SolvingInput, SolvingOutput, SolvingMetadata]):
     def evaluate(
         self, ctx: EvaluatorContext[SolvingInput, SolvingOutput, SolvingMetadata]
     ) -> EvaluationReason:
+        """Run test.sh and return pass/fail with the script's output as the reason.
+
+        Code paths:
+        - ``ctx.output.timed_out`` is True → immediate FAIL (Claude exceeded timeout)
+        - ``ctx.metadata`` is None or test script missing → immediate FAIL (misconfigured task)
+        - ``ctx.output.tmpdir`` is empty → immediate FAIL (task function did not set tmpdir)
+        - subprocess exits 0 → PASS; non-zero → FAIL (stdout+stderr used as reason)
+        - subprocess itself times out → FAIL with "Test script timed out"
+        - any other exception → FAIL with the exception message
+        """
         if ctx.output.timed_out:
             return EvaluationReason(value=False, reason="Task timed out")
 
@@ -52,8 +62,13 @@ class BashGrader(Evaluator[SolvingInput, SolvingOutput, SolvingMetadata]):
     async def evaluate_async(
         self, ctx: EvaluatorContext[SolvingInput, SolvingOutput, SolvingMetadata]
     ) -> EvaluationReason:
-        """Run evaluate() in a thread to avoid blocking the event loop."""
-        return await anyio.to_thread.run_sync(self.evaluate, ctx)
+        """Run evaluate() in a thread pool to avoid blocking the event loop.
+
+        ``subprocess.run`` is a blocking call. Offloading it via
+        ``anyio.to_thread.run_sync`` keeps the eval runner's async event loop
+        responsive while multiple tasks are evaluated concurrently.
+        """
+        return await anyio.to_thread.run_sync(self.evaluate, ctx)  # ty: ignore[unresolved-attribute]
 
 
 class RubricScore(BaseModel):
@@ -76,6 +91,18 @@ class StructuredRubricJudge(Evaluator[SolvingInput, SolvingOutput, SolvingMetada
     async def evaluate(
         self, ctx: EvaluatorContext[SolvingInput, SolvingOutput, SolvingMetadata]
     ) -> dict[str, float | bool | str]:
+        """Score the task output against a quality rubric using an LLM judge.
+
+        Early-exit paths:
+        - No rubric defined (``quality_rubric`` is None) → returns ``{}`` to
+          signal that rubric scoring should be skipped entirely for this task.
+        - Output timed out or is empty → returns
+          ``{"rubric_passed": False, ...}`` without calling the judge.
+
+        On success, returns a dict with keys ``rubric_passed`` (bool),
+        ``rubric_score`` (float 0-1), and ``rubric_reasoning`` (str).
+        Judge errors are caught and surfaced as a failed rubric score.
+        """
         if ctx.metadata is None or ctx.metadata.quality_rubric is None:
             return {}  # No rubric — skip silently
 
@@ -96,8 +123,8 @@ class StructuredRubricJudge(Evaluator[SolvingInput, SolvingOutput, SolvingMetada
             result = await judge.run(
                 f"Evaluate the following output:\n\n```\n{ctx.output.content}\n```"
             )
-            score = result.output
-            normalized = min(score.total / max(score.maximum, 1), 1.0)
+            score: RubricScore = result.output  # ty: ignore[invalid-assignment]
+            normalized = min(score.total / max(score.maximum, 1), 1.0)  # max(score.maximum, 1) guards against division by zero if rubric scores are empty
             return {
                 "rubric_passed": score.passed,
                 "rubric_score": round(normalized, 3),
@@ -111,6 +138,7 @@ class StructuredRubricJudge(Evaluator[SolvingInput, SolvingOutput, SolvingMetada
             }
 
     def _build_judge_prompt(self, rubric: str) -> str:
+        """Build the system prompt that instructs the LLM judge to score against the given rubric."""
         return f"""You are a technical reviewer evaluating outputs from an AI coding assistant.
 
 Score the provided output using this rubric:

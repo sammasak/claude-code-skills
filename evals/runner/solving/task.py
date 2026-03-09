@@ -41,7 +41,7 @@ async def run_solving(inputs: SolvingInput, timeout: int = CLAUDE_TIMEOUT) -> So
             stdout_bytes, stderr_bytes = await asyncio.wait_for(
                 proc.communicate(), timeout=timeout
             )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             proc.kill()
             await proc.communicate()
             return SolvingOutput(
@@ -63,7 +63,7 @@ async def run_solving(inputs: SolvingInput, timeout: int = CLAUDE_TIMEOUT) -> So
             stderr=stderr_bytes.decode(errors="replace"),
             timed_out=False,
             tmpdir=tmpdir,
-            returncode=proc.returncode,
+            returncode=proc.returncode if proc.returncode is not None else 0,
         )
 
     except Exception as e:

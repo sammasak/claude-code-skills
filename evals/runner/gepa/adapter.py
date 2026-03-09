@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 import re
 import threading
-from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine, Mapping, Sequence
 
 from gepa import EvaluationBatch, GEPAAdapter
 
@@ -21,12 +23,15 @@ SKILLS_ROOT = EVALS_ROOT.parent / "skills"
 _BG_LOOP: asyncio.AbstractEventLoop = asyncio.new_event_loop()
 threading.Thread(target=_BG_LOOP.run_forever, daemon=True, name="gepa-eval-loop").start()
 
+def _run_async[T](coro: Coroutine[Any, Any, T]) -> T:
+    """Run an async coroutine on the persistent background event loop.
 
-def _run_async(coro: object) -> object:
-    """Run an async coroutine on the persistent background loop and return its result."""
-    import asyncio as _asyncio
+    Blocks the calling thread until the coroutine completes.
 
-    future = _asyncio.run_coroutine_threadsafe(coro, _BG_LOOP)  # type: ignore[arg-type]
+    Note: this blocks the calling thread. Must not be called from within the
+    _BG_LOOP event loop itself, as that would deadlock the future.result() call.
+    """
+    future = asyncio.run_coroutine_threadsafe(coro, _BG_LOOP)
     return future.result()
 
 
@@ -43,7 +48,15 @@ class SkillDescriptionAdapter(GEPAAdapter):
         candidate: dict[str, str],
         capture_traces: bool = False,
     ) -> EvaluationBatch:
-        """Run the dispatcher with candidate descriptions on the given batch."""
+        """Run the dispatcher with the given candidate descriptions on the batch and return accuracy scores.
+
+        Builds a dispatcher agent from ``candidate`` (a mapping of skill name →
+        description string), runs it against every item in ``batch`` in parallel,
+        and returns an ``EvaluationBatch`` with per-item scores (1.0 = correct,
+        0.0 = incorrect). When ``capture_traces`` is True, trajectories are
+        included so that ``make_reflective_dataset`` can identify which cases
+        failed and which skills were involved.
+        """
         agent = build_dispatcher_agent(descriptions=candidate)
 
         async def _single(data_inst: dict[str, Any]) -> tuple[str, str, float]:
@@ -55,12 +68,12 @@ class SkillDescriptionAdapter(GEPAAdapter):
         async def _run_all() -> list[tuple[str, str, float]]:
             return list(await asyncio.gather(*[_single(d) for d in batch]))
 
-        triplets = _run_async(_run_all())  # type: ignore[assignment]
+        triplets = _run_async(_run_all())
 
         outputs = [t[0] for t in triplets]
         scores = [t[2] for t in triplets]
         trajectories = (
-            [{"predicted": t[0], "expected": t[1], "query": b.get("query", "")} for t, b in zip(triplets, batch)]
+            [{"predicted": t[0], "expected": t[1], "query": b.get("query", "")} for t, b in zip(triplets, batch, strict=True)]
             if capture_traces
             else None
         )
@@ -77,20 +90,29 @@ class SkillDescriptionAdapter(GEPAAdapter):
         eval_batch: EvaluationBatch,
         components_to_update: list[str],
     ) -> Mapping[str, Sequence[Mapping[str, Any]]]:
-        """Build failure analysis for the GEPA proposer."""
+        """Build per-skill failure analysis to guide the GEPA proposer.
+
+        A failed case is routed to a skill's list if that skill was either the
+        expected target (a miss — the dispatcher should have chosen it but
+        didn't) or the predicted target (a false positive — the dispatcher
+        chose it when it shouldn't have). This ensures both sides of a
+        mis-classification are given context to improve their descriptions.
+        """
         failures = []
         trajectories = eval_batch.trajectories or []
         scores = eval_batch.scores
 
-        for score, traj in zip(scores, trajectories):
-            if score < 1.0 and traj:
-                failures.append(
-                    {
-                        "query": traj.get("query", ""),
-                        "predicted": traj.get("predicted", ""),
-                        "expected": traj.get("expected", ""),
-                    }
-                )
+        # Guard: if no trajectories (capture_traces=False), skip failure routing
+        if trajectories:
+            for score, traj in zip(scores, trajectories, strict=True):
+                if score < 1.0 and traj:
+                    failures.append(
+                        {
+                            "query": traj.get("query", ""),
+                            "predicted": traj.get("predicted", ""),
+                            "expected": traj.get("expected", ""),
+                        }
+                    )
 
         # Build per-component reflection data
         reflective_data: dict[str, list[dict[str, Any]]] = {}
@@ -146,7 +168,7 @@ def write_back_descriptions(optimized: dict[str, str]) -> None:
         # so new_desc is used verbatim without any pre-escaping.
         new_content = re.sub(
             r'^(description:\s*)["\']?.*?["\']?\s*$',
-            lambda m: f'{m.group(1)}"{new_desc}"',
+            lambda m, d=new_desc: f'{m.group(1)}"{d}"',
             content,
             flags=re.MULTILINE,
         )

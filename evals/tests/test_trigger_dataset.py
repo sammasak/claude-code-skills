@@ -2,9 +2,6 @@
 
 from __future__ import annotations
 
-import warnings
-from pathlib import Path
-
 import pytest
 
 from runner.trigger.dataset import (
@@ -71,13 +68,13 @@ def test_parse_hard_negative_with_comment():
 
 def test_parse_hard_negative_kubernetes_gitops():
     item_text = '"My Flux HelmRelease can\'t find the Kubernetes secret"  # → kubernetes-gitops'
-    query, expected = _parse_hard_negative(item_text)
+    _, expected = _parse_hard_negative(item_text)
     assert expected == "kubernetes-gitops"
 
 
 def test_parse_hard_negative_nix_flake_development():
     item_text = '"How do I write a Nix flake devShell for Rust development?"       # → nix-flake-development'
-    query, expected = _parse_hard_negative(item_text)
+    _, expected = _parse_hard_negative(item_text)
     assert expected == "nix-flake-development"
 
 
@@ -100,7 +97,7 @@ def test_parse_hard_negative_arrow_variations():
 
 def test_parse_hard_negative_only_first_word_taken():
     item_text = '"Some query"  # → observability-patterns extra words here'
-    query, expected = _parse_hard_negative(item_text)
+    _, expected = _parse_hard_negative(item_text)
     assert expected == "observability-patterns"
 
 
@@ -109,7 +106,6 @@ def test_parse_hard_negatives_raw_kubernetes_gitops():
     trigger_path = K8S_SKILL_DIR / "trigger.yaml"
     pairs = _parse_hard_negatives_raw(trigger_path)
     assert len(pairs) == 7  # 7 hard negatives in kubernetes-gitops
-    queries = [q for q, _ in pairs]
     expected_skills = [e for _, e in pairs]
     # All hard_negatives should have non-empty, non-"kubernetes-gitops" expected skills
     for skill in expected_skills:

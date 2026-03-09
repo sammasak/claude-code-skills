@@ -10,7 +10,6 @@ from gepa.utils.stop_condition import MaxCandidateProposalsStopper
 
 from runner.gepa.adapter import (
     SkillDescriptionAdapter,
-    _run_async,
     build_seed_candidate,
     build_trainset,
     write_back_descriptions,
@@ -34,7 +33,7 @@ def _evaluate_candidate(candidate: dict[str, str]) -> float:
         results = await asyncio.gather(*[_single(c) for c in dataset.cases])
         return sum(results) / len(results) if results else 0.0
 
-    return _run_async(_run())  # type: ignore[return-value]
+    return asyncio.run(_run())
 
 
 def main() -> None:
@@ -88,7 +87,7 @@ def main() -> None:
         display_progress_bar=True,
     )
 
-    best_candidate = result.best_candidate
+    best_candidate: dict[str, str] = result.best_candidate  # ty: ignore[invalid-assignment]
 
     print("\n--- Optimized Descriptions ---")
     for skill, desc in best_candidate.items():

@@ -106,9 +106,7 @@ def build_solving_dataset(
                 )
                 output_filename = "output.md"
 
-            evaluators = [BashGrader()]
-            if quality_rubric:
-                evaluators.append(StructuredRubricJudge())
+            evaluators: tuple = (BashGrader(), StructuredRubricJudge()) if quality_rubric else (BashGrader(),)
 
             cases.append(
                 Case(

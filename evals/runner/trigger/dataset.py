@@ -19,16 +19,6 @@ SKILLS = [
     "secrets-management",
 ]
 
-SkillName = Literal[
-    "kubernetes-gitops",
-    "rust-engineering",
-    "nix-flake-development",
-    "secrets-management",
-    "container-workflows",
-    "observability-patterns",
-    "none",
-]
-
 
 @dataclass
 class TriggerInput:
@@ -169,9 +159,10 @@ def build_trigger_dataset(
     for skill in skills:
         all_cases.extend(load_trigger_cases(EVALS_ROOT / skill))
 
-    return Dataset(
+    dataset: Dataset[TriggerInput, str, TriggerMetadata] = Dataset(  # ty: ignore[invalid-assignment]
         name="skill-trigger-eval",
         cases=all_cases,
         evaluators=[EqualsExpected()],
         report_evaluators=[ConfusionMatrixEvaluator()],
     )
+    return dataset

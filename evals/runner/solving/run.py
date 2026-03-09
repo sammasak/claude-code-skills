@@ -8,7 +8,14 @@ from datetime import datetime
 from functools import partial
 from pathlib import Path
 
-from runner.solving.dataset import build_solving_dataset
+from pydantic_evals.reporting import EvaluationReport, EvaluationReportAdapter
+
+from runner.solving.dataset import (
+    SolvingInput,
+    SolvingMetadata,
+    SolvingOutput,
+    build_solving_dataset,
+)
 from runner.solving.task import CLAUDE_TIMEOUT, run_solving
 
 RESULTS_DIR = Path(__file__).parent.parent.parent / "results"
@@ -76,7 +83,7 @@ def main() -> None:
     if not args.no_save:
         RESULTS_DIR.mkdir(exist_ok=True)
         report_path = RESULTS_DIR / f"{run_name}.json"
-        report_path.write_text(report.model_dump_json(indent=2))
+        report_path.write_text(EvaluationReportAdapter.dump_json(report, indent=2).decode())
         print(f"\nReport saved to {report_path}")
 
     # Clean up tmpdirs unless --no-cleanup is set
@@ -84,12 +91,21 @@ def main() -> None:
         _cleanup_tmpdirs(report)
 
 
-def _cleanup_tmpdirs(report: object) -> None:
-    """Clean up mkdtemp directories created during solving evals."""
+def _cleanup_tmpdirs(report: EvaluationReport[SolvingInput, SolvingOutput, SolvingMetadata]) -> None:
+    """Clean up mkdtemp directories created during solving evals.
+
+    Each solving task creates a temporary directory via ``tempfile.mkdtemp``
+    and stores its path in ``SolvingOutput.tmpdir``. Because mkdtemp directories
+    persist until explicitly deleted (unlike ``TemporaryDirectory`` context
+    managers), this function must be called after the report is finalised to
+    avoid leaking directories in /tmp/. The typed ``EvaluationReport`` is used
+    directly so that ``case_result.output`` is already typed as ``SolvingOutput``
+    rather than requiring a cast.
+    """
     cleaned = 0
-    for case_result in getattr(report, "cases", []):
-        output = getattr(case_result, "output", None)
-        if output and hasattr(output, "tmpdir") and output.tmpdir:
+    for case_result in report.cases:
+        output = case_result.output
+        if output is not None and output.tmpdir:
             tmpdir = Path(output.tmpdir)
             if tmpdir.exists():
                 shutil.rmtree(tmpdir, ignore_errors=True)

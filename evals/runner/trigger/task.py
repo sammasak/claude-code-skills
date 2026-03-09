@@ -5,17 +5,20 @@ from __future__ import annotations
 import re
 
 from pydantic_ai import Agent
+from pydantic_evals import increment_eval_metric
 
-from runner.trigger.dataset import EVALS_ROOT, SKILLS, SkillName, TriggerInput
+from runner.trigger.dataset import EVALS_ROOT, SKILLS, TriggerInput
 
 SKILLS_ROOT = EVALS_ROOT.parent / "skills"
 EXTRA_SKILLS = ["container-workflows", "observability-patterns"]
 
-_DEFAULT_AGENT: Agent[None, str] | None = None
-
 
 def _read_skill_description(skill_name: str) -> str:
-    """Read the description field from a SKILL.md frontmatter."""
+    """Read the description field from a SKILL.md frontmatter.
+
+    Falls back to a generic description if the file is missing, has no YAML
+    frontmatter, or has no description key.
+    """
     skill_md = SKILLS_ROOT / skill_name / "SKILL.md"
     if not skill_md.exists():
         return f"Use when working with {skill_name.replace('-', ' ')}."
@@ -35,7 +38,12 @@ def _read_skill_description(skill_name: str) -> str:
 
 
 def load_skill_descriptions(overrides: dict[str, str] | None = None) -> dict[str, str]:
-    """Load skill descriptions, optionally overriding specific ones (for GEPA)."""
+    """Load skill descriptions, optionally overriding specific ones (for GEPA).
+
+    EXTRA_SKILLS are also loaded because they can appear as expected targets in
+    hard_negative cases — the dispatcher must know about them even though they
+    are not in the primary SKILLS list being evaluated.
+    """
     descriptions = {skill: _read_skill_description(skill) for skill in SKILLS}
     # Also add skills that might appear as hard_negative targets
     for skill in EXTRA_SKILLS:
@@ -46,7 +54,12 @@ def load_skill_descriptions(overrides: dict[str, str] | None = None) -> dict[str
 
 
 def _build_dispatcher_prompt(descriptions: dict[str, str]) -> str:
-    """Build the dispatcher system prompt from current skill descriptions."""
+    """Build the dispatcher system prompt from current skill descriptions.
+
+    The "none" key is excluded from the skill list presented to the model;
+    instead "none" is described inline in the rules as the fallback when no
+    skill matches.
+    """
     skill_list = "\n".join(
         f"- {name}: {desc}" for name, desc in sorted(descriptions.items()) if name != "none"
     )
@@ -63,39 +76,43 @@ Rules:
 
 
 def build_dispatcher_agent(descriptions: dict[str, str] | None = None) -> Agent[None, str]:
-    """Build the pydantic-ai dispatcher agent with current skill descriptions."""
-    global _DEFAULT_AGENT
-    if descriptions is None:
-        if _DEFAULT_AGENT is None:
-            _DEFAULT_AGENT = Agent(
-                "anthropic:claude-haiku-4-5-20251001",
-                output_type=str,
-                instructions=_build_dispatcher_prompt(load_skill_descriptions()),
-                model_settings={"temperature": 0},
-            )
-        return _DEFAULT_AGENT
+    """Build a dispatcher agent with the given (or default) skill descriptions.
+
+    Always creates a fresh Agent instance — there is no caching. This is
+    intentional: callers such as the GEPA adapter need to construct agents with
+    different description sets across iterations.
+    """
+    descs = descriptions if descriptions is not None else load_skill_descriptions()
     return Agent(
         "anthropic:claude-haiku-4-5-20251001",
         output_type=str,
-        instructions=_build_dispatcher_prompt(descriptions),
-        model_settings={"temperature": 0},
+        instructions=_build_dispatcher_prompt(descs),
+        model_settings={"temperature": 0.0},
     )
 
 
 async def dispatch_skill(inputs: TriggerInput) -> str:
-    """Task function: dispatch a query to the most relevant skill."""
+    """Task function: dispatch a query to the most relevant skill.
+
+    Output is normalized before returning: whitespace is stripped, the string
+    is lowercased, and surrounding quotes are removed. This ensures consistent
+    comparison against the expected skill names defined in the dataset.
+    """
     agent = build_dispatcher_agent()
     result = await agent.run(inputs.query)
-    # Normalize output: strip whitespace, ensure it's a valid skill name or "none"
+    # Track token usage per case
+    usage = result.usage()
+    increment_eval_metric("input_tokens", usage.input_tokens or 0)
+    increment_eval_metric("output_tokens", usage.output_tokens or 0)
+    # Normalize output
     output = result.output.strip().lower().strip('"\'')
     return output
 
 
 __all__ = [
-    "SkillName",
-    "SKILLS_ROOT",
     "EXTRA_SKILLS",
-    "load_skill_descriptions",
+    "SKILLS_ROOT",
     "build_dispatcher_agent",
     "dispatch_skill",
+    "load_skill_descriptions",
 ]
