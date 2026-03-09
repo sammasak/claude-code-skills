@@ -1,4 +1,4 @@
-"""Unit tests for runner.solving.task — _build_prompt and run_solving."""
+"""Unit tests for runner.solving.task — _load_skill_body, _strip_code_fence, run_solving."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from runner.solving.dataset import SolvingInput
-from runner.solving.task import _build_prompt, run_solving
+from runner.solving.task import _load_skill_body, _strip_code_fence, run_solving
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -28,165 +28,177 @@ def make_input(
     )
 
 
-# ---------------------------------------------------------------------------
-# _build_prompt
-# ---------------------------------------------------------------------------
-
-
-def test_build_prompt_contains_tmpdir():
-    inputs = make_input()
-    prompt = _build_prompt(inputs, "/tmp/my-eval-dir")
-    assert "/tmp/my-eval-dir" in prompt
-
-
-def test_build_prompt_contains_output_filename():
-    inputs = make_input(output_filename="solution.rs")
-    prompt = _build_prompt(inputs, "/tmp/eval-xyz")
-    assert "solution.rs" in prompt
-
-
-def test_build_prompt_contains_instruction():
-    instruction = "Implement a binary search function."
-    inputs = make_input(instruction=instruction)
-    prompt = _build_prompt(inputs, "/tmp/eval-abc")
-    assert instruction in prompt
-
-
-def test_build_prompt_write_target_is_tmpdir_not_eval_output():
-    """The primary write target in the preamble must be the isolated tmpdir, not a shared path."""
-    tmpdir = "/tmp/eval-rust-engineering-task-1-xyz"
-    inputs = make_input(output_filename="main.rs")
-    prompt = _build_prompt(inputs, tmpdir)
-    # The preamble starts with "IMPORTANT: Write your output file to <tmpdir>/..."
-    assert prompt.startswith(f"IMPORTANT: Write your output file to {tmpdir}/main.rs")
-
-
-def test_build_prompt_preamble_precedes_instruction():
-    """The preamble should come before the original instruction in the prompt."""
-    instruction = "Do something."
-    inputs = make_input(instruction=instruction)
-    tmpdir = "/tmp/testdir"
-    prompt = _build_prompt(inputs, tmpdir)
-    preamble_end = prompt.index(tmpdir) + len(tmpdir)
-    instruction_start = prompt.index(instruction)
-    assert preamble_end < instruction_start
+def _make_agent_result(text: str) -> MagicMock:
+    result = MagicMock()
+    result.output = text
+    return result
 
 
 # ---------------------------------------------------------------------------
-# run_solving — success: file exists
+# _load_skill_body
+# ---------------------------------------------------------------------------
+
+
+def test_load_skill_body_missing_skill(tmp_path):
+    with patch("runner.solving.task.SKILLS_ROOT", tmp_path):
+        assert _load_skill_body("nonexistent-skill") == ""
+
+
+def test_load_skill_body_strips_frontmatter(tmp_path):
+    skill_dir = tmp_path / "my-skill"
+    skill_dir.mkdir()
+    (skill_dir / "SKILL.md").write_text(
+        "---\nname: my-skill\ndescription: test\n---\n\n# Body\n\nDo things.\n"
+    )
+    with patch("runner.solving.task.SKILLS_ROOT", tmp_path):
+        body = _load_skill_body("my-skill")
+    assert body == "# Body\n\nDo things."
+    assert "name:" not in body
+
+
+def test_load_skill_body_no_frontmatter(tmp_path):
+    skill_dir = tmp_path / "raw-skill"
+    skill_dir.mkdir()
+    content = "# Raw skill\n\nNo frontmatter here."
+    (skill_dir / "SKILL.md").write_text(content)
+    with patch("runner.solving.task.SKILLS_ROOT", tmp_path):
+        assert _load_skill_body("raw-skill") == content
+
+
+# ---------------------------------------------------------------------------
+# _strip_code_fence
+# ---------------------------------------------------------------------------
+
+
+def test_strip_code_fence_rust():
+    text = "```rust\nfn main() {}\n```"
+    assert _strip_code_fence(text) == "fn main() {}"
+
+
+def test_strip_code_fence_no_lang():
+    text = "```\nsome code\n```"
+    assert _strip_code_fence(text) == "some code"
+
+
+def test_strip_code_fence_plain_text():
+    text = "No fence here, just plain text."
+    assert _strip_code_fence(text) == text
+
+
+def test_strip_code_fence_multiline():
+    text = "```rust\nfn a() {}\nfn b() {}\n```"
+    assert _strip_code_fence(text) == "fn a() {}\nfn b() {}"
+
+
+def test_strip_code_fence_with_surrounding_text():
+    """Only the fenced block is extracted, preamble is dropped."""
+    text = "Here is the code:\n```rust\nfn main() {}\n```\nDone."
+    assert _strip_code_fence(text) == "fn main() {}"
+
+
+# ---------------------------------------------------------------------------
+# run_solving — success path
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.anyio
-async def test_run_solving_success_file_exists(tmp_path):
-    """Process returns 0 and writes the output file."""
+async def test_run_solving_success_writes_artifact(tmp_path):
+    """Agent returns code → stripped and written to tmpdir/output_filename."""
     inputs = make_input(output_filename="result.rs")
+    agent_result = _make_agent_result("```rust\nfn main() {}\n```")
 
-    mock_proc = MagicMock()
-    mock_proc.communicate = AsyncMock(return_value=(b"all done", b""))
-    mock_proc.returncode = 0
-    mock_proc.kill = MagicMock()
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(return_value=agent_result)
 
-    # We need to intercept tempfile.mkdtemp to know where the file should go.
-    # Instead, patch create_subprocess_exec and write the file in a side-effect
-    # by capturing the tmpdir from the call to _build_prompt (which is called
-    # inside run_solving before creating the subprocess).
-    #
-    # Simpler approach: after proc.communicate() returns the file should exist.
-    # We patch mkdtemp to return a known path inside tmp_path.
-    known_tmpdir = str(tmp_path / "eval-dir")
-    (tmp_path / "eval-dir").mkdir()
-    artifact = tmp_path / "eval-dir" / "result.rs"
-    artifact.write_text("fn main() {}")
+    with (
+        patch("runner.solving.task.Agent", return_value=mock_agent),
+        patch("runner.solving.task.tempfile.mkdtemp", return_value=str(tmp_path)),
+    ):
+        output = await run_solving(inputs)
 
-    with patch("runner.solving.task.tempfile.mkdtemp", return_value=known_tmpdir), \
-         patch("runner.solving.task.asyncio.create_subprocess_exec", AsyncMock(return_value=mock_proc)):
-        result = await run_solving(inputs)
+    assert output.content == "fn main() {}"
+    assert output.returncode == 0
+    assert output.timed_out is False
+    assert (tmp_path / "result.rs").read_text() == "fn main() {}"
 
-    assert result.timed_out is False
-    assert result.returncode == 0
-    assert result.content == "fn main() {}"
-    assert result.tmpdir == known_tmpdir
+
+@pytest.mark.anyio
+async def test_run_solving_success_no_fence(tmp_path):
+    """Plain text response (no code fence) is stored verbatim."""
+    inputs = make_input(output_filename="answer.rs")
+    agent_result = _make_agent_result("fn main() {}")
+
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(return_value=agent_result)
+
+    with (
+        patch("runner.solving.task.Agent", return_value=mock_agent),
+        patch("runner.solving.task.tempfile.mkdtemp", return_value=str(tmp_path)),
+    ):
+        output = await run_solving(inputs)
+
+    assert output.content == "fn main() {}"
+    assert output.returncode == 0
+
+
+@pytest.mark.anyio
+async def test_run_solving_injects_skill_body(tmp_path):
+    """Agent is constructed with the skill body as instructions."""
+    skill_body = "# My skill\n\nAlways use iterators."
+
+    inputs = make_input(skill="rust-engineering")
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(return_value=_make_agent_result("fn f() {}"))
+
+    with (
+        patch("runner.solving.task._load_skill_body", return_value=skill_body),
+        patch("runner.solving.task.Agent", return_value=mock_agent) as mock_agent_cls,
+        patch("runner.solving.task.tempfile.mkdtemp", return_value=str(tmp_path)),
+    ):
+        await run_solving(inputs)
+
+    mock_agent_cls.assert_called_once()
+    _, kwargs = mock_agent_cls.call_args
+    assert kwargs.get("instructions") == skill_body
+
+
+@pytest.mark.anyio
+async def test_run_solving_empty_skill_body_passes_none(tmp_path):
+    """Empty skill body → instructions=None (no system prompt)."""
+    inputs = make_input(skill="unknown-skill")
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(return_value=_make_agent_result("output"))
+
+    with (
+        patch("runner.solving.task._load_skill_body", return_value=""),
+        patch("runner.solving.task.Agent", return_value=mock_agent) as mock_agent_cls,
+        patch("runner.solving.task.tempfile.mkdtemp", return_value=str(tmp_path)),
+    ):
+        await run_solving(inputs)
+
+    _, kwargs = mock_agent_cls.call_args
+    assert kwargs.get("instructions") is None
 
 
 # ---------------------------------------------------------------------------
-# run_solving — success: file missing
+# run_solving — exception path
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.anyio
-async def test_run_solving_success_file_missing(tmp_path):
-    """Process returns 0 but Claude didn't write the output file."""
-    inputs = make_input(output_filename="missing.rs")
-
-    mock_proc = MagicMock()
-    mock_proc.communicate = AsyncMock(return_value=(b"I forgot to write", b""))
-    mock_proc.returncode = 0
-    mock_proc.kill = MagicMock()
-
-    known_tmpdir = str(tmp_path / "eval-dir2")
-    (tmp_path / "eval-dir2").mkdir()
-    # Deliberately do NOT write the artifact.
-
-    with patch("runner.solving.task.tempfile.mkdtemp", return_value=known_tmpdir), \
-         patch("runner.solving.task.asyncio.create_subprocess_exec", AsyncMock(return_value=mock_proc)):
-        result = await run_solving(inputs)
-
-    assert result.timed_out is False
-    assert result.content == ""
-    assert result.returncode == 0
-
-
-# ---------------------------------------------------------------------------
-# run_solving — timeout path
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.anyio
-async def test_run_solving_timeout(tmp_path):
-    """asyncio.wait_for raises TimeoutError → timed_out=True, returncode=-1."""
+async def test_run_solving_agent_exception(tmp_path):
+    """agent.run() raises → returncode=-1, stderr contains message."""
     inputs = make_input()
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(side_effect=Exception("API error"))
 
-    mock_proc = MagicMock()
-    # communicate() is called a second time after kill(), so it must not raise
-    mock_proc.communicate = AsyncMock(return_value=(b"", b""))
-    mock_proc.returncode = None
-    mock_proc.kill = MagicMock()
+    with (
+        patch("runner.solving.task.Agent", return_value=mock_agent),
+        patch("runner.solving.task.tempfile.mkdtemp", return_value=str(tmp_path)),
+    ):
+        output = await run_solving(inputs)
 
-    known_tmpdir = str(tmp_path / "eval-timeout")
-    (tmp_path / "eval-timeout").mkdir()
-
-    # Patch wait_for itself to raise TimeoutError so the inner except block fires
-    with patch("runner.solving.task.tempfile.mkdtemp", return_value=known_tmpdir), \
-         patch("runner.solving.task.asyncio.create_subprocess_exec", AsyncMock(return_value=mock_proc)), \
-         patch("runner.solving.task.asyncio.wait_for", side_effect=TimeoutError()):
-        result = await run_solving(inputs)
-
-    assert result.timed_out is True
-    assert result.returncode == -1
-    assert result.content == ""
-
-
-# ---------------------------------------------------------------------------
-# run_solving — exception path (create_subprocess_exec raises)
-# ---------------------------------------------------------------------------
-
-
-@pytest.mark.anyio
-async def test_run_solving_exception(tmp_path):
-    """create_subprocess_exec raises → returncode=-2, stderr contains message."""
-    inputs = make_input()
-
-    known_tmpdir = str(tmp_path / "eval-exc")
-    (tmp_path / "eval-exc").mkdir()
-
-    with patch("runner.solving.task.tempfile.mkdtemp", return_value=known_tmpdir), \
-         patch(
-             "runner.solving.task.asyncio.create_subprocess_exec",
-             side_effect=Exception("claude not found"),
-         ):
-        result = await run_solving(inputs)
-
-    assert result.returncode == -2
-    assert result.timed_out is False
-    assert "claude not found" in result.stderr
+    assert output.returncode == -1
+    assert output.timed_out is False
+    assert "API error" in output.stderr
+    assert output.content == ""

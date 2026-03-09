@@ -1,69 +1,64 @@
-"""Subprocess runner: executes claude -p for each solving task."""
+"""Pydantic-ai task function for solving evals: LLM with skill as system prompt."""
 
 from __future__ import annotations
 
-import asyncio
+import re
 import tempfile
 from pathlib import Path
 
+from pydantic_ai import Agent
+
 from runner.solving.dataset import SolvingInput, SolvingOutput
 
-CLAUDE_TIMEOUT = 120  # seconds per task
+SKILLS_ROOT = Path(__file__).parent.parent.parent.parent / "skills"
+SOLVE_MODEL = "anthropic:claude-haiku-4-5-20251001"
 
 
-def _build_prompt(inputs: SolvingInput, tmpdir: str) -> str:
-    """Prepend output directory preamble to the instruction."""
-    preamble = (
-        f"IMPORTANT: Write your output file to {tmpdir}/{inputs.output_filename} "
-        f"(not /tmp/eval-output/{inputs.output_filename}).\n\n"
-    )
-    return preamble + inputs.instruction
+def _load_skill_body(skill: str) -> str:
+    """Return the SKILL.md body (below the frontmatter) for the given skill name."""
+    skill_md = SKILLS_ROOT / skill / "SKILL.md"
+    if not skill_md.exists():
+        return ""
+    content = skill_md.read_text()
+    if content.startswith("---"):
+        end = content.find("---", 3)
+        if end != -1:
+            return content[end + 3 :].strip()
+    return content
 
 
-async def run_solving(inputs: SolvingInput, timeout: int = CLAUDE_TIMEOUT) -> SolvingOutput:
-    """Task function: run Claude on a solving task with tmpdir isolation."""
-    # Create a persistent tempdir (no auto-cleanup — BashGrader uses it after us)
+def _strip_code_fence(text: str) -> str:
+    """Strip a single markdown code fence (```lang ... ```) from LLM output."""
+    match = re.search(r"```(?:\w+)?\n(.*?)```", text, re.DOTALL)
+    return match.group(1).strip() if match else text
+
+
+async def run_solving(inputs: SolvingInput, model: str = SOLVE_MODEL) -> SolvingOutput:
+    """Run the skill-guided LLM on a task and capture its text output.
+
+    The skill's SKILL.md body is injected as the system prompt, grounding the LLM
+    in the skill's patterns and conventions. The response is written to a tmpdir so
+    that BashGrader can still run test.sh assertions against the output file.
+    """
+    skill_body = _load_skill_body(inputs.skill)
+    agent = Agent(model, instructions=skill_body or None, output_type=str)
+
     tmpdir = tempfile.mkdtemp(prefix=f"eval-{inputs.skill}-{inputs.task_id}-")
 
-    prompt = _build_prompt(inputs, tmpdir)
-
     try:
-        proc = await asyncio.create_subprocess_exec(
-            "claude",
-            "-p",
-            "--dangerously-skip-permissions",
-            prompt,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
+        result = await agent.run(inputs.instruction)
+        content = _strip_code_fence(result.output)
 
-        try:
-            stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                proc.communicate(), timeout=timeout
-            )
-        except TimeoutError:
-            proc.kill()
-            await proc.communicate()
-            return SolvingOutput(
-                content="",
-                stdout="",
-                stderr="",
-                timed_out=True,
-                tmpdir=tmpdir,
-                returncode=-1,
-            )
-
-        # Read the artifact if Claude wrote it
         artifact = Path(tmpdir) / inputs.output_filename
-        content = artifact.read_text() if artifact.exists() else ""
+        artifact.write_text(content)
 
         return SolvingOutput(
             content=content,
-            stdout=stdout_bytes.decode(errors="replace"),
-            stderr=stderr_bytes.decode(errors="replace"),
+            stdout="",
+            stderr="",
             timed_out=False,
             tmpdir=tmpdir,
-            returncode=proc.returncode if proc.returncode is not None else 0,
+            returncode=0,
         )
 
     except Exception as e:
@@ -73,5 +68,5 @@ async def run_solving(inputs: SolvingInput, timeout: int = CLAUDE_TIMEOUT) -> So
             stderr=str(e),
             timed_out=False,
             tmpdir=tmpdir,
-            returncode=-2,
+            returncode=-1,
         )

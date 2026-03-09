@@ -16,7 +16,7 @@ from runner.solving.dataset import (
     SolvingOutput,
     build_solving_dataset,
 )
-from runner.solving.task import CLAUDE_TIMEOUT, run_solving
+from runner.solving.task import run_solving
 
 RESULTS_DIR = Path(__file__).parent.parent.parent / "results"
 
@@ -49,12 +49,6 @@ def main() -> None:
         action="store_true",
         help="Keep temporary output directories after evaluation; useful for debugging failing cases; tmpdirs are in /tmp/eval-*/",
     )
-    parser.add_argument(
-        "--timeout",
-        type=int,
-        default=CLAUDE_TIMEOUT,
-        help="Seconds per Claude invocation (default: 120)",
-    )
     args = parser.parse_args()
 
     dataset = build_solving_dataset(
@@ -67,7 +61,7 @@ def main() -> None:
     skill_tag = f"-{args.skill}" if args.skill else ""
     run_name = f"solving{skill_tag}-{timestamp}"
 
-    task_fn = partial(run_solving, timeout=args.timeout)
+    task_fn = partial(run_solving)
     report = dataset.evaluate_sync(
         task_fn,
         name=run_name,
