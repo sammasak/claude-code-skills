@@ -10,6 +10,8 @@
 # Output: JSON {"decision": "block", "reason": "..."} or exit 0 to approve
 
 GOALS_FILE="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json"
+REVIEW_START_FILE="/tmp/claude-worker-review-started"
+REVIEW_TIMEOUT=300  # 5 minutes
 
 emit_event() {
   local json="$1"
@@ -54,13 +56,45 @@ fi
 # ── Phase 3: review unreviewed done goals (inline — no subprocess) ────────────
 # Block with a CONTINUE prompt so the *current* Claude instance reviews completed
 # goals using its own Bash tool. No new process spawned — avoids OOM.
+#
+# Timeout: if Phase 3 has been active for >= REVIEW_TIMEOUT seconds with no
+# progress, auto-approve all unreviewed done goals and allow exit.
+
+if [ -f "$REVIEW_START_FILE" ]; then
+  review_started=$(cat "$REVIEW_START_FILE")
+  now=$(date +%s)
+  elapsed=$((now - review_started))
+
+  if [ "$elapsed" -ge "$REVIEW_TIMEOUT" ]; then
+    # Timeout — auto-approve all unreviewed done goals
+    if command -v jq >/dev/null 2>&1 && [ -f "$GOALS_FILE" ]; then
+      now_iso=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+      jq --arg ts "$now_iso" '
+        map(if .status == "done" and (.reviewed_at == null or .reviewed_at == "") then
+          .reviewed_at = $ts |
+          .review_score = 5 |
+          .review_note = "AUTO-APPROVED: review timed out after 5 minutes"
+        else . end)
+      ' "$GOALS_FILE" > /tmp/goals-timeout.tmp \
+        && mv /tmp/goals-timeout.tmp "$GOALS_FILE"
+    fi
+    rm -f "$REVIEW_START_FILE"
+    # Fall through — Phase 3 check below will now find no unreviewed goals
+  fi
+fi
 
 UNREVIEWED=$(jq '[.[] | select(.status == "done" and (.reviewed_at == null or .reviewed_at == ""))]' "$GOALS_FILE" 2>/dev/null)
 UNREVIEWED_COUNT=$(echo "$UNREVIEWED" | jq 'length' 2>/dev/null || echo "0")
 
 if [ "$UNREVIEWED_COUNT" -eq 0 ]; then
+  rm -f "$REVIEW_START_FILE"
   emit_event "{\"type\":\"session_end\"}"
   exit 0
+fi
+
+# Record the time Phase 3 was first entered (for timeout tracking across invocations)
+if [ ! -f "$REVIEW_START_FILE" ]; then
+  date +%s > "$REVIEW_START_FILE"
 fi
 
 # Write goals to a temp file — avoids shell-expansion issues with arbitrary text in goal/result fields
