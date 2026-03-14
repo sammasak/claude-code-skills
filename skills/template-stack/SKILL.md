@@ -197,7 +197,77 @@ buildah push \
 
 Replace `[project-name]` with a short kebab-case name for the app (e.g. `expense-tracker`, `notes-app`), and replace `PLACEHOLDER` in the `Containerfile` with the actual subdomain.
 
-## 10. When to Use This Skill
+## 10. Repo Mode (When Workspace Was Cloned from GitHub)
+
+If your goal starts with "Before starting, set up the workspace:", you are in **repo mode**. The workspace contains a cloned GitHub repo, not the default SvelteKit template.
+
+**First actions (always do these before anything else):**
+
+```bash
+# 1. Understand the repo
+git log --oneline -5
+ls -la ~/workspace/
+
+# 2. Detect the stack
+cat ~/workspace/package.json 2>/dev/null | head -20   # JS/TS
+cat ~/workspace/Cargo.toml 2>/dev/null | head -10     # Rust
+cat ~/workspace/pyproject.toml 2>/dev/null | head -10 # Python
+cat ~/workspace/go.mod 2>/dev/null | head -5          # Go
+
+# 3. Check for flake.nix
+ls ~/workspace/flake.nix 2>/dev/null || echo "No flake.nix — create one"
+```
+
+**If no `flake.nix` exists, create one for the detected stack.** Examples:
+
+*Node.js/SvelteKit:*
+```nix
+{
+  inputs.nixpkgs.url = "nixpkgs";
+  outputs = { nixpkgs, ... }:
+    let pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    in {
+      devShells.x86_64-linux.default = pkgs.mkShell {
+        packages = [ pkgs.nodejs_22 pkgs.postgresql_16 ];
+      };
+    };
+}
+```
+
+*Python:*
+```nix
+{
+  inputs.nixpkgs.url = "nixpkgs";
+  outputs = { nixpkgs, ... }:
+    let pkgs = nixpkgs.legacyPackages.x86_64-linux;
+    in {
+      devShells.x86_64-linux.default = pkgs.mkShell {
+        packages = [ pkgs.python312 pkgs.uv ];
+      };
+    };
+}
+```
+
+**Start the dev server on `:8080` in the background:**
+
+```bash
+# SvelteKit — template-dev handles this automatically if "vite" key is in package.json
+# If it's NOT running (check: curl -sf localhost:8080), start manually:
+nix develop --command npm run dev -- --port 8080 --host 0.0.0.0 &
+
+# Python (FastAPI / uvicorn):
+nix develop --command uvicorn main:app --host 0.0.0.0 --port 8080 --reload &
+
+# Go:
+nix develop --command go run . &   # ensure your server listens on :8080
+
+# Rust (axum/actix):
+nix develop --command cargo watch -x run &   # ensure your server listens on :8080
+```
+
+Then work on the user's goal. Everything else in this skill still applies: deploy via buildah, use port :8080 for live preview, Kubernetes manifests go to the homelab-gitops repo.
+
+## 11. When to Use This Skill
 
 Use this skill at the **start of every new project** to orient yourself before touching any files. It answers:
 
