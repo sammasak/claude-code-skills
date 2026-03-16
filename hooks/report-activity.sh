@@ -12,7 +12,7 @@ TOOL="${CLAUDE_TOOL_NAME:-}"
 INPUT="${CLAUDE_TOOL_INPUT:-}"
 
 # ── Deduplication: skip if we sent the same message within 30 seconds ──────
-DEDUP_FILE="/tmp/report-activity-last.txt"
+DEDUP_FILE="/tmp/report-activity-last-${CLAUDE_SESSION_ID:-$$}.txt"
 emit_if_new() {
   local msg="$1"
   [ -z "$msg" ] && return
@@ -31,7 +31,7 @@ emit_if_new() {
   curl -sf -X POST "${CLAUDE_WORKER_API:-http://localhost:4200}/events" \
     -H "Content-Type: application/json" \
     -d "{\"type\":\"progress\",\"message\":$(printf '%s' "$msg" | jq -Rs .)}" \
-    --max-time 1 -o /dev/null 2>/dev/null || true
+    --max-time 5 -o /dev/null 2>/dev/null || true
 }
 
 # ── Write / Edit tools: report file being written ──────────────────────────
