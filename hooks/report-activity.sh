@@ -12,7 +12,9 @@ TOOL="${CLAUDE_TOOL_NAME:-}"
 INPUT="${CLAUDE_TOOL_INPUT:-}"
 
 # ── Deduplication: skip if we sent the same message within 30 seconds ──────
-DEDUP_FILE="/tmp/report-activity-last-${CLAUDE_SESSION_ID:-$$}.txt"
+SAFE_SESSION="${CLAUDE_SESSION_ID:-$$}"
+SAFE_SESSION="${SAFE_SESSION//\//_}"
+DEDUP_FILE="/tmp/report-activity-last-${SAFE_SESSION}.txt"
 emit_if_new() {
   local msg="$1"
   [ -z "$msg" ] && return
@@ -39,7 +41,7 @@ if [ "$TOOL" = "Write" ] || [ "$TOOL" = "Edit" ] || [ "$TOOL" = "MultiEdit" ]; t
   FILE=$(printf '%s' "$INPUT" | jq -r '.file_path // .path // ""' 2>/dev/null || echo "")
   if [ -n "$FILE" ]; then
     # Show last 2 path components: src/lib/api.py → "routes/api.py"
-    SHORT=$(printf '%s' "$FILE" | awk -F/ '{n=NF; if(n>=2) printf "%s/%s", $(n-1), $n; else print $n}')
+    SHORT=$(printf '%s' "$FILE" | awk -F/ '{n=NF; if(n>=2) printf "%s/%s", $(n-1), $n; else print $n}' | sed 's|^/||')
     emit_if_new "Writing ${SHORT}…"
   fi
   exit 0
@@ -53,6 +55,14 @@ if [ "$TOOL" = "Bash" ]; then
   # Dependency installation
   if printf '%s' "$CMD" | grep -qE 'pip install|uv install|uv sync|npm install|cargo fetch'; then
     emit_if_new "Installing dependencies…"
+
+  # Compilation (cargo build — can be the longest step for Rust projects)
+  elif printf '%s' "$CMD" | grep -qE 'cargo build'; then
+    emit_if_new "Compiling…"
+
+  # Tests
+  elif printf '%s' "$CMD" | grep -qE 'cargo test|pytest'; then
+    emit_if_new "Running tests…"
 
   # Container build (long — most important to signal early)
   elif printf '%s' "$CMD" | grep -qE 'buildah build|docker build'; then
