@@ -1,0 +1,21 @@
+skill: workspace-routing
+
+positives:
+  - "Deploy the doable UI service"
+  - "Ship the latest workstation-api build"
+  - "Provision a new claude-worker VM for a goal"
+  - "Release my NixOS config changes to the homelab"
+  - "Build a new feature in the doable frontend"
+  - "Add a new API endpoint to workstation-api"
+  - "Fix the stuck HelmRelease in monitoring namespace"
+  - "Add a SOPS secret to the cluster"
+
+hard_negatives:
+  - "Write a Python script to parse logs"     # -> local/ not dev/
+  - "Rebuild the lenovo NixOS host"           # -> homelab/ not workflow
+  - "Encrypt a new secret with SOPS"          # -> homelab/ not deploy workflow
+
+true_negatives:
+  - "What is a HelmRelease?"
+  - "Explain Flux GitOps"
+  - "Help me understand SOPS encryption"
