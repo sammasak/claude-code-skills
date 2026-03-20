@@ -48,7 +48,10 @@ if [ "$PENDING" -gt 0 ]; then
   NEXT_ID=$(echo "$NEXT_GOAL" | jq -r '.id')
   NEXT_DESC=$(echo "$NEXT_GOAL" | jq -r '.goal')
   emit_event "{\"type\":\"goal_loop\",\"phase\":2,\"pending\":$PENDING,\"next_id\":\"$NEXT_ID\"}"
-  jq -n --arg r "$PENDING pending goal(s) remain. Next goal: id=$NEXT_ID goal=\"$NEXT_DESC\". Mark it in_progress with jq and work on it." \
+  SESSION_NOTE=""
+  SESSION_FILE=$(ls -t "${WORKER_HOME}/workspace/.claude/sessions/"*.md 2>/dev/null | head -1 || echo "")
+  [ -n "$SESSION_FILE" ] && SESSION_NOTE=" Prior session state at: $SESSION_FILE — read it before starting."
+  jq -n --arg r "$PENDING pending goal(s) remain. Next goal: id=$NEXT_ID goal=\"$NEXT_DESC\". Mark it in_progress with jq and work on it.${SESSION_NOTE}" \
     '{"decision": "block", "reason": $r}'
   exit 0
 fi
