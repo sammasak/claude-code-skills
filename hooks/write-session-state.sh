@@ -21,6 +21,10 @@ LAST_GOAL=$(jq -c '[.[] | select(.status == "done")] | sort_by(.completed_at) | 
   "$GOALS_FILE" 2>/dev/null || echo "null")
 [ -z "$LAST_GOAL" ] || [ "$LAST_GOAL" = "null" ] && exit 0
 
+# Read Stop hook JSON from stdin — must be done before any other processing
+INPUT=$(cat)
+TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
+
 GOAL_ID=$(echo "$LAST_GOAL" | jq -r '.id')
 GOAL_TEXT=$(echo "$LAST_GOAL" | jq -r '.goal')
 GOAL_RESULT=$(echo "$LAST_GOAL" | jq -r '.result // "No result recorded"')
@@ -61,10 +65,7 @@ ${RECENT_FILES}
 ---
 STATEEOF
 
-# Read transcript for LLM extraction
-INPUT=$(cat /dev/stdin 2>/dev/null || echo "{}")
-TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
-
+# Use transcript path read from stdin at script start
 if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
   ASSISTANT_TURNS=$(jq -r '
     select(.type == "assistant") |
