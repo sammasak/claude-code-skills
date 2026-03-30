@@ -56,7 +56,7 @@ ${INDEX_FILES}
 Which rooms are relevant to this task? Output ONLY a space-separated list of folder paths (e.g. 'homelab dev/doable'), or output NONE if nothing is relevant. No explanation." 2>/dev/null || echo "NONE")
 
 STAGE1=$(echo "$STAGE1" | tr -d '\n' | xargs)
-[ -z "$STAGE1" ] || [ "$STAGE1" = "NONE" ] && exit 0
+([ -z "$STAGE1" ] || [ "$STAGE1" = "NONE" ]) && exit 0
 
 # --- Stage 2: Targeted read ---
 CONTEXT_CONTENT=""

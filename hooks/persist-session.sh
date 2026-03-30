@@ -19,10 +19,10 @@ INPUT=$(cat)
 TRANSCRIPT=$(echo "$INPUT" | jq -r '.transcript_path // ""' 2>/dev/null || echo "")
 SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "$$")
 
-[ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ] && exit 0
+([ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]) && exit 0
 
 # Guard: minimum 8 user messages (meaningful session)
-MSG_COUNT=$(grep -c '"type":"user"' "$TRANSCRIPT" 2>/dev/null || echo "0")
+MSG_COUNT=$(jq -r 'select(.type == "user") | .type' "$TRANSCRIPT" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
 [ "$MSG_COUNT" -lt 8 ] && exit 0
 
 DATE=$(date -u +%Y-%m-%d)
