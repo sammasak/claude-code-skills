@@ -8,7 +8,7 @@
 # Physical host ONLY (VM agents have their own CONTEXT via goal/CLAUDE.md).
 # Must complete in <5s total.
 
-set -euo pipefail
+set -uo pipefail
 
 WORKSPACE="${HOME}/workspace"
 [ -d "$WORKSPACE" ] || exit 0

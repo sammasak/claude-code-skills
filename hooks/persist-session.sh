@@ -5,7 +5,7 @@
 # Requires transcript + at least one modified file or meaningful message count.
 # Uses claude-haiku to extract: goal, outcome, key findings, decisions, files modified.
 
-set -euo pipefail
+set -uo pipefail
 
 WORKSPACE="${HOME}/workspace"
 [ -d "$WORKSPACE" ] || exit 0
@@ -82,7 +82,7 @@ Output JSON only:
 GOAL=$(echo "$SUMMARY" | jq -r '.goal // "Unknown goal"' 2>/dev/null || echo "Unknown goal")
 OUTCOME=$(echo "$SUMMARY" | jq -r '.outcome // ""' 2>/dev/null || echo "")
 PROJECT=$(echo "$SUMMARY" | jq -r '.project // "global"' 2>/dev/null || echo "global")
-SLUG=$(echo "$SUMMARY" | jq -r '.slug // "session"' 2>/dev/null | tr -cs 'a-z0-9-' '-' | sed 's/^-//;s/-$//' | cut -c1-40)
+SLUG=$(echo "$SUMMARY" | jq -r '.slug // "session"' 2>/dev/null | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9-' '-' | sed 's/^-//;s/-$//' | cut -c1-40)
 FINDINGS=$(echo "$SUMMARY" | jq -r '.key_findings[]? | "- " + .' 2>/dev/null || echo "")
 DECISIONS=$(echo "$SUMMARY" | jq -r '.decisions_made[]? | "- " + .' 2>/dev/null || echo "")
 
