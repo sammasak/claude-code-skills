@@ -1,63 +1,68 @@
 #!/usr/bin/env bash
-# PreToolUse/Bash hook: warn Claude when the same command is repeated >= 5 times
-# Exit 0 always — this is advisory only, never blocks execution
+# PreToolUse/Bash hook — detect command loops and failure-retry patterns.
+#
+# Tracks normalized commands per session. Warns at escalating thresholds.
+# Uses fuzzy matching: strips paths and flag values before comparing.
 
-set -euo pipefail
+set -uo pipefail
 
-# Require jq
-command -v jq &>/dev/null || exit 0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/state.sh" 2>/dev/null || true
+source "$SCRIPT_DIR/lib/log.sh" 2>/dev/null || true
 
-# Read tool input from stdin
+START_MS=$(($(date +%s%N) / 1000000))
+
+# Read hook JSON from stdin
 INPUT=$(cat)
+CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
+[ -z "$CMD" ] && exit 0
 
-# Extract command using jq; normalize whitespace via bash
-RAW_CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
+# Normalize command for fuzzy matching
+NORMALIZED=$(echo "$CMD" | \
+  sed 's|/[^ ]*||g' | \
+  sed 's/--[a-z-]*=[^ ]*//g' | \
+  tr -s ' ' | \
+  xargs)
+[ -z "$NORMALIZED" ] && exit 0
 
-# Normalize: collapse internal whitespace
-COMMAND=$(echo "$RAW_CMD" | tr -s '[:space:]' ' ' | sed 's/^ //;s/ $//')
+# Per-session tracking file
+LOOP_FILE="/tmp/claude-loop-${CLAUDE_SESSION_ID:-$$}.log"
 
-# Skip empty commands
-[ -z "$COMMAND" ] && exit 0
+# Append normalized command
+echo "$NORMALIZED" >> "$LOOP_FILE"
 
-# Session file — use CLAUDE_SESSION_ID if set, else fall back to fixed file
-SESSION_ID="${CLAUDE_SESSION_ID:-default}"
-SESSION_ID="${SESSION_ID//[^a-zA-Z0-9_-]/}"
-[ -z "$SESSION_ID" ] && SESSION_ID="default"
-STATE_FILE="/tmp/claude-loop-${SESSION_ID}.json"
-
-# Load or init state: { "commands": ["cmd1", "cmd2", ...] } (last 20 only)
-if [ -f "$STATE_FILE" ]; then
-    STATE=$(cat "$STATE_FILE")
-else
-    STATE='{"commands":[]}'
+# Count consecutive identical commands from the tail
+COUNT=0
+if [ -f "$LOOP_FILE" ]; then
+  COUNT=$(tac "$LOOP_FILE" | while IFS= read -r line; do
+    [ "$line" = "$NORMALIZED" ] && echo "match" || break
+  done | wc -l)
 fi
 
-# Append current command and keep last 20
-NEW_STATE=$(echo "$STATE" | jq --arg cmd "$COMMAND" \
-    '.commands += [$cmd] | .commands = (.commands | .[-20:])' \
-    2>/dev/null || echo '{"commands":[]}')
+# Update shared state
+init_state 2>/dev/null || true
+update_state ".loop_count = $COUNT" 2>/dev/null || true
 
-echo "$NEW_STATE" > "$STATE_FILE" 2>/dev/null || true
+RESULT="ok"
 
-# Count consecutive identical commands from the end
-COUNT=$(echo "$NEW_STATE" | jq --arg cmd "$COMMAND" '
-    .commands as $cmds |
-    ($cmds | length) as $len |
-    reduce range($len - 1; -1; -1) as $i (
-        {"count": 0, "done": false};
-        if .done then . else
-            if $cmds[$i] == $cmd then .count += 1
-            else .done = true
-            end
-        end
-    ) | .count
-' 2>/dev/null || echo "0")
+# Escalation thresholds
+if [ "$COUNT" -ge 12 ]; then
+  RESULT="loop-critical"
+  cat >&2 << 'WARN'
 
-# Warn at 5, 10 repetitions
-if [ "$COUNT" -ge 10 ]; then
-    echo "Warning: identical command repeated ${COUNT} times in a row. You appear to be stuck in a loop. Stop and reconsider your approach — check error messages, try a different strategy, or ask for help."
+⚠ Loop detected (12+ repetitions of the same command pattern).
+Consider using /systematic-debugging to find the root cause instead of retrying.
+
+WARN
+elif [ "$COUNT" -ge 8 ]; then
+  RESULT="loop-warning"
+  echo "⚠ Possible loop ($COUNT repetitions of similar command). Consider a different approach." >&2
 elif [ "$COUNT" -ge 5 ]; then
-    echo "Warning: identical command repeated ${COUNT} times consecutively. Consider whether a different approach is needed."
+  RESULT="loop-notice"
+  echo "⚠ Same command pattern repeated $COUNT times." >&2
 fi
+
+ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+log_hook "check-loop" "$RESULT" "$ELAPSED" "\"count\":$COUNT" 2>/dev/null || true
 
 exit 0
