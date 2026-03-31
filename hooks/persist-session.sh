@@ -98,9 +98,14 @@ PROMPT_TEXT=$(echo "$TEMPLATE" | \
   sed "s|{{ERRORS_SEEN}}|$ERRORS|g" | \
   sed "s|{{GOAL_STATUS}}|$GOAL_STATUS|g")
 
-SUMMARY=$(printf '%s\n\nGit activity:\n%s\n\nTranscript:\n%s' \
+RAW_SUMMARY=$(printf '%s\n\nGit activity:\n%s\n\nTranscript:\n%s' \
   "$PROMPT_TEXT" "${GIT_LOG:-none}" "$TURNS" | \
   claude -p --model "$HAIKU_MODEL" --max-tokens 500 2>/dev/null || echo "")
+
+# Extract JSON — claude -p may wrap response in markdown fences or explanatory text
+SUMMARY=$(echo "$RAW_SUMMARY" | jq -c '.' 2>/dev/null) || \
+SUMMARY=$(echo "$RAW_SUMMARY" | sed -n '/^```/,/^```/{//d;p}' | jq -c '.' 2>/dev/null) || \
+SUMMARY=""
 
 [ -z "$SUMMARY" ] && exit 0
 

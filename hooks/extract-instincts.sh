@@ -84,9 +84,14 @@ PROMPT=$(echo "$TEMPLATE" | sed "s|{{SCOPE}}|$SCOPE|g")
 PROMPT="${PROMPT//\{\{TURNS\}\}/$TURNS}"
 
 # Call claude-haiku to extract 0-3 atomic learnings
-EXTRACTION=$(claude -p \
+RAW=$(claude -p \
   --model claude-haiku-4-5-20251001 \
   "$PROMPT" 2>/dev/null || echo '{"learnings":[]}')
+
+# Extract JSON — claude -p may wrap response in markdown fences or explanatory text
+EXTRACTION=$(echo "$RAW" | jq -c '.' 2>/dev/null) || \
+EXTRACTION=$(echo "$RAW" | sed -n '/^```/,/^```/{//d;p}' | jq -c '.' 2>/dev/null) || \
+EXTRACTION='{"learnings":[]}'
 
 # Filter by confidence >= 3
 LEARNINGS=$(echo "$EXTRACTION" | jq -c '.learnings[]? | select(.confidence >= 3)' 2>/dev/null || echo "")
