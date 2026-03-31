@@ -22,7 +22,7 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "$$")
 ([ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]) && exit 0
 
 # Guard: minimum 8 user messages (meaningful session)
-MSG_COUNT=$(jq -r 'select(.type == "user") | .type' "$TRANSCRIPT" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+MSG_COUNT=$(jq -r 'select(.type == "user" and .userType == "external") | .type' "$TRANSCRIPT" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
 [ "$MSG_COUNT" -lt 8 ] && exit 0
 
 DATE=$(date -u +%Y-%m-%d)
@@ -40,8 +40,10 @@ TURNS=$(jq -r '
   else
     "ASSISTANT: " + (
       (.message.content // []) |
-      map(select(.type == "text") | .text) |
-      join("") | .[0:350]
+      map(if .type == "text" then .text
+          elif .type == "tool_use" then "[" + .name + "]"
+          else empty end) |
+      join(" ") | .[0:350]
     )
   end
 ' "$TRANSCRIPT" 2>/dev/null | tail -150)
@@ -49,7 +51,8 @@ TURNS=$(jq -r '
 [ -z "$TURNS" ] && exit 0
 
 # Get git diff summary for context
-SESSION_CWD=$(jq -r 'select(.cwd != null) | .cwd' "$TRANSCRIPT" 2>/dev/null | head -1 || echo "$HOME")
+SESSION_CWD=$(jq -r 'select(.type == "user" and .cwd != null) | .cwd' "$TRANSCRIPT" 2>/dev/null | head -1 || echo "")
+[ -z "$SESSION_CWD" ] && SESSION_CWD="$HOME"
 GIT_SUMMARY=""
 if GIT_ROOT=$(git -C "$SESSION_CWD" rev-parse --show-toplevel 2>/dev/null); then
   GIT_SUMMARY=$(git -C "$GIT_ROOT" diff --stat HEAD 2>/dev/null | tail -5 || echo "")
@@ -83,6 +86,9 @@ GOAL=$(echo "$SUMMARY" | jq -r '.goal // "Unknown goal"' 2>/dev/null || echo "Un
 OUTCOME=$(echo "$SUMMARY" | jq -r '.outcome // ""' 2>/dev/null || echo "")
 PROJECT=$(echo "$SUMMARY" | jq -r '.project // "global"' 2>/dev/null || echo "global")
 SLUG=$(echo "$SUMMARY" | jq -r '.slug // "session"' 2>/dev/null | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9-' '-' | sed 's/^-//;s/-$//' | cut -c1-40)
+# Sanitize for YAML frontmatter — escape double quotes
+GOAL=$(echo "$GOAL" | sed 's/"/\\"/g')
+OUTCOME=$(echo "$OUTCOME" | sed 's/"/\\"/g')
 FINDINGS=$(echo "$SUMMARY" | jq -r '.key_findings[]? | "- " + .' 2>/dev/null || echo "")
 DECISIONS=$(echo "$SUMMARY" | jq -r '.decisions_made[]? | "- " + .' 2>/dev/null || echo "")
 
