@@ -6,6 +6,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/state.sh"
+source "$SCRIPT_DIR/lib/log.sh"
+START_MS=$(($(date +%s%N) / 1000000))
+
 # Guard: physical host no-op
 WORKER_HOME="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}"
 GOALS_FILE="$WORKER_HOME/goals.json"
@@ -15,6 +20,13 @@ GOALS_FILE="$WORKER_HOME/goals.json"
 ACTIVE=$(jq '[.[] | select(.status == "pending" or .status == "in_progress")] | length' \
   "$GOALS_FILE" 2>/dev/null || echo "1")
 [ "$ACTIVE" -gt 0 ] && exit 0
+
+# Read goal_status from shared state (written by check-goals.sh earlier in Stop chain)
+init_state
+GOAL_STATUS=$(read_state '.goal_status // "n/a"' || echo "n/a")
+
+# Build goals summary from goals.json
+GOALS_SUMMARY=$(jq -r '.[] | "\(.status): \(.goal[0:80])"' "$GOALS_FILE" 2>/dev/null | head -10 || echo "n/a")
 
 # Find most recently completed goal
 LAST_GOAL=$(jq -c '[.[] | select(.status == "done")] | sort_by(.completed_at) | last' \
@@ -65,6 +77,15 @@ ${RECENT_FILES}
 ---
 STATEEOF
 
+# Load prompt template (external file with fallback)
+TEMPLATE_DIR="$HOME/workspace/workflows/hooks/write-session-state"
+if [ -f "$TEMPLATE_DIR/handoff-document.md" ]; then
+  TEMPLATE=$(cat "$TEMPLATE_DIR/handoff-document.md")
+else
+  # Inline fallback
+  TEMPLATE='Write a structured session handoff. Goal status: {{GOAL_STATUS}}. Git: {{GIT_LOG}}. Files: {{RECENT_FILES}}. Transcript: {{TURNS}}. Output markdown sections: What We Built, What Worked, What Did NOT Work, Open Questions, Next Steps.'
+fi
+
 # Use transcript path read from stdin at script start
 if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
   ASSISTANT_TURNS=$(jq -r '
@@ -75,23 +96,27 @@ if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
   ' "$TRANSCRIPT" 2>/dev/null | tail -60)
 
   if [ -n "$ASSISTANT_TURNS" ]; then
+    # Interpolate template variables
+    PROMPT_TEXT=$(echo "$TEMPLATE" | \
+      sed "s|{{GOAL_STATUS}}|$GOAL_STATUS|g" | \
+      sed "s|{{GOALS_SUMMARY}}|$GOALS_SUMMARY|g" | \
+      sed "s|{{GIT_LOG}}|$GIT_LOG|g" | \
+      sed "s|{{RECENT_FILES}}|$RECENT_FILES|g")
+
     EXTRACTION=$(claude -p \
       --model claude-haiku-4-5-20251001 \
-      "Fill in these sections for a session handoff document. Be specific and terse.
-Goal was: $GOAL_TEXT
-Transcript excerpt: $ASSISTANT_TURNS
+      "Goal was: $GOAL_TEXT
 
-Output ONLY the following sections (use ## headers exactly):
-## 1. What We Built
-## 2. What Worked
-## 3. What Did NOT Work
-## 4. What Hasn't Been Tried
-## 6. Decisions Made
-## 7. Blockers
-## 8. Exact Next Step" 2>/dev/null || echo "")
+$PROMPT_TEXT
+
+Session transcript (recent):
+$ASSISTANT_TURNS" 2>/dev/null || echo "")
 
     [ -n "$EXTRACTION" ] && echo "$EXTRACTION" >> "$STATE_FILE"
   fi
 fi
+
+ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+log_hook "write-session-state" "wrote" "$ELAPSED"
 
 exit 0
