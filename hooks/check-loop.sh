@@ -25,8 +25,9 @@ NORMALIZED=$(echo "$CMD" | \
   xargs)
 [ -z "$NORMALIZED" ] && exit 0
 
-# Per-session tracking file
+# Per-session tracking files
 LOOP_FILE="/tmp/claude-loop-${CLAUDE_SESSION_ID:-$$}.log"
+FAIL_FILE="/tmp/claude-fails-${CLAUDE_SESSION_ID:-$$}.log"
 
 # Append normalized command
 echo "$NORMALIZED" >> "$LOOP_FILE"
@@ -39,13 +40,30 @@ if [ -f "$LOOP_FILE" ]; then
   done | wc -l)
 fi
 
+# --- Failure-retry detection ---
+# Check if the last command's exit code was non-zero (tracked by PostToolUse or previous run)
+# Read consecutive failure count for this normalized command
+FAIL_COUNT=0
+if [ -f "$FAIL_FILE" ]; then
+  FAIL_COUNT=$(tac "$FAIL_FILE" | while IFS= read -r line; do
+    [ "$line" = "FAIL:$NORMALIZED" ] && echo "match" || break
+  done | wc -l)
+fi
+
 # Update shared state
 init_state 2>/dev/null || true
 update_state ".loop_count = $COUNT" 2>/dev/null || true
 
 RESULT="ok"
 
-# Escalation thresholds
+# Failure-retry escalation (3+ consecutive failures of same command)
+if [ "$FAIL_COUNT" -ge 3 ]; then
+  RESULT="failure-retry"
+  echo "⚠ Same command has failed $FAIL_COUNT consecutive times. Try a different approach." >&2
+  inc_state 'errors_seen' 2>/dev/null || true
+fi
+
+# Repetition escalation thresholds
 if [ "$COUNT" -ge 12 ]; then
   RESULT="loop-critical"
   cat >&2 << 'WARN'
@@ -54,9 +72,11 @@ if [ "$COUNT" -ge 12 ]; then
 Consider using /systematic-debugging to find the root cause instead of retrying.
 
 WARN
+  inc_state 'errors_seen' 2>/dev/null || true
 elif [ "$COUNT" -ge 8 ]; then
   RESULT="loop-warning"
   echo "⚠ Possible loop ($COUNT repetitions of similar command). Consider a different approach." >&2
+  inc_state 'errors_seen' 2>/dev/null || true
 elif [ "$COUNT" -ge 5 ]; then
   RESULT="loop-notice"
   echo "⚠ Same command pattern repeated $COUNT times." >&2
