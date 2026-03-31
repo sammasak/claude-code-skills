@@ -9,6 +9,12 @@
 #
 # Output: JSON {"decision": "block", "reason": "..."} or exit 0 to approve
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/state.sh" 2>/dev/null || true
+source "$SCRIPT_DIR/lib/log.sh" 2>/dev/null || true
+init_state 2>/dev/null || true
+START_MS=$(($(date +%s%N) / 1000000))
+
 GOALS_FILE="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json"
 REVIEW_START_FILE="/tmp/claude-worker-review-started"
 REVIEW_TIMEOUT=300  # 5 minutes
@@ -22,6 +28,8 @@ emit_event() {
 }
 
 if [ ! -f "$GOALS_FILE" ]; then
+  ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+  log_hook "check-goals" "no-goals-file" "$ELAPSED" 2>/dev/null || true
   exit 0
 fi
 
@@ -34,6 +42,9 @@ if [ "$IN_PROGRESS" -gt 0 ]; then
   STUCK_ID=$(echo "$STUCK" | jq -r '.id')
   STUCK_DESC=$(echo "$STUCK" | jq -r '.goal')
   emit_event "{\"type\":\"goal_loop\",\"phase\":1,\"goal_id\":\"$STUCK_ID\"}"
+  update_state '.goal_status = "in_progress"' 2>/dev/null || true
+  ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+  log_hook "check-goals" "in_progress" "$ELAPSED" 2>/dev/null || true
   jq -n --arg r "Goal id=$STUCK_ID is in_progress and needs completion. goal=\"$STUCK_DESC\". Continue working on it." \
     '{"decision": "block", "reason": $r}'
   exit 0
@@ -48,6 +59,9 @@ if [ "$PENDING" -gt 0 ]; then
   NEXT_ID=$(echo "$NEXT_GOAL" | jq -r '.id')
   NEXT_DESC=$(echo "$NEXT_GOAL" | jq -r '.goal')
   emit_event "{\"type\":\"goal_loop\",\"phase\":2,\"pending\":$PENDING,\"next_id\":\"$NEXT_ID\"}"
+  update_state '.goal_status = "started"' 2>/dev/null || true
+  ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+  log_hook "check-goals" "started" "$ELAPSED" 2>/dev/null || true
   SESSION_NOTE=""
   SESSION_FILE=$(ls -t "${WORKER_HOME}/workspace/.claude/sessions/"*.md 2>/dev/null | head -1 || echo "")
   [ -n "$SESSION_FILE" ] && SESSION_NOTE=" Prior session state at: $SESSION_FILE — read it before starting."
@@ -82,6 +96,7 @@ if [ -f "$REVIEW_START_FILE" ]; then
         && mv /tmp/goals-timeout.tmp "$GOALS_FILE"
     fi
     rm -f "$REVIEW_START_FILE"
+    update_state '.goal_status = "auto-approved"' 2>/dev/null || true
     # Fall through — Phase 3 check below will now find no unreviewed goals
   fi
 fi
@@ -92,6 +107,14 @@ UNREVIEWED_COUNT=$(echo "$UNREVIEWED" | jq 'length' 2>/dev/null || echo "0")
 if [ "$UNREVIEWED_COUNT" -eq 0 ]; then
   rm -f "$REVIEW_START_FILE"
   emit_event "{\"type\":\"session_end\"}"
+  GOAL_STATUS=$(read_state '.goal_status // "none"' 2>/dev/null || echo "none")
+  # auto-approved was already set above if timeout triggered; otherwise mark completed
+  if [ "$GOAL_STATUS" = "none" ] || [ "$GOAL_STATUS" = "null" ]; then
+    update_state '.goal_status = "completed"' 2>/dev/null || true
+  fi
+  ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+  GOAL_STATUS=$(read_state '.goal_status // "none"' 2>/dev/null || echo "none")
+  log_hook "check-goals" "$GOAL_STATUS" "$ELAPSED" 2>/dev/null || true
   exit 0
 fi
 
@@ -120,5 +143,8 @@ Use Bash to update $GOALS_FILE for each goal:
 The next stop hook will automatically pick up any new pending fix goals."
 
 emit_event "{\"type\":\"review_start\",\"count\":$UNREVIEWED_COUNT}"
+update_state '.goal_status = "reviewing"' 2>/dev/null || true
+ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+log_hook "check-goals" "reviewing" "$ELAPSED" 2>/dev/null || true
 jq -n --arg r "$REASON" '{"decision": "block", "reason": $r}'
 exit 0
