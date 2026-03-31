@@ -9,6 +9,11 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/state.sh"
+source "$SCRIPT_DIR/lib/log.sh"
+START_MS=$(($(date +%s%N) / 1000000))
+
 # Guard: VM no-op (claude-worker VMs have goals.json, physical host does not)
 WORKER_HOME="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}"
 [ -f "$WORKER_HOME/goals.json" ] && exit 0
@@ -66,28 +71,51 @@ TURNS=$(jq -r '
 
 [ -z "$TURNS" ] && exit 0
 
+# Load prompt template (external file with inline fallback)
+TEMPLATE_DIR="$HOME/workspace/workflows/hooks/extract-instincts"
+if [ -f "$TEMPLATE_DIR/extract-learnings.md" ]; then
+  TEMPLATE=$(cat "$TEMPLATE_DIR/extract-learnings.md")
+else
+  TEMPLATE='Extract 0-3 atomic, reusable learnings. Transcript: {{TURNS}}. Output JSON: {"learnings":[{"title":"...","content":"...","scope":"{{SCOPE}}","confidence":4,"keywords":["kw1"]}]}'
+fi
+
+# Substitute template variables
+PROMPT=$(echo "$TEMPLATE" | sed "s|{{SCOPE}}|$SCOPE|g")
+PROMPT="${PROMPT//\{\{TURNS\}\}/$TURNS}"
+
 # Call claude-haiku to extract 0-3 atomic learnings
 EXTRACTION=$(claude -p \
   --model claude-haiku-4-5-20251001 \
-  "You are reviewing a Claude Code session transcript. Extract 0-3 atomic learnings that are:
-- Specific to the project/codebase being worked on (scope: $SCOPE)
-- Actionable (trigger + action, not general advice)
-- Worth remembering in future sessions
+  "$PROMPT" 2>/dev/null || echo '{"learnings":[]}')
 
-Output ONLY a JSON array. Each item: {\"title\": \"short title\", \"body\": \"one paragraph with specific details\"}
-If nothing is worth extracting, output: []
-
-TRANSCRIPT:
-$TURNS" 2>/dev/null || echo "[]")
+# Filter by confidence >= 3
+LEARNINGS=$(echo "$EXTRACTION" | jq -c '.learnings[]? | select(.confidence >= 3)' 2>/dev/null)
 
 # Parse and write each learning as a SKILL.md
 DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 SHORT_DATE=$(date -u +%Y%m%d)
+EXPIRY_DATE=$(date -u -d "+30 days" +%Y-%m-%d 2>/dev/null || date -u -v+30d +%Y-%m-%d 2>/dev/null || echo "2026-04-30")
+WRITTEN_COUNT=0
 
-echo "$EXTRACTION" | jq -c '.[]' 2>/dev/null | while IFS= read -r entry; do
+while IFS= read -r entry; do
+  [ -z "$entry" ] && continue
+
   TITLE=$(echo "$entry" | jq -r '.title // ""')
-  BODY=$(echo "$entry" | jq -r '.body // ""')
+  BODY=$(echo "$entry" | jq -r '.content // ""')
+  KEYWORDS=$(echo "$entry" | jq -r '.keywords | join(",")' 2>/dev/null || echo "")
   [ -z "$TITLE" ] || [ -z "$BODY" ] && continue
+
+  # Dedup: skip if >70% keyword overlap with existing files
+  SKIP=false
+  for existing in "$LEARNED_DIR"/*.md; do
+    [ -f "$existing" ] || continue
+    EXISTING_KW=$(grep "^# keywords:" "$existing" 2>/dev/null | sed 's/^# keywords: //')
+    [ -z "$EXISTING_KW" ] && continue
+    MATCH=$(comm -12 <(echo "$KEYWORDS" | tr ',' '\n' | sort) <(echo "$EXISTING_KW" | tr ',' '\n' | sort) | wc -l)
+    TOTAL=$(echo "$KEYWORDS" | tr ',' '\n' | wc -l)
+    [ "$TOTAL" -gt 0 ] && [ $((MATCH * 100 / TOTAL)) -gt 70 ] && SKIP=true && break
+  done
+  "$SKIP" && continue
 
   SLUG=$(echo "$TITLE" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9-' '-' | sed 's/^-//;s/-$//' | cut -c1-40)
   SKILL_FILE="$LEARNED_DIR/${SHORT_DATE}-${SLUG}.md"
@@ -95,6 +123,8 @@ echo "$EXTRACTION" | jq -c '.[]' 2>/dev/null | while IFS= read -r entry; do
   NAME="learned-${SCOPE}-${SLUG}"
 
   cat > "$SKILL_FILE" << SKILLEOF
+# expires: ${EXPIRY_DATE}
+# keywords: ${KEYWORDS}
 ---
 name: ${NAME}
 description: "${DESCRIPTION}"
@@ -109,6 +139,11 @@ scope: "${SCOPE}"
 ${BODY}
 SKILLEOF
 
-done
+  WRITTEN_COUNT=$((WRITTEN_COUNT + 1))
+done <<< "$LEARNINGS"
+
+RESULT="ok"
+ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+log_hook "extract-instincts" "$RESULT" "$ELAPSED" "\"learnings_written\":${WRITTEN_COUNT:-0}"
 
 exit 0
