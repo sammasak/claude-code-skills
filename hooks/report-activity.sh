@@ -2,14 +2,29 @@
 # PreToolUse hook: automatic activity reporting
 # Fires before Bash/Write/Edit/MultiEdit tool calls.
 # Maps meaningful operations to human-readable progress messages.
+# On VMs: POSTs activity to claude-worker API.
+# On physical hosts: logs to hook log + tracks tool counts in state.
 # Exits 0 always — never blocks execution.
 
-# Only active on claude-worker VMs
-WORKER_HOME="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}"
-[ -d "$WORKER_HOME" ] || exit 0
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 TOOL="${CLAUDE_TOOL_NAME:-}"
 INPUT="${CLAUDE_TOOL_INPUT:-}"
+
+# ── Physical host: log to hook log, no API call ─────────────────────────────
+WORKER_HOME="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}"
+if [ ! -d "$WORKER_HOME" ] || [ ! -f "$WORKER_HOME/goals.json" ]; then
+  source "$SCRIPT_DIR/lib/log.sh" 2>/dev/null || exit 0
+  source "$SCRIPT_DIR/lib/state.sh" 2>/dev/null || exit 0
+  init_state 2>/dev/null || true
+  # Increment tool count in state
+  TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // "unknown"' 2>/dev/null || echo "unknown")
+  update_state ".tools_used.\"$TOOL_NAME\" = ((.tools_used.\"$TOOL_NAME\" // 0) + 1)" 2>/dev/null || true
+  # Generate activity message same as VM path would
+  MESSAGE=$(echo "$INPUT" | jq -r '.tool_name // "working"' 2>/dev/null || echo "working")
+  log_hook "activity" "$MESSAGE" 0 "\"tool\":\"$TOOL_NAME\"" 2>/dev/null || true
+  exit 0
+fi
 
 # ── Deduplication: skip if we sent the same message within 30 seconds ──────
 SAFE_SESSION="${CLAUDE_SESSION_ID:-$$}"
