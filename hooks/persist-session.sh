@@ -4,6 +4,10 @@
 # Physical host ONLY. Fires after check-goals.sh.
 # Requires transcript + at least one modified file or meaningful message count.
 # Uses claude-haiku to extract: goal, outcome, key findings, decisions, files modified.
+#
+# Note: session files are committed but not pushed. Run 'cd ~/workspace && git push'
+# periodically to sync session history to remote. Pushing in the hook adds network
+# dependency to the Stop chain which would delay Claude Code shutdown.
 
 set -uo pipefail
 
@@ -55,7 +59,7 @@ SESSION_CWD=$(jq -r 'select(.type == "user" and .cwd != null) | .cwd' "$TRANSCRI
 [ -z "$SESSION_CWD" ] && SESSION_CWD="$HOME"
 GIT_SUMMARY=""
 if GIT_ROOT=$(git -C "$SESSION_CWD" rev-parse --show-toplevel 2>/dev/null); then
-  GIT_SUMMARY=$(git -C "$GIT_ROOT" diff --stat HEAD 2>/dev/null | tail -5 || echo "")
+  GIT_SUMMARY=$(git -C "$GIT_ROOT" log --oneline --since="6 hours ago" 2>/dev/null | head -10 || echo "")
 fi
 
 # Call Haiku to extract session summary
@@ -89,6 +93,7 @@ SLUG=$(echo "$SUMMARY" | jq -r '.slug // "session"' 2>/dev/null | tr 'A-Z' 'a-z'
 # Sanitize for YAML frontmatter — escape double quotes
 GOAL=$(echo "$GOAL" | sed 's/"/\\"/g')
 OUTCOME=$(echo "$OUTCOME" | sed 's/"/\\"/g')
+PROJECT=$(echo "$PROJECT" | sed 's/"/\\"/g')
 FINDINGS=$(echo "$SUMMARY" | jq -r '.key_findings[]? | "- " + .' 2>/dev/null || echo "")
 DECISIONS=$(echo "$SUMMARY" | jq -r '.decisions_made[]? | "- " + .' 2>/dev/null || echo "")
 
@@ -101,7 +106,7 @@ cat > "$SESSION_FILE" << SESSIONEOF
 ---
 date: ${DATE}
 type: ai-session
-project: ${PROJECT}
+project: "${PROJECT}"
 goal: "${GOAL}"
 outcome: "${OUTCOME}"
 session_id: ${SESSION_ID}
