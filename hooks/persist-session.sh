@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Stop hook — write AI session record to ~/workspace/sessions/ai-sessions/.
 #
-# Physical host ONLY. Fires after check-goals.sh.
-# Requires transcript + at least one modified file or meaningful message count.
-# Uses claude-haiku to extract: goal, outcome, key findings, decisions, files modified.
+# Physical host ONLY. Fires first in the Stop chain.
+# Uses prompt template from ~/workspace/workflows/hooks/persist-session/.
+# Enriched with shared state (topic, repos, tools, errors).
 #
 # Note: session files are committed but not pushed. Run 'cd ~/workspace && git push'
 # periodically to sync session history to remote. Pushing in the hook adds network
@@ -11,7 +11,16 @@
 
 set -uo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/state.sh"
+source "$SCRIPT_DIR/lib/log.sh"
+
+START_MS=$(($(date +%s%N) / 1000000))
+
 WORKSPACE="${HOME}/workspace"
+HAIKU_MODEL="claude-haiku-4-5-20251001"
+TEMPLATE_DIR="$WORKSPACE/workflows/hooks/persist-session"
+
 [ -d "$WORKSPACE" ] || exit 0
 
 # Guard: VM no-op
@@ -25,9 +34,12 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "$$")
 
 ([ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]) && exit 0
 
-# Guard: minimum 8 user messages (meaningful session)
-MSG_COUNT=$(jq -r 'select(.type == "user" and .userType == "external") | .type' "$TRANSCRIPT" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
+# Guard: minimum 8 external user messages
+MSG_COUNT=$(jq -r 'select(.type == "user") | .type' "$TRANSCRIPT" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
 [ "$MSG_COUNT" -lt 8 ] && exit 0
+
+# Init state (may already exist from session)
+init_state
 
 DATE=$(date -u +%Y-%m-%d)
 DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -44,9 +56,11 @@ TURNS=$(jq -r '
   else
     "ASSISTANT: " + (
       (.message.content // []) |
-      map(if .type == "text" then .text
-          elif .type == "tool_use" then "[" + .name + "]"
-          else empty end) |
+      map(
+        if .type == "text" then .text
+        elif .type == "tool_use" then "[" + .name + "]"
+        else empty end
+      ) |
       join(" ") | .[0:350]
     )
   end
@@ -54,52 +68,55 @@ TURNS=$(jq -r '
 
 [ -z "$TURNS" ] && exit 0
 
-# Get git diff summary for context
-SESSION_CWD=$(jq -r 'select(.type == "user" and .cwd != null) | .cwd' "$TRANSCRIPT" 2>/dev/null | head -1 || echo "")
+# Get git log for session period
+SESSION_CWD=$(jq -r 'select(.type == "user" and .cwd != null) | .cwd' "$TRANSCRIPT" 2>/dev/null | head -1 || echo "$HOME")
 [ -z "$SESSION_CWD" ] && SESSION_CWD="$HOME"
-GIT_SUMMARY=""
+GIT_LOG=""
 if GIT_ROOT=$(git -C "$SESSION_CWD" rev-parse --show-toplevel 2>/dev/null); then
-  GIT_SUMMARY=$(git -C "$GIT_ROOT" log --oneline --since="6 hours ago" 2>/dev/null | head -10 || echo "")
+  GIT_LOG=$(git -C "$GIT_ROOT" log --oneline --since="6 hours ago" 2>/dev/null | head -10 || echo "")
 fi
 
-# Call Haiku to extract session summary
-SUMMARY=$(claude -p \
-  --model claude-haiku-4-5-20251001 \
-  --max-tokens 400 \
-  "Summarise this Claude Code session for a knowledge vault record.
+# Read enrichment from shared state
+TOPIC=$(read_state '.retrieve.rooms_activated // [] | join(", ")' || echo "unknown")
+REPOS=$(read_state '.repos_touched // [] | join(", ")' || echo "none")
+TOOLS=$(read_state '.tools_used // {} | to_entries | map(.key + ":" + (.value|tostring)) | join(", ")' || echo "none")
+ERRORS=$(read_state '.errors_seen // 0' || echo "0")
+GOAL_STATUS=$(read_state '.goal_status // "n/a"' || echo "n/a")
 
-Git changes:
-${GIT_SUMMARY:-none}
+# Read prompt template
+if [ -f "$TEMPLATE_DIR/extract-summary.md" ]; then
+  TEMPLATE=$(cat "$TEMPLATE_DIR/extract-summary.md")
+else
+  TEMPLATE='Summarise this Claude Code session. Git: {{GIT_LOG}}. Transcript: {{TURNS}}. Output JSON: {"goal":"...","outcome":"...","project":"...","key_findings":[],"decisions_made":[],"what_worked":[],"what_didnt_work":[],"not_tried":[],"slug":"..."}'
+fi
 
-Session transcript (recent):
-${TURNS}
+# Build prompt with interpolated state values
+PROMPT_TEXT=$(echo "$TEMPLATE" | \
+  sed "s|{{TOPIC}}|$TOPIC|g" | \
+  sed "s|{{REPOS_TOUCHED}}|$REPOS|g" | \
+  sed "s|{{TOOLS_USED}}|$TOOLS|g" | \
+  sed "s|{{ERRORS_SEEN}}|$ERRORS|g" | \
+  sed "s|{{GOAL_STATUS}}|$GOAL_STATUS|g")
 
-Output JSON only:
-{
-  \"goal\": \"one sentence\",
-  \"outcome\": \"one sentence\",
-  \"project\": \"project name or global\",
-  \"key_findings\": [\"finding 1\", \"finding 2\"],
-  \"decisions_made\": [\"decision 1\"],
-  \"slug\": \"short-kebab-case-topic\"
-}" 2>/dev/null || echo "")
+SUMMARY=$(printf '%s\n\nGit activity:\n%s\n\nTranscript:\n%s' \
+  "$PROMPT_TEXT" "${GIT_LOG:-none}" "$TURNS" | \
+  claude -p --model "$HAIKU_MODEL" --max-tokens 500 2>/dev/null || echo "")
 
 [ -z "$SUMMARY" ] && exit 0
 
-GOAL=$(echo "$SUMMARY" | jq -r '.goal // "Unknown goal"' 2>/dev/null || echo "Unknown goal")
-OUTCOME=$(echo "$SUMMARY" | jq -r '.outcome // ""' 2>/dev/null || echo "")
-PROJECT=$(echo "$SUMMARY" | jq -r '.project // "global"' 2>/dev/null || echo "global")
+# Parse JSON fields with sanitization
+GOAL=$(echo "$SUMMARY" | jq -r '.goal // "Unknown goal"' 2>/dev/null | sed 's/"/\\"/g' || echo "Unknown goal")
+OUTCOME=$(echo "$SUMMARY" | jq -r '.outcome // ""' 2>/dev/null | sed 's/"/\\"/g' || echo "")
+PROJECT=$(echo "$SUMMARY" | jq -r '.project // "global"' 2>/dev/null | sed 's/"/\\"/g' || echo "global")
 SLUG=$(echo "$SUMMARY" | jq -r '.slug // "session"' 2>/dev/null | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9-' '-' | sed 's/^-//;s/-$//' | cut -c1-40)
-# Sanitize for YAML frontmatter — escape double quotes
-GOAL=$(echo "$GOAL" | sed 's/"/\\"/g')
-OUTCOME=$(echo "$OUTCOME" | sed 's/"/\\"/g')
-PROJECT=$(echo "$PROJECT" | sed 's/"/\\"/g')
 FINDINGS=$(echo "$SUMMARY" | jq -r '.key_findings[]? | "- " + .' 2>/dev/null || echo "")
 DECISIONS=$(echo "$SUMMARY" | jq -r '.decisions_made[]? | "- " + .' 2>/dev/null || echo "")
+WORKED=$(echo "$SUMMARY" | jq -r '.what_worked[]? | "- " + .' 2>/dev/null || echo "")
+DIDNT_WORK=$(echo "$SUMMARY" | jq -r '.what_didnt_work[]? | "- " + .' 2>/dev/null || echo "")
+NOT_TRIED=$(echo "$SUMMARY" | jq -r '.not_tried[]? | "- " + .' 2>/dev/null || echo "")
 
 SESSION_DIR="$WORKSPACE/sessions/ai-sessions"
 mkdir -p "$SESSION_DIR"
-
 SESSION_FILE="$SESSION_DIR/${DATE}-${SLUG}.md"
 
 cat > "$SESSION_FILE" << SESSIONEOF
@@ -126,9 +143,21 @@ ${FINDINGS:-None recorded.}
 
 ${DECISIONS:-None recorded.}
 
-## Git Changes
+## What Worked
 
-${GIT_SUMMARY:-No git changes.}
+${WORKED:-None recorded.}
+
+## What Didn't Work
+
+${DIDNT_WORK:-None recorded.}
+
+## Not Yet Tried
+
+${NOT_TRIED:-None recorded.}
+
+## Git Activity
+
+${GIT_LOG:-No git activity.}
 SESSIONEOF
 
 # Commit the session record
@@ -136,5 +165,8 @@ cd "$WORKSPACE"
 git add "sessions/ai-sessions/${DATE}-${SLUG}.md" 2>/dev/null || true
 git diff --cached --quiet 2>/dev/null || \
   git commit -m "session: ${DATE} — ${SLUG}" 2>/dev/null || true
+
+ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
+log_hook "persist-session" "wrote" "$ELAPSED" "\"file\":\"sessions/ai-sessions/${DATE}-${SLUG}.md\""
 
 exit 0
