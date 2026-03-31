@@ -89,7 +89,7 @@ EXTRACTION=$(claude -p \
   "$PROMPT" 2>/dev/null || echo '{"learnings":[]}')
 
 # Filter by confidence >= 3
-LEARNINGS=$(echo "$EXTRACTION" | jq -c '.learnings[]? | select(.confidence >= 3)' 2>/dev/null)
+LEARNINGS=$(echo "$EXTRACTION" | jq -c '.learnings[]? | select(.confidence >= 3)' 2>/dev/null || echo "")
 
 # Parse and write each learning as a SKILL.md
 DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
