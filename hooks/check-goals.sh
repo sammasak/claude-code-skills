@@ -16,6 +16,7 @@ init_state 2>/dev/null || true
 START_MS=$(($(date +%s%N) / 1000000))
 
 GOALS_FILE="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json"
+WORKER_HOME="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}"
 REVIEW_START_FILE="/tmp/claude-worker-review-started"
 REVIEW_TIMEOUT=300  # 5 minutes
 

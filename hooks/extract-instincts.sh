@@ -4,7 +4,7 @@
 #
 # Physical host ONLY (guard: exits immediately on VMs).
 # Requires >=15 user messages in the transcript.
-# Fires AFTER check-goals.sh in the Stop hook chain.
+# Fires BEFORE check-goals.sh in the Stop hook chain.
 # Uses claude-haiku for cheap extraction.
 
 set -euo pipefail
