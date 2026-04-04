@@ -17,7 +17,7 @@ START_MS=$(($(date +%s%N) / 1000000))
 
 GOALS_FILE="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json"
 WORKER_HOME="${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}"
-REVIEW_START_FILE="/tmp/claude-worker-review-started"
+REVIEW_START_FILE="/tmp/claude-worker-review-started-${CLAUDE_SESSION_ID:-$$}"
 REVIEW_TIMEOUT=300  # 5 minutes
 
 emit_event() {

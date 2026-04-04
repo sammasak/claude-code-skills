@@ -32,7 +32,7 @@ if [ -z "$CMD" ]; then
 fi
 
 # Agent-specific rules: only enforce on claude-worker VMs
-if [ -d "${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}" ]; then
+if [ -f "${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json" ]; then
   # Block: cargo build without musl target
   # Rust binaries must be statically linked for container compatibility.
   if echo "$CMD" | grep -qE "cargo build|cargo test" && ! echo "$CMD" | grep -qE "musl|x86_64-unknown-linux-musl"; then
