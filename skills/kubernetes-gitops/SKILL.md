@@ -45,12 +45,19 @@ infrastructure/controllers/            # shared infra
 ```yaml
 spec:
   interval: 30m
-  chart.spec:
-    version: "1.x"                    # semver range
-  valuesFrom: [{kind: ConfigMap}]     # values in Git, not inline
-  install.remediation.retries: 3
-  upgrade.remediation.remediateLastFailure: true
-  driftDetection.mode: enabled
+  chart:
+    spec:
+      version: "1.x"                  # semver range
+  valuesFrom:
+    - kind: ConfigMap                 # values in Git, not inline
+  install:
+    remediation:
+      retries: 3
+  upgrade:
+    remediation:
+      remediateLastFailure: true
+  driftDetection:
+    mode: enabled
 ```
 
 ### Workload Requirements

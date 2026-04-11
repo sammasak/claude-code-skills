@@ -1,6 +1,6 @@
 ---
 name: secrets-management
-description: "Use when handling secrets, encryption keys, credentials, tokens, or sensitive configuration. Guides SOPS encryption workflows, Kubernetes secret patterns, and secret hygiene."
+description: "Use when encrypting secrets with SOPS/age, managing Kubernetes Secret manifests, rotating credentials, or setting up secret delivery (sops-nix, sealed secrets). Not for application code that reads env vars or auth tokens at runtime."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---
