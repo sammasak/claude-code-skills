@@ -9,150 +9,94 @@ injectable: true
 
 Manage Kubernetes clusters declaratively through Git-driven reconciliation loops.
 
-**CRITICAL: Never push changes directly to the cluster from a workstation in production.** All production changes must go through Git. Direct `kubectl apply` creates invisible drift that the controller will fight against.
+**CRITICAL: Never push changes directly to the cluster from a workstation.** All changes must go through Git — direct `kubectl apply` creates invisible drift the controller will fight against.
 
 **IMPORTANT: Always run `flux diff kustomization <name>` before reconciling.** Preview changes to avoid accidentally applying destructive patches.
 
-**NOTE:** Flux v2.7+ supports global SOPS decryption via `--sops-age-secret` controller flag, eliminating per-Kustomization decryption config.
+**NOTE:** Flux v2.7+ supports global SOPS decryption via `--sops-age-secret` controller flag.
 
 ## Principles
 
-- **Git is the single source of truth** -- desired state lives in version control
-- **Pull-based reconciliation** -- the cluster pulls state from Git; CI never pushes
-- **Drift detection and self-healing** -- controllers converge actual toward declared state
-- **Declarative desired state** -- describe *what*, never script *how*
-- **Separation of concerns** -- CI builds artifacts; GitOps deploys them
+- **Git is the single source of truth** — desired state lives in version control
+- **Pull-based reconciliation** — the cluster pulls from Git; CI never pushes
+- **Drift detection** — controllers converge actual toward declared state
+- **Declarative desired state** — describe *what*, never script *how*
 
-## Standards
-
-### Repository structure
+## Repository Structure
 
 ```
-clusters/<cluster>/flux-system/        # Flux entrypoint per cluster
-clusters/<cluster>/infrastructure.yaml # Kustomization ordering infra before apps
-clusters/<cluster>/apps.yaml
-infrastructure/controllers/            # Shared infra (ingress, cert-manager, etc.)
-infrastructure/configs/                # Cluster-wide configs (PSS, network policies)
-apps/base/                             # Kustomize bases per app
-apps/overlays/{staging,production}/
+clusters/<cluster>/flux-system/        # Flux entrypoint
+clusters/<cluster>/infrastructure.yaml # ordering: infra before apps
+apps/base/                             # Kustomize bases
+apps/overlays/{staging,production}/    # env-specific patches
+infrastructure/controllers/            # shared infra
 ```
 
-### Kustomization layering
+### Kustomization Layering
 
-| Layer | Purpose | Example |
-|---|---|---|
-| `base/` | App defaults, common labels, base manifests | Deployment, Service, HPA |
-| `overlays/<env>/` | Env-specific patches, replicas, limits | Production replica bump |
-| `clusters/<name>/` | Cluster bindings, Flux orchestration | Dependency ordering, SOPS refs |
+| Layer | Purpose |
+|---|---|
+| `base/` | App defaults, common labels, base manifests |
+| `overlays/<env>/` | Env-specific patches, replicas, limits |
+| `clusters/<name>/` | Cluster bindings, Flux orchestration |
 
-### HelmRelease pattern
+### HelmRelease (key fields)
 
 ```yaml
-apiVersion: helm.toolkit.fluxcd.io/v2
-kind: HelmRelease
-metadata:
-  name: app
 spec:
   interval: 30m
-  chart:
-    spec:
-      chart: app
-      version: "1.x"          # semver range, not floating tags
-      sourceRef:
-        kind: HelmRepository
-        name: app-repo
-  valuesFrom:
-    - kind: ConfigMap
-      name: app-values        # keep values in Git, not inline
-  install:
-    remediation:
-      retries: 3
-  upgrade:
-    remediation:
-      retries: 3
-      remediateLastFailure: true
-  driftDetection:
-    mode: enabled
+  chart.spec:
+    version: "1.x"                    # semver range
+  valuesFrom: [{kind: ConfigMap}]     # values in Git, not inline
+  install.remediation.retries: 3
+  upgrade.remediation.remediateLastFailure: true
+  driftDetection.mode: enabled
 ```
 
-### Workload requirements
+### Workload Requirements
 
 - [ ] `resources.requests` and `resources.limits` on every container
 - [ ] `readinessProbe` and `livenessProbe` on every Deployment
-- [ ] Namespace has Pod Security Standard label (`enforce: restricted` or `baseline`)
-- [ ] ServiceAccount per workload, never `default`; NetworkPolicy restricting ingress/egress
+- [ ] Namespace Pod Security Standard label (`restricted` or `baseline`)
+- [ ] Per-workload ServiceAccount; NetworkPolicy restricting ingress/egress
 
 ## Workflow
 
-### Cluster health check
-
 ```bash
-flux check                                             # Flux component versions and health
-kubectl get nodes -o wide                              # node status and versions
-kubectl get pods -A --field-selector status.phase!=Running | grep -v Completed
-flux get all -A                                        # reconciliation status
-flux get sources all -A                                # source freshness
-flux logs --all-namespaces --level=error               # recent error logs across controllers
+# Health check
+flux check && kubectl get nodes -o wide
+flux get all -A && flux logs --all-namespaces --level=error
+
+# Force reconciliation
+flux diff kustomization <name>
+flux reconcile source git flux-system
+flux reconcile kustomization flux-system --with-source
+
+# Debug failed HelmRelease
+flux logs --kind=HelmRelease --name=<name> -n <ns>
+helm history <name> -n <ns>
+kubectl describe helmrelease <name> -n <ns>
+
+# Rollback
+sudo nixos-rebuild switch --rollback    # NixOS hosts
+helm rollback <name> <revision> -n <ns> # Helm releases
 ```
-
-### Force Flux reconciliation
-
-```bash
-flux diff kustomization <name>                       # preview changes before reconciliation
-flux reconcile source git flux-system               # pull latest from Git now
-flux reconcile kustomization flux-system --with-source  # reconcile full tree
-flux reconcile helmrelease <name> -n <ns>            # retry a specific release
-```
-
-### Flux API migration
-
-```bash
-flux migrate -v 2.6 -f .                            # migrate manifests to stable APIs before upgrading
-```
-
-### Debug a failed HelmRelease
-
-```bash
-flux logs --kind=HelmRelease --name=<name> -n <ns>  # controller logs
-flux get helmrelease <name> -n <ns>                  # status and last revision
-helm history <name> -n <ns>                          # rollback candidates
-kubectl describe helmrelease <name> -n <ns>          # events and conditions
-```
-
-### Image update automation
-
-> Image Automation APIs are GA at `image.toolkit.fluxcd.io/v1` since Flux 2.7.
-
-```bash
-# 1. ImageRepository (scan) -> 2. ImagePolicy (semver filter)
-# 3. Mark manifests with `# {"$imagepolicy": "ns:policy"}`
-# 4. ImageUpdateAutomation commits changes back to Git
-flux get images all -A
-```
-
-> Flux supports `OCIRepository` sources as an alternative to Git for OCI-stored configs.
 
 ## Patterns We Use
 
 | Choice | Over | Why |
 |---|---|---|
 | **FluxCD** | ArgoCD | Lightweight, pure K8s CRDs, composable with Kustomize |
-| **SOPS + age** | Sealed Secrets / Vault | Encrypted secrets in Git; age keys simple; no extra controller |
-| **Gateway API + Envoy Gateway** | ingress-nginx (retired March 2026) | Future-proof K8s-native routing, role-based config, expressive L7 features |
-| **MetalLB** | cloud LB | Bare-metal L2/BGP advertisement for LoadBalancer Services |
-| **KubeVirt** | separate hypervisor | VM workloads alongside containers on the same cluster |
-| **Nix flake dev shell** | manual tool install | `nix develop` pins kubectl, helm, flux, sops, age, just |
-
-> cert-manager works with Gateway API via native `gateway.networking.k8s.io` integration.
+| **SOPS + age** | Sealed Secrets / Vault | Encrypted in Git; no extra controller |
+| **Gateway API + Envoy Gateway** | ingress-nginx (retired) | K8s-native routing, L7 features |
+| **MetalLB** | cloud LB | Bare-metal L2/BGP for LoadBalancer Services |
+| **KubeVirt** | separate hypervisor | VMs alongside containers on same cluster |
 
 ## Anti-Patterns
-- **Do not claim a rollout succeeded because `kubectl apply` exited 0.** Always run `kubectl rollout status` before marking done — apply only submits the desired state; pods may still be failing to start.
-- **`kubectl apply` from laptops in prod** -- bypasses Git, creates invisible drift
-- **Mutable image tags** (`:latest`) -- use image automation or pinned digests
-- **Plaintext secrets in Git** -- always SOPS-encrypt; if committed plain, rotate immediately
-- **Missing resource requests/limits** -- noisy neighbors and OOM kills
-- **cluster-admin RBAC for apps** -- scope to minimum namespace and verbs
-- **Manual drift fixes without updating Git** -- the controller will revert; change Git
-- **Skipping health checks** -- pods get traffic before ready
 
-Refs: [FluxCD](https://fluxcd.io/flux/) | [Kubernetes](https://kubernetes.io/docs/) | [OpenGitOps](https://opengitops.dev/) | [Flux SOPS](https://fluxcd.io/flux/guides/mozilla-sops/)
+- **Do not claim rollout succeeded because `kubectl apply` exited 0.** Run `kubectl rollout status` — apply only submits desired state
+- **`kubectl apply` from laptops in prod** — bypasses Git, creates invisible drift
+- **Mutable image tags** (`:latest`) — use image automation or pinned digests
+- **Plaintext secrets in Git** — always SOPS-encrypt; if committed plain, rotate immediately
+- **Missing resource requests/limits** — noisy neighbors and OOM kills
+- **Manual drift fixes without updating Git** — the controller will revert

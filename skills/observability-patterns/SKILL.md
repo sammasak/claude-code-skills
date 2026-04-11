@@ -7,12 +7,9 @@ injectable: true
 
 # Observability Patterns
 
-Guide instrumentation so services are observable from day one — never bolt it on after an incident.
+Instrument services from day one — never bolt it on after an incident.
 
-## Principles
-
-- **Observe, don't guess.** Every production question should be answerable from telemetry, not from reading code or adding print statements.
-- **Three pillars, three questions:**
+## Three Pillars
 
 | Pillar  | Question           | Shape                              |
 |---------|--------------------|-------------------------------------|
@@ -20,134 +17,71 @@ Guide instrumentation so services are observable from day one — never bolt it 
 | Logs    | WHY it happened?   | Contextual structured events        |
 | Traces  | WHERE it happened? | Request flow across service boundaries |
 
-- **Profiling** is an emerging fourth signal — OpenTelemetry added profiling to OTLP (v1.3.0) alongside metrics, logs, and traces.
-- **Instrument at system boundaries** (HTTP handlers, queue consumers, DB calls) — not deep internals.
-- **Alert on symptoms, not causes.** Alert on error rate crossing a threshold, not on a specific error message.
+**Alert on symptoms, not causes.** Alert on error rate crossing a threshold, not on a specific error message. Instrument at system boundaries (HTTP handlers, queue consumers, DB calls) — not deep internals.
 
-## Standards
+## Structured Logging
 
-### Structured Logging
-
-Always JSON. Never unstructured text lines.
-
+Always JSON:
 ```json
 {"timestamp":"2026-01-15T08:12:03Z","level":"error","msg":"payment failed","trace_id":"abc123","user_id":"u-789","error":"timeout"}
 ```
 
-#### Log Levels
+| Level | Meaning | Production? |
+|-------|---------|-------------|
+| ERROR | Requires human action now | Yes |
+| WARN  | Degraded but self-healing | Yes |
+| INFO  | Business-significant events only | Yes |
+| DEBUG | Development diagnostics | Never |
 
-| Level | Meaning                              | Production? |
-|-------|--------------------------------------|-------------|
-| ERROR | Requires human action now            | Yes         |
-| WARN  | Degraded but self-healing            | Yes         |
-| INFO  | Business-significant events only     | Yes         |
-| DEBUG | Development diagnostics              | Never       |
+## Metrics — RED Method
 
-### Metrics
+| Signal | Metric | Example |
+|--------|--------|---------|
+| Rate | Requests per second | `http_requests_total` |
+| Errors | Error rate % | `http_errors_total / http_requests_total` |
+| Duration | Latency histograms | `http_request_duration_seconds` |
 
-**RED method** for services:
+## Trace Context
 
-| Signal   | Metric                  | Example                          |
-|----------|-------------------------|----------------------------------|
-| Rate     | Requests per second     | `http_requests_total`            |
-| Errors   | Error rate %            | `http_errors_total / http_requests_total` |
-| Duration | Latency histograms      | `http_request_duration_seconds`  |
+- Propagate trace IDs across ALL service boundaries (HTTP, queues, async jobs)
+- Use W3C Trace Context (`traceparent` header)
+- Attach exemplars to histograms to link metrics to trace IDs
+- Head-based sampling (10%) for high-traffic; tail-based to always capture errors
 
-> Prometheus 3.8+ Native Histograms (stable) give better latency distribution resolution at lower storage cost than classic histograms — prefer them for new instrumentation. Requires `scrape_native_histograms: true` in the Prometheus scrape config (not enabled by default).
-
-**USE method** for infrastructure resources:
-
-| Signal      | Metric       | Example                    |
-|-------------|--------------|----------------------------|
-| Utilization | % busy       | CPU usage, memory usage    |
-| Saturation  | Queue depth  | Thread pool queue length   |
-| Errors      | Error count  | Disk I/O errors            |
-
-Also consider the **Four Golden Signals** (latency, traffic, errors, saturation) from the Google SRE Book — overlaps with RED/USE but framed for SLO-driven alerting.
-
-### Trace Context
-
-- Propagate trace IDs across ALL service boundaries — HTTP headers, message queues, async jobs.
-- Use W3C Trace Context (`traceparent` header) as the standard propagation format.
-- Attach exemplars to histograms to link metric samples to specific trace IDs — the glue between metrics and traces.
-- Configure head-based sampling (e.g., 10%) for high-traffic services; use tail-based sampling to always capture errors.
-
-### Required Endpoints
+## Required Endpoints
 
 Every service exposes:
-- `/metrics` — Prometheus scrape target (Prometheus 3.x also supports OTLP push via `--web.enable-otlp-receiver` as an alternative)
-- `/livez` — Liveness probe (is the process alive?) — note: `/healthz` is deprecated since Kubernetes v1.16
-- `/readyz` — Readiness probe (can it serve traffic?)
+- `/metrics` — Prometheus scrape target
+- `/livez` — Liveness probe (`/healthz` deprecated since K8s 1.16)
+- `/readyz` — Readiness probe
 
-## Workflow
-
-Instrument at service creation. This is the checklist before a service goes to staging:
+## Pre-Staging Checklist
 
 - [ ] Structured logger configured (JSON output, correlation IDs)
-- [ ] Prometheus metrics endpoint exposed at `/metrics`
+- [ ] Prometheus `/metrics` endpoint exposed
 - [ ] OpenTelemetry tracer initialized with OTLP exporter
-- [ ] HTTP middleware adds request duration + status code metrics
-- [ ] Trace context propagated to all outbound calls (HTTP, gRPC, queues)
-- [ ] Liveness (`/livez`) and readiness (`/readyz`) endpoints
-- [ ] Grafana dashboard created with RED metrics for the service
+- [ ] HTTP middleware adds duration + status code metrics
+- [ ] Trace context propagated to all outbound calls
+- [ ] `/livez` and `/readyz` endpoints
+- [ ] Grafana dashboard: request rate, error rate, p50/p95/p99 latency, active requests
 
 ## Patterns We Use
 
-**Cluster monitoring:** kube-prometheus-stack (Prometheus + Grafana + Alertmanager) — batteries-included for Kubernetes.
-
-**Log aggregation:** Loki + Grafana Alloy. Query with LogQL. Logs stay in the same Grafana as metrics. Alloy is the unified telemetry agent for logs, metrics, traces, and profiles (OTLP-compatible) — replaces both Promtail (EOL 2026-03-02) and the deprecated Grafana Agent.
-
-**Tracing:** OpenTelemetry SDK in application code, OTLP exporter to a collector, collector forwards to backend.
-
-**Language-specific:**
-
-| Language | Logging              | Tracing                                      | Metrics                            |
-|----------|----------------------|----------------------------------------------|------------------------------------|
-| Python   | `structlog` (JSON)   | `opentelemetry-instrumentation-fastapi`       | Prometheus client                  |
-| Rust     | `tracing` + `tracing-subscriber` (JSON layer) | `tracing-opentelemetry`       | `metrics` + `metrics-exporter-prometheus` |
-
-**Dashboards:** One Grafana dashboard per service. Four panels minimum: request rate, error rate, p50/p95/p99 latency, active requests.
-
-### Claude Worker VM Logs (LogQL)
-
-Claude-worker VMs ship structured JSONL from `current.log` to Loki via promtail inside the VM. Labels: `job=claude-worker`, `vm=<hostname>`, `type` and `session_id` parsed from JSON.
-
-```logql
-# All activity for a specific VM
-{job="claude-worker", vm="status-page"}
-
-# What Claude decided to do (assistant messages)
-{job="claude-worker"} | json | type="assistant"
-
-# Tool calls only
-{job="claude-worker", vm="status-page"} | json | type="assistant"
-
-# Errors and failures
-{job="claude-worker"} | json | line_format "{{.__line__}}" |= "error"
-
-# Goal completions
-{job="claude-worker"} | json | type="result"
-```
-
-> **NixOS note:** On NixOS, use `services.promtail` (nixpkgs has a module). Grafana Alloy is the long-term replacement for Promtail (EOL 2026-03-02) but the NixOS module is less mature — stick with Promtail in NixOS VMs for now. The cluster-level collector (for pod logs) can use Alloy.
+| Component | Choice |
+|-----------|--------|
+| Cluster monitoring | kube-prometheus-stack (Prometheus + Grafana + Alertmanager) |
+| Log aggregation | Loki + Grafana Alloy (LogQL queries; replaces Promtail EOL 2026-03-02) |
+| Tracing | OTel SDK → OTLP collector → backend |
+| Python | `structlog` / `opentelemetry-instrumentation-fastapi` / Prometheus client |
+| Rust | `tracing` + `tracing-subscriber` (JSON) / `tracing-opentelemetry` / `metrics-exporter-prometheus` |
 
 ## Anti-Patterns
 
-| Don't                                          | Why                                              |
-|------------------------------------------------|--------------------------------------------------|
-| Log PII or secrets                             | Compliance and security risk                     |
-| Use unstructured log lines                     | Can't query, can't aggregate, can't alert        |
-| Alert on every individual error                | Alert fatigue — alert on rates and trends instead |
-| Skip trace context in cross-service calls      | Can't follow requests across boundaries          |
-| Keep dashboards nobody looks at                | Review quarterly or delete                       |
-| Use high-cardinality labels (e.g., user IDs)   | Prometheus OOM, index explosion                  |
-| Log full request/response bodies in production | Storage cost + PII risk                          |
-
-## References
-
-- [Google SRE Book — Ch. 6: Monitoring Distributed Systems](https://sre.google/sre-book/monitoring-distributed-systems/)
-- [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
-- [Prometheus Best Practices](https://prometheus.io/docs/practices/)
-- [Grafana Loki Documentation](https://grafana.com/docs/loki/latest/)
-- [Grafana Alloy Documentation](https://grafana.com/docs/alloy/latest/)
-- "Observability Engineering" — Majors, Fong-Jones, Miranda (O'Reilly)
+| Don't | Why |
+|-------|-----|
+| Log PII or secrets | Compliance and security risk |
+| Use unstructured log lines | Can't query, aggregate, or alert |
+| Alert on every individual error | Alert fatigue — alert on rates |
+| Skip trace context in cross-service calls | Can't follow requests across boundaries |
+| High-cardinality labels (e.g., user IDs) | Prometheus OOM, index explosion |
+| Log full request/response bodies | Storage cost + PII risk |

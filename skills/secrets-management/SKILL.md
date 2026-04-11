@@ -7,149 +7,76 @@ injectable: true
 
 # Secrets Management
 
-<when_to_use>
-Use this skill when creating, rotating, or revoking secrets; when deciding how to store credentials; when setting up SOPS encryption for a new repo; when writing Kubernetes Secret manifests; or when auditing secret hygiene.
-</when_to_use>
-
 Protect credentials throughout their lifecycle: generation, storage, deployment, rotation, and revocation.
 
-**CRITICAL: Never commit plaintext secrets to Git.** Encrypted or external, no exceptions. If you accidentally commit plaintext, rotate the secret immediately — deleting the commit is not enough; the history is the problem.
+**CRITICAL: Never commit plaintext secrets to Git.** Encrypted or external, no exceptions. If you accidentally commit plaintext, rotate immediately — deleting the commit is not enough; history is the problem.
 
-**IMPORTANT: Rotate credentials after any team member departure, system compromise, or environment breach.** Assume the secret is known; act accordingly.
-
-**NOTE:** age v1.3+ supports post-quantum hybrid keys (`age1pq1...`), but SOPS does not yet support them. Stick to classic age recipients in SOPS-managed files.
-
-## Principles
-
-- **Never plaintext in Git** -- encrypted or external, no exceptions
-- **Encrypt at rest and in transit** -- secrets protected in storage and over the wire
-- **Least privilege** -- services get only the secrets they need, nothing more
-- **Rotate regularly** -- automate rotation where possible; assume eventual compromise
-- **Audit access** -- know who accessed what and when
-- **Defense in depth** -- multiple layers; no single control is sufficient
+**IMPORTANT: Rotate after any team member departure, system compromise, or breach.** Assume the secret is known; act accordingly.
 
 ## Standards
 
 | Rule | Detail |
 |---|---|
-| SOPS for file-level encryption | GitOps-friendly -- encrypted files live in Git |
-| `.sops.yaml` at repo root | Defines path patterns mapped to key recipients |
-| Encrypt values, not keys | Diffs remain reviewable: you see WHICH secret changed, not the value |
-| K8s Secrets from SOPS manifests | Controller decrypts at deploy time |
-| Runtime secrets via env vars | Never baked into container images |
+| SOPS for file-level encryption | GitOps-friendly — encrypted files live in Git |
+| `.sops.yaml` at repo root | Path patterns mapped to age key recipients |
+| Encrypt values, not keys | Diffs remain reviewable — you see WHICH secret changed |
 | Separate keys per environment | Dev key cannot decrypt prod |
-| Secret files in `.gitignore` | Only encrypted versions get committed |
+| Runtime secrets via env vars | Never baked into container images |
 
-### `.sops.yaml` example
+### `.sops.yaml`
 
 ```yaml
 creation_rules:
   - path_regex: clusters/prod/.*\.secret\.yaml$
-    age: age1prod...  # prod recipient
-  - path_regex: clusters/staging/.*\.secret\.yaml$
-    age: age1staging...  # staging recipient
+    age: age1prod...
   - path_regex: clusters/dev/.*\.secret\.yaml$
-    age: age1dev...  # dev recipient
+    age: age1dev...
 ```
 
-### Encrypted manifest structure
+### Encrypted K8s Secret structure
 
 ```yaml
-apiVersion: v1
-kind: Secret
-metadata:
-    name: app-credentials
-    namespace: app
-type: Opaque
 stringData:
     db-password: ENC[AES256_GCM,data:...,type:str]  # value encrypted
     api-token: ENC[AES256_GCM,data:...,type:str]     # keys stay readable
 ```
 
-<sops_workflow>
-
-## Workflow
-
-```
-generate --> configure --> create --> encrypt --> commit --> deploy --> rotate --> verify
-```
-
-1. **Generate age keypair**
-   ```bash
-   age-keygen -o key.txt
-   # Public key: age1abc...
-   ```
-2. **Configure `.sops.yaml`** with path rules and the age public key
-3. **Create secret file** (plain YAML with sensitive values)
-4. **Encrypt in place**
-   ```bash
-   sops encrypt -i secret.yaml
-   ```
-5. **Commit encrypted file** to Git (plaintext never touches a commit)
-6. **Deploy** -- Flux SOPS kustomize-controller decrypts at apply time
-7. **Rotate keys**
-   ```bash
-   sops updatekeys secret.yaml          # sync recipients from .sops.yaml
-   sops rotate -i secret.yaml           # rotate data encryption key
-   ```
-   Both steps are needed when removing a recipient.
-8. **Verify decryption**
-   ```bash
-   sops decrypt secret.yaml
-   ```
-
-### Quick-reference commands
+## SOPS Commands
 
 | Task | Command |
 |---|---|
-| Encrypt file in place | `sops encrypt -i <file>` |
+| Encrypt in place | `sops encrypt -i <file>` |
 | Decrypt to stdout | `sops decrypt <file>` |
 | Edit encrypted file | `sops edit <file>` |
 | Rotate data key | `sops rotate -i <file>` |
 | Update recipients | `sops updatekeys <file>` |
-| Encrypt specific keys | `sops encrypt --encrypted-regex '^(data\|stringData)$' -i <file>` |
 
-</sops_workflow>
+**Never encrypt from `/tmp/`** — always write to the correct repo path then `sops -e --in-place`.
 
-<k8s_patterns>
+## Workflow
+
+1. `age-keygen -o key.txt` — generate age keypair
+2. Configure `.sops.yaml` with path rules and public key
+3. Create secret file (plain YAML)
+4. `sops encrypt -i secret.yaml` — encrypt in place
+5. Commit encrypted file to Git
+6. Flux kustomize-controller decrypts at apply time
+7. Rotate: `sops updatekeys` then `sops rotate -i` (both needed when removing a recipient)
 
 ## Patterns We Use
 
-- **age over PGP** -- simpler key management, no key servers, no expiry headaches. age v1.3+ adds post-quantum hybrid keys (`age1pq1...`; cannot mix with classic `age1...` recipients); SOPS does not yet support PQ keys
-- **SOPS for all GitOps secrets** -- works with Flux natively, encrypted files live alongside manifests
-- **Flux kustomize-controller** with SOPS decryption provider -- secrets decrypted only at deploy time in-cluster
-- **Separate age identity per environment** -- dev, staging, prod each hold their own key; compromise is isolated
-- **Kubernetes Secrets** for service credentials -- DB passwords, API tokens, managed via SOPS-encrypted manifests
-- **cert-manager** for TLS certificates -- automated issuance and renewal, no manual cert management
-- For vault-backed dynamic secrets, consider **External Secrets Operator (ESO)** as an alternative to encrypt-in-Git
-- **Flux v2.7+** global SOPS decryption -- `--sops-age-secret` controller flag eliminates per-Kustomization decryption config
-
-</k8s_patterns>
-
-<restrictions>
+- **age over PGP** — simpler key management, no key servers, no expiry
+- **SOPS + Flux** — `--sops-age-secret` controller flag (Flux 2.7+) for global decryption
+- **Separate age identity per environment** — compromise is isolated
+- **cert-manager** for TLS — automated issuance and renewal
 
 ## Anti-Patterns
 
-**Do not skip secret rotation because no breach has occurred.** Assume eventual compromise — rotate proactively. The question is not "has this been breached?" but "would you know if it was?"
-
-| Do not | Why |
+| Don't | Why |
 |---|---|
-| Secrets in `Dockerfile` ENV/ARG | Visible in `docker history` output |
-| Commit `.env` files to Git | Plaintext credentials in repository history forever |
+| Secrets in `Dockerfile` ENV/ARG | Visible in `docker history` |
+| Commit `.env` files | Plaintext in repository history forever |
 | Share secrets across environments | Breach in dev becomes breach in prod |
-| Never-rotated tokens | Assume breach; rotate proactively |
-| Secrets in CI pipeline logs | Mask all secret variables in CI configuration |
-| Hardcoded secrets in source code | Use environment variables or config injection |
-| No secret scanning | Run `gitleaks` in pre-commit hooks and CI to catch plaintext before it reaches the repository |
-| base64 as "encryption" | K8s Secrets are base64-encoded, not encrypted -- anyone with API access reads them |
-| Unencrypted etcd | Kubernetes etcd does not encrypt Secrets at rest by default -- configure `EncryptionConfiguration` or KMS provider |
-
-</restrictions>
-
-## References
-
-- [SOPS](https://github.com/getsops/sops) (CNCF Sandbox) -- encrypted file editor supporting age, AWS KMS, GCP KMS, Azure Key Vault
-- [age](https://github.com/FiloSottile/age) -- simple, modern file encryption
-- [Flux SOPS guide](https://fluxcd.io/flux/guides/mozilla-sops/) -- integrating SOPS with Flux GitOps
-- [OWASP Secrets Management Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html)
-- [Kubernetes Secrets good practices](https://kubernetes.io/docs/concepts/security/secrets-good-practices/)
+| base64 as "encryption" | K8s Secrets are base64-encoded, not encrypted |
+| Never-rotated tokens | Assume eventual compromise — rotate proactively |
+| No secret scanning | Run `gitleaks` in pre-commit to catch plaintext early |
