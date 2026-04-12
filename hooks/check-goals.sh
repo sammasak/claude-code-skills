@@ -6,9 +6,11 @@
 WORKSPACE="${WORKSPACE:-$HOME/workspace}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export CLAUDE_SKILLS_LIB="$SCRIPT_DIR/lib"
-source "$SCRIPT_DIR/lib/state.sh" 2>/dev/null || true
-source "$SCRIPT_DIR/lib/log.sh" 2>/dev/null || true
-init_state 2>/dev/null || true
+if command -v jq >/dev/null 2>&1; then
+  source "$SCRIPT_DIR/lib/state.sh" 2>/dev/null || true
+  source "$SCRIPT_DIR/lib/log.sh" 2>/dev/null || true
+  init_state 2>/dev/null || true
+fi
 
 RUN_SH="$WORKSPACE/workflows/hooks/check-goals/run.sh"
 
