@@ -17,4 +17,4 @@ if [ ! -f "$RUN_SH" ]; then
   exit 0
 fi
 
-source "$RUN_SH"
+bash "$RUN_SH"
