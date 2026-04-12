@@ -25,21 +25,19 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "$$")
 
 if [ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]; then exit 0; fi
 
-# Count user messages for hard floor only
+# Guard: minimum 20 user messages — extraction is only valuable for substantial sessions.
+# Short sessions don't have enough novel patterns to extract reusable learnings.
 MSG_COUNT=$(grep -c '"type":"user"' "$TRANSCRIPT" 2>/dev/null || echo "0")
-[ "$MSG_COUNT" -lt 8 ] && exit 0
+[ "$MSG_COUNT" -lt 20 ] && exit 0
 
 # Guard: skip unless files were written/edited or repos were touched.
-# Pure Q&A and read-only exploration sessions don't produce extractable learnings.
 WRITES=$(read_state '(.tools_used.Write // 0) + (.tools_used.Edit // 0) + (.tools_used.MultiEdit // 0)' 2>/dev/null || echo "0")
 REPOS=$(read_state '.repos_touched | length' 2>/dev/null || echo "0")
 [ "${WRITES:-0}" -eq 0 ] && [ "${REPOS:-0}" -eq 0 ] && exit 0
 
-# --- Frequency Capping: Only extract if significant new messages since last run ---
-# Use MSG_COUNT as a proxy for 'prompt' to trigger on volume shift
-if ! check_frequency "extract-instincts" 300 "$MSG_COUNT"; then
-  exit 0
-fi
+# Note: check_frequency uses per-session state (CLAUDE_SESSION_ID-scoped /tmp file),
+# so the timer always starts at 0 and the cap is effectively meaningless for a Stop hook.
+# The MSG_COUNT + significance guards above are the real rate-limiting mechanism.
 
 # Determine scope from git remote of the session's working directory
 SESSION_CWD=$(jq -r 'select(.cwd != null) | .cwd' "$TRANSCRIPT" 2>/dev/null | head -1 || echo "")

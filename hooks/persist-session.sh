@@ -89,42 +89,54 @@ TOOLS=$(read_state '.tools_used // {} | to_entries | map(.key + ":" + (.value|to
 ERRORS=$(read_state '.errors_seen // 0' || echo "0")
 GOAL_STATUS=$(read_state '.goal_status // "n/a"' || echo "n/a")
 
-# Read prompt template
-if [ -f "$TEMPLATE_DIR/extract-summary.md" ]; then
-  TEMPLATE=$(cat "$TEMPLATE_DIR/extract-summary.md")
-else
-  TEMPLATE='Summarise this Claude Code session. Git: {{GIT_LOG}}. Transcript: {{TURNS}}. Output JSON: {"goal":"...","outcome":"...","project":"...","key_findings":[],"decisions_made":[],"what_worked":[],"what_didnt_work":[],"not_tried":[],"slug":"..."}'
+# Tiered extraction:
+#   Rich session (≥15 messages AND git commits exist) → call Haiku for structured summary
+#   Thin session                                       → mechanical stub, no LLM call
+if [ "$MSG_COUNT" -ge 15 ] && [ -n "$GIT_LOG" ]; then
+  # Read prompt template
+  if [ -f "$TEMPLATE_DIR/extract-summary.md" ]; then
+    TEMPLATE=$(cat "$TEMPLATE_DIR/extract-summary.md")
+  else
+    TEMPLATE='Summarise this Claude Code session. Git: {{GIT_LOG}}. Transcript: {{TURNS}}. Output JSON: {"goal":"...","outcome":"...","project":"...","key_findings":[],"decisions_made":[],"what_worked":[],"what_didnt_work":[],"not_tried":[],"slug":"..."}'
+  fi
+
+  PROMPT_TEXT=$(echo "$TEMPLATE" | \
+    sed "s|{{TOPIC}}|$TOPIC|g" | \
+    sed "s|{{REPOS_TOUCHED}}|$REPOS|g" | \
+    sed "s|{{TOOLS_USED}}|$TOOLS|g" | \
+    sed "s|{{ERRORS_SEEN}}|$ERRORS|g" | \
+    sed "s|{{GOAL_STATUS}}|$GOAL_STATUS|g")
+
+  RAW_SUMMARY=$(printf '%s\n\nGit activity:\n%s\n\nTranscript:\n%s' \
+    "$PROMPT_TEXT" "${GIT_LOG:-none}" "$TURNS" | \
+    claude -p --model "$HAIKU_MODEL" --max-tokens 500 2>/dev/null || echo "")
+
+  SUMMARY=$(echo "$RAW_SUMMARY" | jq -c '.' 2>/dev/null) || \
+  SUMMARY=$(echo "$RAW_SUMMARY" | sed -n '/^```/,/^```/{//d;p}' | jq -c '.' 2>/dev/null) || \
+  SUMMARY=""
+
+  if [ -n "$SUMMARY" ]; then
+    GOAL=$(echo "$SUMMARY" | jq -r '.goal // "Unknown goal"' 2>/dev/null | sed 's/"/\\"/g' || echo "Unknown goal")
+    OUTCOME=$(echo "$SUMMARY" | jq -r '.outcome // ""' 2>/dev/null | sed 's/"/\\"/g' || echo "")
+    PROJECT=$(echo "$SUMMARY" | jq -r '.project // "global"' 2>/dev/null | sed 's/"/\\"/g' || echo "global")
+    SLUG=$(echo "$SUMMARY" | jq -r '.slug // "session"' 2>/dev/null | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9-' '-' | sed 's/^-//;s/-$//' | cut -c1-40)
+    FINDINGS=$(echo "$SUMMARY" | jq -r '.key_findings[]? | "- " + .' 2>/dev/null || echo "")
+    DECISIONS=$(echo "$SUMMARY" | jq -r '.decisions_made[]? | "- " + .' 2>/dev/null || echo "")
+    WORKED=$(echo "$SUMMARY" | jq -r '.what_worked[]? | "- " + .' 2>/dev/null || echo "")
+    DIDNT_WORK=$(echo "$SUMMARY" | jq -r '.what_didnt_work[]? | "- " + .' 2>/dev/null || echo "")
+    NOT_TRIED=$(echo "$SUMMARY" | jq -r '.not_tried[]? | "- " + .' 2>/dev/null || echo "")
+  fi
 fi
 
-# Build prompt with interpolated state values
-PROMPT_TEXT=$(echo "$TEMPLATE" | \
-  sed "s|{{TOPIC}}|$TOPIC|g" | \
-  sed "s|{{REPOS_TOUCHED}}|$REPOS|g" | \
-  sed "s|{{TOOLS_USED}}|$TOOLS|g" | \
-  sed "s|{{ERRORS_SEEN}}|$ERRORS|g" | \
-  sed "s|{{GOAL_STATUS}}|$GOAL_STATUS|g")
-
-RAW_SUMMARY=$(printf '%s\n\nGit activity:\n%s\n\nTranscript:\n%s' \
-  "$PROMPT_TEXT" "${GIT_LOG:-none}" "$TURNS" | \
-  claude -p --model "$HAIKU_MODEL" --max-tokens 500 2>/dev/null || echo "")
-
-# Extract JSON — claude -p may wrap response in markdown fences or explanatory text
-SUMMARY=$(echo "$RAW_SUMMARY" | jq -c '.' 2>/dev/null) || \
-SUMMARY=$(echo "$RAW_SUMMARY" | sed -n '/^```/,/^```/{//d;p}' | jq -c '.' 2>/dev/null) || \
-SUMMARY=""
-
-[ -z "$SUMMARY" ] && exit 0
-
-# Parse JSON fields with sanitization
-GOAL=$(echo "$SUMMARY" | jq -r '.goal // "Unknown goal"' 2>/dev/null | sed 's/"/\\"/g' || echo "Unknown goal")
-OUTCOME=$(echo "$SUMMARY" | jq -r '.outcome // ""' 2>/dev/null | sed 's/"/\\"/g' || echo "")
-PROJECT=$(echo "$SUMMARY" | jq -r '.project // "global"' 2>/dev/null | sed 's/"/\\"/g' || echo "global")
-SLUG=$(echo "$SUMMARY" | jq -r '.slug // "session"' 2>/dev/null | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9-' '-' | sed 's/^-//;s/-$//' | cut -c1-40)
-FINDINGS=$(echo "$SUMMARY" | jq -r '.key_findings[]? | "- " + .' 2>/dev/null || echo "")
-DECISIONS=$(echo "$SUMMARY" | jq -r '.decisions_made[]? | "- " + .' 2>/dev/null || echo "")
-WORKED=$(echo "$SUMMARY" | jq -r '.what_worked[]? | "- " + .' 2>/dev/null || echo "")
-DIDNT_WORK=$(echo "$SUMMARY" | jq -r '.what_didnt_work[]? | "- " + .' 2>/dev/null || echo "")
-NOT_TRIED=$(echo "$SUMMARY" | jq -r '.not_tried[]? | "- " + .' 2>/dev/null || echo "")
+# Mechanical fallback — fill in from state if Haiku was skipped or failed
+if [ -z "${GOAL:-}" ]; then
+  SLUG=$(date +%H%M)-$(echo "${REPOS:-work}" | tr ', ' '-' | cut -c1-30)
+  GOAL="Work session — repos: ${REPOS:-unknown}"
+  OUTCOME="See git log below."
+  PROJECT=$(echo "${TOPIC:-global}" | cut -d, -f1 | tr -d ' ')
+  FINDINGS="Tools: ${TOOLS:-none}"
+  DECISIONS="" WORKED="" DIDNT_WORK="" NOT_TRIED=""
+fi
 
 SESSION_DIR="$WORKSPACE/sessions/ai-sessions"
 mkdir -p "$SESSION_DIR"
