@@ -20,6 +20,12 @@ category reviews in parallel. The controller aggregates and decides.
 
 If any are missing, abort and tell the user.
 
+**`categories.yaml` structure** — three top-level keys (`code:`, `docs:`, `configs:`), each containing named categories with `description`, `default_weight`, and `applicable_to` glob list. The assessor selects applicable categories per chunk and re-normalizes weights. Pass the full file contents verbatim as `{{CATEGORIES_YAML}}`.
+
+**Template contracts:**
+- `assessor.md` accepts: `{{FILES}}` (file list), `{{CATEGORIES_YAML}}` (full yaml). Returns JSON with `chunks[]` — see expected shape below.
+- `reviewer.md` accepts: `{{CHUNK_FILES}}`, `{{CATEGORY}}`, `{{CATEGORY_DESCRIPTION}}`, `{{ITERATION}}`. Returns JSON with `category`, `score`, `summary`, `findings[]`.
+
 ## Stage 1 — Assess
 
 **Dispatch one assessor subagent** using the Task tool with `subagent_type=general-purpose`.
@@ -40,14 +46,16 @@ Weight: 0.25 (drawn from the re-normalized pool)
 
 **Expected assessor output shape:**
 ```json
-{"chunks": [{"id": "...", "files": [...], "categories": [{"name": "...", "description": "..."}]}]}
+{"chunks": [{"id": "...", "description": "...", "files": [{"path": "...", "lines": 0, "artifact_type": "..."}], "categories": [{"name": "...", "description": "...", "weight": 0.0, "source": "catalog|proposed"}]}]}
 ```
+(controller uses: `chunks[].files[].path` and `chunks[].categories[].name`/`description` — full schema in `assessor.md`)
 
 A chunk is a logical grouping of related files the assessor clusters — treat each as an
 opaque list of file paths.
 
-**Gate: do not proceed to Stage 2 until the assessor returns its full JSON. Stage 2 must
-be dispatched in a separate response.**
+**Edge case:** if the assessor returns `chunks: []`, abort and tell the user: "Assessor found no reviewable files."
+
+**Gate:** do not dispatch any Stage 2 Task calls until the assessor subagent returns its full JSON output, and dispatch them in a **separate response turn** — never in the same message as the assessor Task call.
 
 ## Stage 2 — Review (parallel)
 
@@ -61,12 +69,7 @@ Use the Task tool with `subagent_type=general-purpose` and the reviewer prompt a
 - `{{CHUNK_FILES}}` — file paths in this chunk
 - `{{CATEGORY}}` — category name
 - `{{CATEGORY_DESCRIPTION}}` — category description from assessor output
-- `{{ITERATION}}` — always `1` (reserved for multi-pass workflows; always pass 1 here)
-
-**On re-run (after a NOT APPROVED decision):** always start fresh from Stage 1 (assessor
-re-runs; categories are not reused from the prior run). Pass prior findings as additional
-context to each reviewer by appending a `## Prior Findings` section to the rendered
-reviewer prompt.
+- `{{ITERATION}}` — always `1` in this skill — the reviewer uses it to adjust focus (iteration 1 = fresh review; higher values would focus on previously flagged issues), but this skill always passes 1; prior run context is conveyed via `## Prior Findings` instead
 
 Each reviewer returns JSON:
 ```json
@@ -103,16 +106,25 @@ finding disposition):**
 |------|------|----------|----------|-------------|------------|
 ```
 
+## Re-run Semantics
+
+After a NOT APPROVED decision:
+1. Always restart at **Stage 1** — the assessor re-runs; categories from the prior run are not reused
+2. Dispatch Stage 2 reviewers as normal
+3. Append a `## Prior Findings` section to each reviewer prompt containing all `critical` and `major` findings from the prior run, grouped by file — this helps reviewers confirm fixes
+
+`{{ITERATION}}` always stays `1` on re-runs — prior run context is conveyed exclusively via `## Prior Findings`, not via the iteration counter.
+
 ## When to use
 
 - Use in place of both spec compliance and code quality review steps
 - The `spec-compliance` custom category covers spec checking
 - Run once per task after the implementer commits
-- If NOT APPROVED: implementer fixes, then re-run this full skill (Stage 1 always re-runs;
-  categories are not reused from the prior run)
+- If NOT APPROVED: implementer fixes, then re-run this skill (see Re-run Semantics above).
 
 ## Red flags
 
 - Never dispatch reviewers before the assessor returns (categories must be known)
 - Never dispatch reviewers sequentially — all must run in parallel (single message)
-- Never skip aggregation — a low score in any category means findings to report
+- Never skip aggregation — all reviewer outputs must be collected before determining the decision, even if some categories score low
+- Never combine assessor and reviewer Task calls in the same message — Stage 2 must be dispatched in a **separate response turn** after the assessor result is received
