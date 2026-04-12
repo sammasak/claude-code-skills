@@ -25,9 +25,21 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "$$")
 
 if [ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]; then exit 0; fi
 
-# Guard: minimum 15 user messages
+# Count user messages for hard floor only
 MSG_COUNT=$(grep -c '"type":"user"' "$TRANSCRIPT" 2>/dev/null || echo "0")
-[ "$MSG_COUNT" -lt 15 ] && exit 0
+[ "$MSG_COUNT" -lt 8 ] && exit 0
+
+# Guard: skip unless files were written/edited or repos were touched.
+# Pure Q&A and read-only exploration sessions don't produce extractable learnings.
+WRITES=$(read_state '(.tools_used.Write // 0) + (.tools_used.Edit // 0) + (.tools_used.MultiEdit // 0)' 2>/dev/null || echo "0")
+REPOS=$(read_state '.repos_touched | length' 2>/dev/null || echo "0")
+[ "${WRITES:-0}" -eq 0 ] && [ "${REPOS:-0}" -eq 0 ] && exit 0
+
+# --- Frequency Capping: Only extract if significant new messages since last run ---
+# Use MSG_COUNT as a proxy for 'prompt' to trigger on volume shift
+if ! check_frequency "extract-instincts" 300 "$MSG_COUNT"; then
+  exit 0
+fi
 
 # Determine scope from git remote of the session's working directory
 SESSION_CWD=$(jq -r 'select(.cwd != null) | .cwd' "$TRANSCRIPT" 2>/dev/null | head -1 || echo "")
@@ -35,11 +47,14 @@ SESSION_CWD=$(jq -r 'select(.cwd != null) | .cwd' "$TRANSCRIPT" 2>/dev/null | he
 
 GIT_ROOT=$(git -C "$SESSION_CWD" rev-parse --show-toplevel 2>/dev/null || echo "")
 if [ -n "$GIT_ROOT" ]; then
+  # Try to extract repo name from remote origin URL
   REMOTE=$(git -C "$GIT_ROOT" remote get-url origin 2>/dev/null || echo "")
   if [ -n "$REMOTE" ]; then
-    # git@github.com:user/repo.git → repo
-    SCOPE=$(echo "$REMOTE" | sed 's|.*[:/]\([^/]*\)\.git$|\1|; s|.*[:/]\([^/]*\)$|\1|')
-  else
+    # Handle git@github.com:user/repo.git or https://github.com/user/repo.git
+    SCOPE=$(echo "$REMOTE" | sed -E 's/.*[\/:]//; s/\.git$//')
+  fi
+  # Fallback to directory name if remote name is empty or unknown
+  if [ -z "${SCOPE:-}" ] || [ "$SCOPE" = "origin" ]; then
     SCOPE=$(basename "$GIT_ROOT")
   fi
 else

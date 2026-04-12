@@ -34,12 +34,18 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "$$")
 
 ([ -z "$TRANSCRIPT" ] || [ ! -f "$TRANSCRIPT" ]) && exit 0
 
-# Guard: minimum 8 external user messages
+# Count user messages for hard floor only
 MSG_COUNT=$(jq -r 'select(.type == "user") | .type' "$TRANSCRIPT" 2>/dev/null | wc -l | tr -d ' ' || echo "0")
-[ "$MSG_COUNT" -lt 8 ] && exit 0
+[ "$MSG_COUNT" -lt 5 ] && exit 0
 
-# Init state (may already exist from session)
+# Guard: skip unless significant work happened this session.
+# MSG_COUNT is a poor proxy — 20 Q&A messages produce no useful record.
+# Significance = files written/edited OR repos touched OR errors debugged.
 init_state
+WRITES=$(read_state '(.tools_used.Write // 0) + (.tools_used.Edit // 0) + (.tools_used.MultiEdit // 0)' 2>/dev/null || echo "0")
+ERRORS=$(read_state '.errors_seen // 0' 2>/dev/null || echo "0")
+REPOS=$(read_state '.repos_touched | length' 2>/dev/null || echo "0")
+[ "${WRITES:-0}" -eq 0 ] && [ "${ERRORS:-0}" -eq 0 ] && [ "${REPOS:-0}" -eq 0 ] && exit 0
 
 DATE=$(date -u +%Y-%m-%d)
 DATETIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
