@@ -196,15 +196,15 @@ log_hook "persist-session" "wrote" "$ELAPSED" "\"file\":\"sessions/ai-sessions/$
 # Gate: ≥5 ai-sessions, ≥2 distinct projects, 5-min cooldown
 GHOST_COOLDOWN_FILE="/tmp/ghost-note-cooldown-${USER}"
 SESSION_COUNT=$(ls -1 "${SESSION_DIR}"/*.md 2>/dev/null | wc -l | tr -d ' ')
-DISTINCT_PROJECTS=$(grep -h "^project:" "${SESSION_DIR}"/*.md 2>/dev/null | sort -u | wc -l | tr -d ' ')
+mapfile -t _RECENT_FILES < <(ls -1t "${SESSION_DIR}"/*.md 2>/dev/null | head -10)
+DISTINCT_PROJECTS=$(grep -h "^project:" "${_RECENT_FILES[@]}" 2>/dev/null | sort -u | wc -l | tr -d ' ')
 
 if [ "${SESSION_COUNT:-0}" -ge 5 ] && [ "${DISTINCT_PROJECTS:-0}" -ge 2 ]; then
   LAST_GHOST=$(cat "$GHOST_COOLDOWN_FILE" 2>/dev/null || echo "0")
   NOW_EPOCH=$(date +%s)
   if [ $(( NOW_EPOCH - LAST_GHOST )) -ge 300 ]; then
-    RECENT_FILES=$(ls -1t "${SESSION_DIR}"/*.md 2>/dev/null | head -10)
-    PRIOR_GHOSTS=$(grep "^> ghost:" ${RECENT_FILES} 2>/dev/null | tail -5 || echo "")
-    RECENT_CONTENT=$(cat ${RECENT_FILES} 2>/dev/null | head -c 2000 || echo "")
+    PRIOR_GHOSTS=$(grep "^> ghost:" "${_RECENT_FILES[@]}" 2>/dev/null | tail -5 || echo "")
+    RECENT_CONTENT=$(cat "${_RECENT_FILES[@]}" 2>/dev/null | head -c 2000 || echo "")
     GHOST_LINE=$(printf 'Recent sessions (newest first):\n%s\n\nPrior ghost notes (do not repeat these):\n%s\n\nWrite exactly one new insight (≤25 words) about cross-session patterns. Output a single line starting with "> ghost:" and nothing else.' \
       "$RECENT_CONTENT" "$PRIOR_GHOSTS" | \
       claude -p --model "$HAIKU_MODEL" --max-tokens 220 2>/dev/null | \
@@ -220,5 +220,15 @@ if [ "${SESSION_COUNT:-0}" -ge 5 ] && [ "${DISTINCT_PROJECTS:-0}" -ge 2 ]; then
   fi
 fi
 # ── end ghost note tail ───────────────────────────────────────────────────────
+
+# ── L3 work poll ─────────────────────────────────────────────────────────────
+# Physical host only (already guarded above: VM exits if goals.json exists).
+# Poll workstation-api for any active work item VMs that have completed.
+WORK_LIB="${HOME}/workspace/work/lib.sh"
+if [ -f "$WORK_LIB" ]; then
+  source "$WORK_LIB" 2>/dev/null || true
+  work_poll 2>/dev/null || true
+fi
+# ── end L3 work poll ─────────────────────────────────────────────────────────
 
 exit 0
