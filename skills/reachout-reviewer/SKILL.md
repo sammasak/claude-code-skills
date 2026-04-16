@@ -104,11 +104,11 @@ No signal. No pitch. The question does everything.
 
 ### Soft Decline
 ```
-[1 sentence: honest reason, specific not vague]
+Tack för meddelandet. [1 sentence: honest reason, specific not vague]
 
 [Sign-off]
 ```
-No "but feel free to reach out later." No "best of luck." One sentence, done.
+"Tack för meddelandet" is the one allowed opener for declines — it softens without being sycophantic. No "lycka till", no "feel free to reach out." One sentence reason, done.
 
 ### Hard Decline
 Do not reply. Or if a reply is warranted (warm relationship, referral context):
