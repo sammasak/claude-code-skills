@@ -9,9 +9,20 @@ description: Use when drafting or reviewing LinkedIn messages, recruiter replies
 
 Review and draft professional networking messages. **Never draft without first completing the research phase.** Context from the job ad and company shapes every word of the reply.
 
-## Inbound Posture (When They Contact You First)
+## Relationship Context — Decide First
 
-When a recruiter or company initiates contact, you are evaluating them, not applying to them.
+Before anything else, classify the relationship:
+
+| Type | Signs | Tone |
+|------|-------|------|
+| **Cold** | First contact, no prior exchange, generic recruiter message | Evaluating posture, brief, no matching energy |
+| **Warm** | Multiple messages exchanged, met in person/video, rapport built | Match warmth, more conversational, human |
+
+Wrong classification = wrong tone. A warm contact who gets a cold reply feels dismissed.
+
+## Inbound Posture (Cold First Contact)
+
+When a recruiter contacts you cold, you are evaluating them, not applying to them.
 
 - Signal is **1 sentence max**, not a paragraph
 - Questions do the work, not the pitch
@@ -37,6 +48,8 @@ Personal projects are secondary signal. Only include them if they demonstrate so
 
 **Do not draft a reply until both steps are complete.**
 
+**Exception:** If the message is a closing/wrap-up in an ongoing warm conversation (no active role being pitched, no new company to evaluate), skip to Reply Type. Context from prior exchanges is sufficient.
+
 ### Step 1: Ingest the job posting
 
 If a job posting URL is present, fetch it with WebFetch and extract:
@@ -46,7 +59,7 @@ If a job posting URL is present, fetch it with WebFetch and extract:
 - Seniority expectations
 - Any culture or process signals (async, on-call, shipping cadence)
 
-If no URL is present, say so and ask for it before continuing.
+If no URL is present and it's an active pitch, say so and ask for it before continuing.
 
 ### Step 2: Research the company
 
@@ -102,13 +115,21 @@ Wrong type = wrong draft. Do not default to Interested when Uncertain or Decline
 ```
 No signal. No pitch. The question does everything.
 
-### Soft Decline
+### Soft Decline (Cold)
 ```
 Tack för meddelandet. [1 sentence: honest reason, specific not vague]
 
 [Sign-off]
 ```
-"Tack för meddelandet" is the one allowed opener for declines — it softens without being sycophantic. No "lycka till", no "feel free to reach out." One sentence reason, done.
+"Tack för meddelandet" is the one allowed opener for cold declines — it softens without being sycophantic. No "lycka till", no "feel free to reach out." One sentence reason, done.
+
+### Soft Decline (Warm — ongoing relationship)
+```
+[Casual opener matching their tone]. [1-2 sentences: warm acknowledgment, honest close, door left open if genuine]
+
+[Sign-off]
+```
+Match the register of the conversation. If they used first names, casual Swedish, emojis — reply in kind. "Tack för meddelandet" feels cold after multiple exchanges. Use what fits the actual relationship.
 
 ### Hard Decline
 Do not reply. Or if a reply is warranted (warm relationship, referral context):
@@ -123,6 +144,7 @@ Inte rätt timing för mig just nu.
 - No em dashes (-- or &mdash;) — use commas, periods, or restructure
 - No filler openers ("Kul att höra av dig", "Thanks for reaching out")
 - Match the language they wrote in (Swedish → Swedish, English → English)
+- Match the natural voice in `whoami/personal-preferences.md` — casual, direct, short sentences, hedging with "nog"/"tror", not formal or stiff
 - Never mirror their vague language back at them
 - Shorter is always better than longer
 
@@ -158,3 +180,4 @@ Inte rätt timing för mig just nu.
 | Opener mirrors recruiter language | Cut it. Start with the signal paragraph. |
 | Lists every matching skill | Pick the 1-2 most relevant, mention them specifically |
 | Ends with "Let me know if..." | End with the questions themselves |
+| Treating warm contacts like cold inbound | Classify relationship first. Multiple exchanges + rapport = match their tone, not the evaluating posture. |
