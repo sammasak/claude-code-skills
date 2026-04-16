@@ -29,6 +29,7 @@ Professional signal always comes first. Never lead with personal or homelab proj
 Before drafting, check:
 - `~/workspace/whoami/companies/<current-employer>.md` for what was actually built
 - `~/workspace/whoami/profile.md` for career positioning
+- `~/workspace/whoami/personal-preferences.md` for stack and domain exclusions — if the role's stack conflicts with stated preferences, the question should probe that directly rather than ignoring it
 
 Personal projects are secondary signal. Only include them if they demonstrate something the professional work does not.
 
