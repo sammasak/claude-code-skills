@@ -70,61 +70,78 @@ Output a brief research block before the draft:
 
 The signal paragraph and questions in the reply must map to what was found here. If the stack is unknown after research, that becomes one of the questions.
 
-## Writing Guidelines
+## Reply Type — Decide Before Drafting
 
-**Always:**
-- Use commas, periods, or restructure sentences instead of em dashes (never use --)
-- Keep replies under 150 words unless content demands more
-- Be direct. No filler phrases ("Great to hear from you", "Thanks so much for reaching out")
-- One concrete paragraph of relevant signal, then specific questions
-- End with questions, not a soft CTA
+After research, classify the reply before writing a single word:
 
-**Never:**
-- Em dashes (-- or &mdash;)
-- Oversell or list every credential
-- Mirror the recruiter's vague language back at them
+| Type | When | Pattern |
+|------|------|---------|
+| **Interested** | Stack fits, company interesting, role plausible | Signal + questions |
+| **Uncertain** | One blocker that could be resolved | Single clarifying question, no signal |
+| **Soft decline** | Not a fit but worth being courteous | One sentence reason + door left open |
+| **Hard decline** | Domain exclusion, clear mismatch, not looking | One sentence, no explanation |
 
-## Reachout Review Checklist
+Wrong type = wrong draft. Do not default to Interested when Uncertain or Decline is more honest.
 
-Before finalizing any outreach message, verify each item:
+## Writing Patterns by Reply Type
 
-**Research (gate — do not proceed without these)**
-- [ ] Professional signal source checked (`~/workspace/whoami/companies/<employer>.md`)
-- [ ] Job posting fetched and tech stack extracted (or noted as missing)
-- [ ] Company researched: stage, headcount, real product understood
-- [ ] Research summary block written
-- [ ] Inbound posture applied if they initiated contact
-
-**Signal**
-- [ ] Mentions 1-2 specific, relevant things from your actual work (not generic "experience with X")
-- [ ] Avoids listing everything; picks what's most relevant to the role
-
-**Questions**
-- [ ] Asks the questions that would actually change whether you respond (company name, tech stack, key decision)
-- [ ] Questions are pointed enough that a vague answer is itself informative
-- [ ] Not more than 2-3 questions
-
-**Style**
-- [ ] No em dashes
-- [ ] No filler opener
-- [ ] Could be read in 30 seconds
-
-**Tone**
-- [ ] Curious but not eager
-- [ ] Not dismissive or cold
-- [ ] Honest about what would make it a fit vs not
-
-## Template Structure
-
+### Interested (inbound)
 ```
-[Optional 1-sentence acknowledgment if something specific warrants it]
+[1 sentence: specific professional signal that maps to their ask]
 
-[1 paragraph: relevant signal from your actual work that maps to their ask]
-
-[2-3 focused questions that gate your interest]
+[2 questions that gate your interest]
 
 [Sign-off]
 ```
+
+### Uncertain
+```
+[1 clarifying question that resolves the blocker]
+
+[Sign-off]
+```
+No signal. No pitch. The question does everything.
+
+### Soft Decline
+```
+[1 sentence: honest reason, specific not vague]
+
+[Sign-off]
+```
+No "but feel free to reach out later." No "best of luck." One sentence, done.
+
+### Hard Decline
+Do not reply. Or if a reply is warranted (warm relationship, referral context):
+```
+Inte rätt timing för mig just nu.
+
+[Sign-off]
+```
+
+## Writing Rules (All Types)
+
+- No em dashes (-- or &mdash;) — use commas, periods, or restructure
+- No filler openers ("Kul att höra av dig", "Thanks for reaching out")
+- Match the language they wrote in (Swedish → Swedish, English → English)
+- Never mirror their vague language back at them
+- Shorter is always better than longer
+
+## Checklist
+
+**Research (gate)**
+- [ ] `whoami/personal-preferences.md` checked for stack and domain exclusions
+- [ ] `whoami/companies/<employer>.md` checked for professional signal
+- [ ] Job posting fetched and stack extracted (or noted as missing)
+- [ ] Company researched: stage, product, headcount
+- [ ] Reply type decided: Interested / Uncertain / Soft decline / Hard decline
+
+**Draft**
+- [ ] Correct template used for reply type
+- [ ] No signal in Uncertain or Decline replies
+- [ ] No filler opener
+- [ ] No em dashes
+- [ ] Under 80 words (inbound interested), under 30 words (decline/uncertain)
+- [ ] Ends with question or period, not a soft CTA
 
 ## Common Mistakes
 
