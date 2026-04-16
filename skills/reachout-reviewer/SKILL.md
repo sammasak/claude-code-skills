@@ -9,6 +9,29 @@ description: Use when drafting or reviewing LinkedIn messages, recruiter replies
 
 Review and draft professional networking messages. **Never draft without first completing the research phase.** Context from the job ad and company shapes every word of the reply.
 
+## Inbound Posture (When They Contact You First)
+
+When a recruiter or company initiates contact, you are evaluating them, not applying to them.
+
+- Signal is **1 sentence max**, not a paragraph
+- Questions do the work, not the pitch
+- Do not explain, justify, or contextualize your stack or choices
+- Do not match their energy or enthusiasm
+- Under 80 words total is the target
+- If there is a stack mismatch, ask about it as a question. Do not pre-justify it.
+
+The implicit message: you are filtering them.
+
+## Signal Source (Check Before Drafting)
+
+Professional signal always comes first. Never lead with personal or homelab projects when professional work is available.
+
+Before drafting, check:
+- `~/workspace/whoami/companies/<current-employer>.md` for what was actually built
+- `~/workspace/whoami/profile.md` for career positioning
+
+Personal projects are secondary signal. Only include them if they demonstrate something the professional work does not.
+
 ## Pre-Draft Research (Required)
 
 **Do not draft a reply until both steps are complete.**
@@ -65,9 +88,11 @@ The signal paragraph and questions in the reply must map to what was found here.
 Before finalizing any outreach message, verify each item:
 
 **Research (gate — do not proceed without these)**
+- [ ] Professional signal source checked (`~/workspace/whoami/companies/<employer>.md`)
 - [ ] Job posting fetched and tech stack extracted (or noted as missing)
 - [ ] Company researched: stage, headcount, real product understood
 - [ ] Research summary block written
+- [ ] Inbound posture applied if they initiated contact
 
 **Signal**
 - [ ] Mentions 1-2 specific, relevant things from your actual work (not generic "experience with X")
@@ -107,6 +132,9 @@ Before finalizing any outreach message, verify each item:
 | Drafting without fetching the job ad | Stop. Fetch it first. Stack and role type change everything. |
 | Drafting without researching the company | Stop. Company stage and product change what signal is relevant. |
 | Signal based on recruiter message alone | Recruiter messages are generic. Use the actual job ad. |
+| Leading with personal/homelab projects | Check `whoami/companies/<employer>.md` first. Professional work is the signal. |
+| Selling yourself when they reached out | They came to you. 1 sentence of signal, then questions. Let them work. |
+| Long reply to inbound outreach | Under 80 words. Shorter signals more confidence than longer. |
 | Em dash used | Replace with comma, period, or split into two sentences |
 | Questions too broad ("Tell me more about the role") | Ask what would actually change your answer ("Does the team write Rust?") |
 | Opener mirrors recruiter language | Cut it. Start with the signal paragraph. |
