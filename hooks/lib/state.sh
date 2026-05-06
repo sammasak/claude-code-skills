@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # Shared session state — read/write JSON file scoped to CLAUDE_SESSION_ID.
 # Source this file from any hook: source "$(dirname "$0")/lib/state.sh"
+#
+# Schema v2: adds schema_version field; upgrade_state() migrates v1 files.
 
 STATE_FILE="/tmp/claude-hook-state-${CLAUDE_SESSION_ID:-$$}.json"
+STATE_SCHEMA_VERSION=2
 
 init_state() {
-  [ -f "$STATE_FILE" ] && return
+  if [ -f "$STATE_FILE" ]; then
+    upgrade_state
+    return
+  fi
   cat > "$STATE_FILE" << STATEEOF
 {
+  "schema_version": ${STATE_SCHEMA_VERSION},
   "session_id": "${CLAUDE_SESSION_ID:-$$}",
   "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
   "prompt_count": 0,
@@ -24,6 +31,15 @@ init_state() {
   "goal_status": null
 }
 STATEEOF
+}
+
+# Migrate v1 state files (missing schema_version) to current schema version.
+upgrade_state() {
+  local ver
+  ver=$(jq -r '.schema_version // 1' "$STATE_FILE" 2>/dev/null || echo "1")
+  if [ "$ver" -lt "$STATE_SCHEMA_VERSION" ] 2>/dev/null; then
+    update_state ".schema_version = ${STATE_SCHEMA_VERSION}"
+  fi
 }
 
 read_state() {

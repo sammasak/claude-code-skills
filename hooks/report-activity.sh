@@ -22,7 +22,7 @@ if [ ! -d "$WORKER_HOME" ] || [ ! -f "$WORKER_HOME/goals.json" ]; then
   update_state ".tools_used.\"$TOOL_NAME\" = ((.tools_used.\"$TOOL_NAME\" // 0) + 1)" 2>/dev/null || true
   # Generate activity message same as VM path would
   MESSAGE=$(echo "$INPUT" | jq -r '.tool_name // "working"' 2>/dev/null || echo "working")
-  log_hook "activity" "$MESSAGE" 0 "\"tool\":\"$TOOL_NAME\"" 2>/dev/null || true
+  log_hook "activity" "$MESSAGE" 0 "{\"tool\":\"$TOOL_NAME\"}" 2>/dev/null || true
   exit 0
 fi
 

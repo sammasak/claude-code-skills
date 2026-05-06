@@ -77,12 +77,14 @@ ${RECENT_FILES}
 ---
 STATEEOF
 
-# Load prompt template (external file with fallback)
-TEMPLATE_DIR="$HOME/workspace/workflows/hooks/write-session-state"
-if [ -f "$TEMPLATE_DIR/handoff-document.md" ]; then
-  TEMPLATE=$(cat "$TEMPLATE_DIR/handoff-document.md")
+# Load prompt template: skills repo first, workspace customisation second, inline fallback
+SKILLS_TEMPLATE_DIR="$SCRIPT_DIR/templates/write-session-state"
+WORKSPACE_TEMPLATE_DIR="$HOME/workspace/workflows/hooks/write-session-state"
+if [ -f "$SKILLS_TEMPLATE_DIR/handoff-document.md" ]; then
+  TEMPLATE=$(cat "$SKILLS_TEMPLATE_DIR/handoff-document.md")
+elif [ -f "$WORKSPACE_TEMPLATE_DIR/handoff-document.md" ]; then
+  TEMPLATE=$(cat "$WORKSPACE_TEMPLATE_DIR/handoff-document.md")
 else
-  # Inline fallback
   TEMPLATE='Write a structured session handoff. Goal status: {{GOAL_STATUS}}. Git: {{GIT_LOG}}. Files: {{RECENT_FILES}}. Transcript: {{TURNS}}. Output markdown sections: What We Built, What Worked, What Did NOT Work, Open Questions, Next Steps.'
 fi
 

@@ -19,7 +19,14 @@ START_MS=$(($(date +%s%N) / 1000000))
 
 WORKSPACE="${HOME}/workspace"
 HAIKU_MODEL="claude-haiku-4-5-20251001"
-TEMPLATE_DIR="$WORKSPACE/workflows/hooks/persist-session"
+SKILLS_TEMPLATE_DIR="$SCRIPT_DIR/templates/persist-session"
+WORKSPACE_TEMPLATE_DIR="$WORKSPACE/workflows/hooks/persist-session"
+resolve_template() {
+  local name="$1"
+  if [ -f "$SKILLS_TEMPLATE_DIR/$name" ]; then echo "$SKILLS_TEMPLATE_DIR/$name"
+  elif [ -f "$WORKSPACE_TEMPLATE_DIR/$name" ]; then echo "$WORKSPACE_TEMPLATE_DIR/$name"
+  fi
+}
 
 [ -d "$WORKSPACE" ] || exit 0
 
@@ -94,8 +101,9 @@ GOAL_STATUS=$(read_state '.goal_status // "n/a"' || echo "n/a")
 #   Thin session                                       → mechanical stub, no LLM call
 if [ "$MSG_COUNT" -ge 15 ] && [ -n "$GIT_LOG" ]; then
   # Read prompt template
-  if [ -f "$TEMPLATE_DIR/extract-summary.md" ]; then
-    TEMPLATE=$(cat "$TEMPLATE_DIR/extract-summary.md")
+  SUMMARY_TPL=$(resolve_template "extract-summary.md")
+  if [ -n "$SUMMARY_TPL" ]; then
+    TEMPLATE=$(cat "$SUMMARY_TPL")
   else
     TEMPLATE='Summarise this Claude Code session. Git: {{GIT_LOG}}. Transcript: {{TURNS}}. Output JSON: {"goal":"...","outcome":"...","project":"...","key_findings":[],"decisions_made":[],"what_worked":[],"what_didnt_work":[],"not_tried":[],"slug":"..."}'
   fi
@@ -190,7 +198,7 @@ git diff --cached --quiet 2>/dev/null || \
   git commit -m "session: ${DATE} — ${SLUG}" 2>/dev/null || true
 
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-log_hook "persist-session" "wrote" "$ELAPSED" "\"file\":\"sessions/ai-sessions/${DATE}-${SLUG}.md\""
+log_hook "persist-session" "wrote" "$ELAPSED" "{\"file\":\"sessions/ai-sessions/${DATE}-${SLUG}.md\"}"
 
 # ── Ghost note tail (L2 reflection) ──────────────────────────────────────────
 # Gate: ≥5 ai-sessions, ≥2 distinct projects, 5-min cooldown
@@ -215,7 +223,7 @@ if [ "${SESSION_COUNT:-0}" -ge 5 ] && [ "${DISTINCT_PROJECTS:-0}" -ge 2 ]; then
       cd "$WORKSPACE"
       git add "sessions/ai-sessions/${DATE}-${SLUG}.md" 2>/dev/null || true
       git commit --amend --no-edit 2>/dev/null || true
-      log_hook "persist-session" "ghost-note" "0" "\"ghost\":\"$(echo "$GHOST_LINE" | cut -c1-80)\""
+      log_hook "persist-session" "ghost-note" "0" "{\"ghost\":\"$(echo "$GHOST_LINE" | cut -c1-80 | tr '"' "'")\"}">
     fi
   fi
 fi

@@ -83,6 +83,6 @@ elif [ "$COUNT" -ge 5 ]; then
 fi
 
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-log_hook "check-loop" "$RESULT" "$ELAPSED" "\"count\":$COUNT" 2>/dev/null || true
+log_hook "check-loop" "$RESULT" "$ELAPSED" "{\"count\":$COUNT}" 2>/dev/null || true
 
 exit 0

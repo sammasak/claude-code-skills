@@ -84,10 +84,13 @@ TURNS=$(jq -r '
 
 [ -z "$TURNS" ] && exit 0
 
-# Load prompt template (external file with inline fallback)
-TEMPLATE_DIR="$HOME/workspace/workflows/hooks/extract-instincts"
-if [ -f "$TEMPLATE_DIR/extract-learnings.md" ]; then
-  TEMPLATE=$(cat "$TEMPLATE_DIR/extract-learnings.md")
+# Load prompt template: skills repo first, workspace customisation second, inline fallback
+SKILLS_TEMPLATE_DIR="$SCRIPT_DIR/templates/extract-instincts"
+WORKSPACE_TEMPLATE_DIR="$HOME/workspace/workflows/hooks/extract-instincts"
+if [ -f "$SKILLS_TEMPLATE_DIR/extract-learnings.md" ]; then
+  TEMPLATE=$(cat "$SKILLS_TEMPLATE_DIR/extract-learnings.md")
+elif [ -f "$WORKSPACE_TEMPLATE_DIR/extract-learnings.md" ]; then
+  TEMPLATE=$(cat "$WORKSPACE_TEMPLATE_DIR/extract-learnings.md")
 else
   TEMPLATE='Extract 0-3 atomic, reusable learnings. Transcript: {{TURNS}}. Output JSON: {"learnings":[{"title":"...","content":"...","scope":"{{SCOPE}}","confidence":4,"keywords":["kw1"]}]}'
 fi
@@ -162,6 +165,6 @@ done <<< "$LEARNINGS"
 
 RESULT="ok"
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-log_hook "extract-instincts" "$RESULT" "$ELAPSED" "\"learnings_written\":${WRITTEN_COUNT:-0}"
+log_hook "extract-instincts" "$RESULT" "$ELAPSED" "{\"learnings_written\":${WRITTEN_COUNT:-0}}"
 
 exit 0

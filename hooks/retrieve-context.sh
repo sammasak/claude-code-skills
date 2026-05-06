@@ -19,7 +19,15 @@ START_MS=$(($(date +%s%N) / 1000000))
 
 WORKSPACE="${HOME}/workspace"
 HAIKU_MODEL="claude-haiku-4-5-20251001"
-TEMPLATE_DIR="$WORKSPACE/workflows/hooks/retrieve-context"
+# Template resolution: skills repo first, workspace customisation second
+SKILLS_TEMPLATE_DIR="$SCRIPT_DIR/templates/retrieve-context"
+WORKSPACE_TEMPLATE_DIR="$WORKSPACE/workflows/hooks/retrieve-context"
+resolve_template() {
+  local name="$1"
+  if [ -f "$SKILLS_TEMPLATE_DIR/$name" ]; then echo "$SKILLS_TEMPLATE_DIR/$name"
+  elif [ -f "$WORKSPACE_TEMPLATE_DIR/$name" ]; then echo "$WORKSPACE_TEMPLATE_DIR/$name"
+  fi
+}
 
 [ -d "$WORKSPACE" ] || exit 0
 
@@ -51,7 +59,7 @@ if [ -n "$LAST_WORDS" ]; then
   if [ "$TOTAL" -gt 0 ]; then
     RATIO=$((OVERLAP * 100 / TOTAL))
     if [ "$RATIO" -gt 60 ]; then
-      log_hook "retrieve-context" "cached" 0 "\"prompt_words\":$WORD_COUNT"
+      log_hook "retrieve-context" "cached" 0 "{\"prompt_words\":$WORD_COUNT}"
       exit 0
     fi
   fi
@@ -83,8 +91,9 @@ if [ -d "$HOOK_LOG_DIR" ]; then
 fi
 
 # Read Stage 1 prompt template
-if [ -f "$TEMPLATE_DIR/stage1-room-selection.md" ]; then
-  STAGE1_TEMPLATE=$(cat "$TEMPLATE_DIR/stage1-room-selection.md")
+STAGE1_TPL=$(resolve_template "stage1-room-selection.md")
+if [ -n "$STAGE1_TPL" ]; then
+  STAGE1_TEMPLATE=$(cat "$STAGE1_TPL")
 else
   STAGE1_TEMPLATE='Task: {{PROMPT}}
 
@@ -109,7 +118,7 @@ STAGE1=$(printf '%s\n\nWorkspace structure:\n%s\n\nRoom index files:\n%s' \
 STAGE1=$(echo "$STAGE1" | tr '\n' ' ' | grep -oE '[a-z][a-z0-9/\-]*' | tr '\n' ' ' | xargs)
 ([ -z "$STAGE1" ] || [ "$STAGE1" = "NONE" ]) && {
   ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-  log_hook "retrieve-context" "none" "$ELAPSED" "\"prompt_words\":$WORD_COUNT"
+  log_hook "retrieve-context" "none" "$ELAPSED" "{\"prompt_words\":$WORD_COUNT}"
   exit 0
 }
 
@@ -133,13 +142,14 @@ done
 
 [ -z "$CONTEXT_CONTENT" ] && {
   ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-  log_hook "retrieve-context" "no-context" "$ELAPSED" "\"rooms\":\"$STAGE1\""
+  log_hook "retrieve-context" "no-context" "$ELAPSED" "{\"rooms\":\"$STAGE1\"}"
   exit 0
 }
 
 # Read Stage 2 prompt template
-if [ -f "$TEMPLATE_DIR/stage2-summarize.md" ]; then
-  STAGE2_TEMPLATE=$(cat "$TEMPLATE_DIR/stage2-summarize.md")
+STAGE2_TPL=$(resolve_template "stage2-summarize.md")
+if [ -n "$STAGE2_TPL" ]; then
+  STAGE2_TEMPLATE=$(cat "$STAGE2_TPL")
 else
   STAGE2_TEMPLATE='Task: {{PROMPT}}
 
@@ -172,7 +182,7 @@ update_state ".retrieve.rooms_activated = $ROOMS_JSON | .retrieve.last_prompt_wo
 # Log
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
 ROOMS_LOG=$(echo "$ROOMS_JSON" | jq -c .)
-log_hook "retrieve-context" "signpost" "$ELAPSED" "\"prompt_words\":$WORD_COUNT,\"rooms_activated\":$ROOMS_LOG"
+log_hook "retrieve-context" "signpost" "$ELAPSED" "{\"prompt_words\":$WORD_COUNT,\"rooms_activated\":$ROOMS_LOG}"
 
 # Output signpost
 echo ""

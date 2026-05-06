@@ -39,7 +39,7 @@ if [ -f "${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json" ]; then
     SUGGESTION=$(lookup_suggestion "musl")
     echo "BLOCKED: Rust binaries must use --target x86_64-unknown-linux-musl for container compatibility.${SUGGESTION:+ Try: $SUGGESTION}" >&2
     ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-    log_hook "validate-bash" "blocked" "$ELAPSED" "\"command\":\"$(echo "$CMD" | head -c 100 | tr '"' "'")\"" 2>/dev/null || true
+    log_hook "validate-bash" "blocked" "$ELAPSED" "{\"command\":\"$(echo "$CMD" | head -c 100 | tr '"' "'")\"}" 2>/dev/null || true
     exit 2
   fi
 
@@ -49,7 +49,7 @@ if [ -f "${CLAUDE_WORKER_HOME:-/var/lib/claude-worker}/goals.json" ]; then
     SUGGESTION=$(lookup_suggestion "authfile")
     echo "BLOCKED: buildah push requires --authfile /var/lib/claude-worker/.config/containers/auth.json${SUGGESTION:+ Try: $SUGGESTION}" >&2
     ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-    log_hook "validate-bash" "blocked" "$ELAPSED" "\"command\":\"$(echo "$CMD" | head -c 100 | tr '"' "'")\"" 2>/dev/null || true
+    log_hook "validate-bash" "blocked" "$ELAPSED" "{\"command\":\"$(echo "$CMD" | head -c 100 | tr '"' "'")\"}" 2>/dev/null || true
     exit 2
   fi
 fi

@@ -20,20 +20,20 @@ emit_event() {
 
 if [ -z "$FILE" ]; then
   ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-  log_hook "validate-manifest" "skipped" "$ELAPSED" "\"reason\":\"no-file\"" 2>/dev/null || true
+  log_hook "validate-manifest" "skipped" "$ELAPSED" '{"reason":"no-file"}' 2>/dev/null || true
   exit 0
 fi
 
 # Only validate .yaml files
 if ! echo "$FILE" | grep -qE '\.ya?ml$'; then
   ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-  log_hook "validate-manifest" "skipped" "$ELAPSED" "\"file\":\"$(basename "$FILE")\",\"reason\":\"not-yaml\"" 2>/dev/null || true
+  log_hook "validate-manifest" "skipped" "$ELAPSED" "{\"file\":\"$(basename "$FILE")\",\"reason\":\"not-yaml\"}" 2>/dev/null || true
   exit 0
 fi
 
 if [ ! -f "$FILE" ]; then
   ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-  log_hook "validate-manifest" "skipped" "$ELAPSED" "\"file\":\"$(basename "$FILE")\",\"reason\":\"not-found\"" 2>/dev/null || true
+  log_hook "validate-manifest" "skipped" "$ELAPSED" "{\"file\":\"$(basename "$FILE")\",\"reason\":\"not-found\"}" 2>/dev/null || true
   exit 0
 fi
 
@@ -71,5 +71,5 @@ if yq eval '.kind' "$FILE" 2>/dev/null | grep -qiE "^Deployment$|^StatefulSet$|^
 fi
 
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-log_hook "validate-manifest" "$RESULT" "$ELAPSED" "\"file\":\"$(basename "$FILE")\"" 2>/dev/null || true
+log_hook "validate-manifest" "$RESULT" "$ELAPSED" "{\"file\":\"$(basename "$FILE")\"}" 2>/dev/null || true
 exit 0
