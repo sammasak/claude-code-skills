@@ -17,20 +17,66 @@ These are the four missing building blocks. Everything else in the full kanban v
 
 ## Architecture
 
-Four skills as SKILL.md files in `~/claude-code-skills/skills/`. Each is usable in two modes:
+### Canonical home: `~/workspace/workflows/`
 
-1. **Interactive** — invoked via the Skill tool in a Claude Code session
-2. **Headless agent** — a GOAL.md reads the SKILL.md file with the Read tool and follows its instructions
+Workflows live primarily in the ICM workspace (the knowledge vault), one directory per
+workflow with a plain `CONTEXT.md` as the operational payload. This is the same convention
+used by all existing workflows (tdd, diagnose, to-issues, etc.) and established by
+ADR-001-mattpocock-skills-as-workflows.
 
-This dual-mode design means skills are the single source of truth for the logic; GOAL.md files reference them rather than duplicating instructions.
+```
+~/workspace/workflows/
+  kanban-adr-to-tickets/CONTEXT.md   ← decompose ADR phases into Board tickets
+  kanban-groom-ticket/CONTEXT.md     ← flesh out vague tickets into actionable specs
+  kanban-draft-adr/CONTEXT.md        ← draft ADR from completed ticket outcomes
+  kanban-status/CONTEXT.md           ← generate standup / board status report
+```
+
+### Export layer: `~/claude-code-skills/skills/`
+
+The claude-code-skills repo is a derived artifact. An export script wraps each
+`workflows/*/CONTEXT.md` in a thin SKILL.md frontmatter envelope so Claude Code can
+discover and invoke it via the Skill tool. The export runs via `just export-skills` in
+the workspace Justfile.
 
 ```
 ~/claude-code-skills/skills/
-  kanban-adr-to-tickets/SKILL.md   ← decompose ADR phases into Board tickets
-  kanban-groom-ticket/SKILL.md     ← flesh out vague tickets into actionable specs
-  kanban-draft-adr/SKILL.md        ← draft ADR from completed ticket outcomes
-  kanban-status/SKILL.md           ← generate standup / board status report
+  kanban-adr-to-tickets/SKILL.md   ← generated: frontmatter + CONTEXT.md content
+  kanban-groom-ticket/SKILL.md     ← generated
+  kanban-draft-adr/SKILL.md        ← generated
+  kanban-status/SKILL.md           ← generated
 ```
+
+**Export script** (`~/workspace/workflows/hooks/export-skills.sh`):
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+WORKFLOWS="$HOME/workspace/workflows"
+SKILLS="$HOME/claude-code-skills/skills"
+
+for dir in "$WORKFLOWS"/*/; do
+  name=$(basename "$dir")
+  ctx="$dir/CONTEXT.md"
+  [ -f "$ctx" ] || continue
+  # Only export workflows that opt in via frontmatter export: true
+  grep -q "^export: true" "$ctx" || continue
+  description=$(grep -m1 "^[^#\-]" "$ctx" | head -1 | sed 's/^[[:space:]]*//')
+  mkdir -p "$SKILLS/$name"
+  printf -- "---\nname: %s\ndescription: >-\n  %s\n---\n\n" "$name" "$description" \
+    > "$SKILLS/$name/SKILL.md"
+  grep -v "^export: true" "$ctx" >> "$SKILLS/$name/SKILL.md"
+done
+```
+
+Workflows opt in by including `export: true` in their CONTEXT.md frontmatter. Existing
+mattpocock-derived workflows without frontmatter are unaffected.
+
+### Dual-mode invocation
+
+Each workflow/skill is reachable in two ways:
+1. **Interactive** — Skill tool invokes `kanban-adr-to-tickets` in a Claude Code session
+2. **Headless agent** — GOAL.md reads `~/workspace/workflows/kanban-adr-to-tickets/CONTEXT.md`
+   with the Read tool and follows its instructions directly from the workspace canonical copy
 
 ### Ticket schema extensions
 
@@ -421,15 +467,24 @@ done
 
 ## Deployment
 
-Skills are delivered via NixOS Home Manager. After adding new skill directories:
-
+**Step 1 — Commit workflows to workspace:**
 ```bash
-cd ~/claude-code-skills && git push
+cd ~/workspace && git add workflows/kanban-*/ && git commit -m "feat: kanban skill suite workflows" && git push
+```
+
+**Step 2 — Export to claude-code-skills:**
+```bash
+cd ~/workspace && bash workflows/hooks/export-skills.sh
+cd ~/claude-code-skills && git add skills/kanban-*/ && git commit -m "feat: export kanban skills from workspace" && git push
+```
+
+**Step 3 — Rebuild NixOS to symlink new skills:**
+```bash
 cd ~/nixos-config && nix flake update claude-code-skills
 sudo nixos-rebuild switch --flake .#acer-swift
 ```
 
-No systemd changes needed for Sub-project 1. The scrum master changes take effect on the next git push + pull by the scrum master's Step 1 (it already does `git pull` at startup).
+The scrum master reads workflows directly from `~/workspace/workflows/*/CONTEXT.md` (the canonical copy), so no NixOS rebuild is needed for agent use. Only the interactive Skill tool invocation needs the rebuild.
 
 ---
 
@@ -438,7 +493,13 @@ No systemd changes needed for Sub-project 1. The scrum master changes take effec
 All four skills are complete when:
 
 ```bash
-# Skills exist and are symlinked
+# Workflows exist in workspace (canonical source)
+ls ~/workspace/workflows/kanban-adr-to-tickets/CONTEXT.md
+ls ~/workspace/workflows/kanban-groom-ticket/CONTEXT.md
+ls ~/workspace/workflows/kanban-draft-adr/CONTEXT.md
+ls ~/workspace/workflows/kanban-status/CONTEXT.md
+
+# Exported and symlinked for Claude Code Skill tool
 ls ~/.claude/skills/kanban-adr-to-tickets/SKILL.md
 ls ~/.claude/skills/kanban-groom-ticket/SKILL.md
 ls ~/.claude/skills/kanban-draft-adr/SKILL.md
