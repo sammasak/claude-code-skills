@@ -84,3 +84,91 @@ git -C ~/knowledge-vault add Board/backlog/<ticket-filename>
 git -C ~/knowledge-vault commit -m "board: groom ${TICKET_ID} — add goal and DoD"
 git -C ~/knowledge-vault push
 ```
+
+## DoD Authoring Rules
+
+Roughly half of failed tickets fail because the DoD command was authored
+badly, not because the implementation was wrong (e.g. e2e-011 regex
+didn't match Playwright `--reporter=list` success output; rust-001 ran
+a bare `cargo test` that hit pre-existing baseline failures unrelated
+to the ticket). Apply these rules to every `check:` you author or
+review during grooming.
+
+### 1. Match the success line, not its absence
+
+`pytest -q`, `cargo test`, and Playwright's `--reporter=list` omit the
+failure count when nothing fails. Regexes that try to find `failed.*0`
+will never match a clean run.
+
+**Bad:**
+```bash
+grep -qE 'passed.*failed.*0|passed \(1[.]'   # depends on duration formatting
+```
+
+**Good — assert success token AND absence of any failure count:**
+```bash
+echo "$OUT" | grep -qE '\b[0-9]+ passed\b' && ! echo "$OUT" | grep -qE '\b[1-9][0-9]* failed\b'
+```
+
+For tools with reliable exit codes, prefer the exit code over parsing output:
+```bash
+playwright test 03-forward-auth.spec.js --reporter=list   # exit 0 ⇔ all passed
+```
+
+### 2. Scope tests narrowly
+
+A bare `cargo test` runs the full crate including stale integration
+suites. A bare `pytest` runs the full repo. Either can fail on
+pre-existing baseline failures unrelated to the ticket and sink an
+otherwise clean implementation (rust-001 hit this).
+
+**Bad:**
+```bash
+cd ~/workstation-api && cargo test
+pytest
+```
+
+**Good — narrow to what changed:**
+```bash
+cd ~/workstation-api && cargo test --lib                    # library unit tests only
+cd ~/workstation-api && cargo test --test smoke             # named integration suite
+pytest tests/test_handlers.py::test_create_workspace        # single test
+```
+
+If the ticket genuinely requires the full suite to pass, verify the
+baseline is clean before grooming and say so explicitly in the DoD
+`description:`.
+
+### 3. Cluster-state checks belong post-merge
+
+Flux reconciles for HelmReleases and cross-Kustomization namespace
+creation take 15–25 minutes. A `kubectl get … -o jsonpath` check that
+runs in the worker before the impl PR merges will fail. Author the
+check so it runs in the Step 3b verifying lane — the 30-minute grace
+window is designed for this latency (see devex-005). The check itself
+stays the same; only the phase it runs in differs.
+
+### 4. No unbounded greps on long-lived files
+
+`grep -q 'foo' large.log` will pass on any historical mention of `foo`
+— including the bug the ticket is trying to fix. Bound the grep to
+recent content with `tail -N` or a timestamp filter.
+
+**Bad:**
+```bash
+grep -q 'reconciled successfully' /var/log/flux.log
+```
+
+**Good:**
+```bash
+tail -200 /var/log/flux.log | grep -q 'reconciled successfully'
+journalctl --since '5 min ago' -u flux | grep -q 'reconciled successfully'
+```
+
+### Authoring checklist
+
+Apply to every new `check:` before committing the groomed ticket:
+- [ ] Does the assertion match the actual successful output of the tool (not its absence)?
+- [ ] Is test scope narrowed to what this ticket changes (`--lib`, `--test <suite>`, single test name)?
+- [ ] If it reads cluster state, is it phrased so it runs post-merge in Step 3b?
+- [ ] If it greps a log, is it bounded by `tail -N` or a timestamp filter?
