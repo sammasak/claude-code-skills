@@ -28,7 +28,7 @@ When a recruiter contacts you cold, you are evaluating them, not applying to the
 - Questions do the work, not the pitch
 - Do not explain, justify, or contextualize your stack or choices
 - Do not match their energy or enthusiasm
-- Under 80 words total is the target
+- Under 65 words total is the target
 - If there is a stack mismatch, ask about it as a question. Do not pre-justify it.
 
 The implicit message: you are filtering them.
@@ -106,6 +106,7 @@ Wrong type = wrong draft. Do not default to Interested when Uncertain or Decline
 
 [Sign-off]
 ```
+End with a concrete question that advances the thread, not an expression of openness. Self-description is one sentence only — current team, primary languages, one specific relevant signal. No bullet lists.
 
 ### Uncertain
 ```
@@ -117,11 +118,11 @@ No signal. No pitch. The question does everything.
 
 ### Soft Decline (Cold)
 ```
-Tack för meddelandet. [1 sentence: honest reason, specific not vague]
+[Content-tied acknowledgement]. [1 sentence: honest reason, specific not vague]
 
 [Sign-off]
 ```
-"Tack för meddelandet" is the one allowed opener for cold declines — it softens without being sycophantic. No "lycka till", no "feel free to reach out." One sentence reason, done.
+Open with a brief acknowledgement tied to their specific message ("Tack för uppföljningen", "Tack för svaret, det klargjorde riktningen bra"). Not a fixed phrase. No "lycka till", no "feel free to reach out." One sentence reason, done. Target: 30-50 words.
 
 ### Soft Decline (Warm — ongoing relationship)
 ```
@@ -129,7 +130,7 @@ Tack för meddelandet. [1 sentence: honest reason, specific not vague]
 
 [Sign-off]
 ```
-Match the register of the conversation. If they used first names, casual Swedish, emojis — reply in kind. "Tack för meddelandet" feels cold after multiple exchanges. Use what fits the actual relationship.
+Match the register of the conversation. If they used first names, casual Swedish, emojis — reply in kind. Use what fits the actual relationship.
 
 ### Hard Decline
 Do not reply. Or if a reply is warranted (warm relationship, referral context):
@@ -142,11 +143,20 @@ Inte rätt timing för mig just nu.
 ## Writing Rules (All Types)
 
 - No em dashes (-- or &mdash;) — use commas, periods, or restructure
-- No filler openers ("Kul att höra av dig", "Thanks for reaching out")
 - Match the language they wrote in (Swedish → Swedish, English → English)
-- Match the natural voice in `whoami/personal-preferences.md` — casual, direct, short sentences, hedging with "nog"/"tror", not formal or stiff
 - Never mirror their vague language back at them
-- Shorter is always better than longer
+- Shorter is always better than longer. No sent message should exceed ~65 words.
+
+### Swedish
+- Casual and direct. Short sentences. Hedging with "nog", "tror", "kör på".
+- **Sign-off is context-dependent.** "Med vänliga hälsningar, Lukas Rajala" for first substantive replies and declines to strangers. "/Lukas" or "// Lukas" for active back-and-forth. No sign-off for very short casual exchanges with established rapport.
+- **Acknowledgement openers are fine when content-tied.** "Tack för svaret, det klargjorde riktningen bra" is natural. Empty warmers ("Kul att höra av dig!") with no content reference are not. Criterion: does the opener reference something specific from their message?
+- Emoji only in very casual, short exchanges with established rapport. Never in declines. Never in English. Practical frequency: roughly one per ten messages.
+
+### English
+- No warm opener. Start with substance.
+- No hedging language (unlike Swedish). Factual and direct.
+- Close with "Best regards, Lukas".
 
 ## Checklist
 
@@ -160,9 +170,10 @@ Inte rätt timing för mig just nu.
 **Draft**
 - [ ] Correct template used for reply type
 - [ ] No signal in Uncertain or Decline replies
-- [ ] No filler opener
+- [ ] No empty filler opener
 - [ ] No em dashes
-- [ ] Under 80 words (inbound interested), under 30 words (decline/uncertain)
+- [ ] Under 65 words (interested), 30-50 words (decline), under 30 words (uncertain)
+- [ ] Sign-off matches conversational register
 - [ ] Ends with question or period, not a soft CTA
 
 ## Common Mistakes
@@ -174,10 +185,12 @@ Inte rätt timing för mig just nu.
 | Signal based on recruiter message alone | Recruiter messages are generic. Use the actual job ad. |
 | Leading with personal/homelab projects | Check `whoami/companies/<employer>.md` first. Professional work is the signal. |
 | Selling yourself when they reached out | They came to you. 1 sentence of signal, then questions. Let them work. |
-| Long reply to inbound outreach | Under 80 words. Shorter signals more confidence than longer. |
+| Reply over 65 words | Cut it. Longer does not signal more confidence. |
 | Em dash used | Replace with comma, period, or split into two sentences |
 | Questions too broad ("Tell me more about the role") | Ask what would actually change your answer ("Does the team write Rust?") |
-| Opener mirrors recruiter language | Cut it. Start with the signal paragraph. |
+| Empty opener with no content reference | Cut it or tie it to something specific in their message. |
 | Lists every matching skill | Pick the 1-2 most relevant, mention them specifically |
 | Ends with "Let me know if..." | End with the questions themselves |
 | Treating warm contacts like cold inbound | Classify relationship first. Multiple exchanges + rapport = match their tone, not the evaluating posture. |
+| Using "Med vänliga hälsningar" in casual back-and-forth | Reserve for first replies and declines to strangers. Use "/Lukas" in ongoing threads. |
+| Using informal sign-off for first reply to external recruiter | "Med vänliga hälsningar, Lukas Rajala" is appropriate for first contact. |
