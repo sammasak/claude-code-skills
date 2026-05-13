@@ -95,9 +95,23 @@ helm rollback <name> <revision> -n <ns> # Helm releases
 |---|---|---|
 | **FluxCD** | ArgoCD | Lightweight, pure K8s CRDs, composable with Kustomize |
 | **SOPS + age** | Sealed Secrets / Vault | Encrypted in Git; no extra controller |
-| **Gateway API + Envoy Gateway** | ingress-nginx (retired) | K8s-native routing, L7 features |
+| **Traefik v3** | ingress-nginx (retired, ADR-011) | Kubernetes-native IngressRoute CRDs, middleware chains, forward-auth integration |
 | **MetalLB** | cloud LB | Bare-metal L2/BGP for LoadBalancer Services |
 | **KubeVirt** | separate hypervisor | VMs alongside containers on same cluster |
+
+## Ingress (Traefik v3)
+
+- **Annotation prefix:** `traefik.ingress.kubernetes.io/` (NEVER use `nginx.ingress.kubernetes.io/`)
+- **Standard Ingress annotations for Authentik-gated apps:**
+  ```yaml
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: "authentik-authentik-forward-auth@kubernetescrd"
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  ```
+- **Middleware CRDs:** Traefik Middleware resources live in the `authentik` namespace (shared `authentik-forward-auth`). Reference them as `<namespace>-<name>@kubernetescrd` in annotations.
+- **TLS:** All external routes must set `router.tls: "true"` and use cert-manager with `letsencrypt-prod` cluster issuer.
+- **Anti-pattern:** Never write `nginx.ingress.kubernetes.io/` annotations. ingress-nginx is fully retired and removed from the cluster.
 
 ## Anti-Patterns
 
