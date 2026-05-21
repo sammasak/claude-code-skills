@@ -8,7 +8,7 @@ Take a vague or under-specified Board backlog ticket and flesh it out into a ful
 
 ## When to use
 
-When a ticket in `~/knowledge-vault/Board/backlog/` has any of:
+When a ticket in `~/workspace/Board/backlog/` has any of:
 - `goal:` fewer than 8 lines
 - `dod:` empty or contains no shell commands (prose-only items)
 - `type:` is `~`
@@ -24,7 +24,7 @@ A ticket is **groomed** when ALL of:
 ### Step 1 — Identify ungroomed tickets
 
 ```bash
-for f in ~/knowledge-vault/Board/backlog/*.md; do
+for f in ~/workspace/Board/backlog/*.md; do
   [ "$(basename "$f")" = ".gitkeep" ] && continue
   lines=$(awk '/^goal:/,/^dod:/' "$f" | grep -v "^goal:" | grep -v "^dod:" | wc -l)
   dod_checks=$(grep -c "check:" "$f" 2>/dev/null || echo 0)
@@ -45,7 +45,7 @@ For each ticket:
    - `infra`: run `kubectl get all -A | head -20` and read relevant manifests in `~/homelab-gitops/`
    - `apps`: read the affected Deployment/Service manifests
    - `skills`: read `~/claude-code-skills/skills/` for relevant existing skills
-   - `docs`: read the relevant knowledge-vault section
+   - `docs`: read the relevant section in `~/workspace/knowledge/` or `~/workspace/homelab/`
 4. Identify what "done" looks like — what must be verifiably true when the ticket completes?
 
 ### Step 3 — Write the groomed ticket
@@ -80,9 +80,9 @@ Set `estimated_effort:` to a human-readable estimate: `"1-2 hours"`, `"half day"
 
 ```bash
 TICKET_ID=$(grep "^id:" <ticket-file> | awk '{print $2}')
-git -C ~/knowledge-vault add Board/backlog/<ticket-filename>
-git -C ~/knowledge-vault commit -m "board: groom ${TICKET_ID} — add goal and DoD"
-git -C ~/knowledge-vault push
+git -C ~/workspace add Board/backlog/<ticket-filename>
+git -C ~/workspace commit -m "board: groom ${TICKET_ID} — add goal and DoD"
+git -C ~/workspace push
 ```
 
 ## DoD Authoring Rules
