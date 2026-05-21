@@ -45,7 +45,7 @@ For each ticket:
    - `infra`: run `kubectl get all -A | head -20` and read relevant manifests in `~/homelab-gitops/`
    - `apps`: read the affected Deployment/Service manifests
    - `skills`: read `~/claude-code-skills/skills/` for relevant existing skills
-   - `docs`: read the relevant knowledge-vault section
+   - `docs`: read the relevant section in `~/workspace/knowledge/` or `~/workspace/homelab/`
 4. Identify what "done" looks like — what must be verifiably true when the ticket completes?
 
 ### Step 3 — Write the groomed ticket
