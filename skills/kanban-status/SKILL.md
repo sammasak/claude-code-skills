@@ -1,10 +1,10 @@
 ---
 name: kanban-status
 description: >-
-  Generate a board status report from the current kanban board state. Writes to ~/workspace/Board/status-latest.md, commits, and posts a summary to ntfy.
+  Generate a board status report from the current kanban board state. Writes to ~/knowledge-vault/Board/status-latest.md, commits, and posts a summary to ntfy.
 ---
 
-Generate a board status report from the current kanban board state. Writes to ~/workspace/Board/status-latest.md, commits, and posts a summary to ntfy.
+Generate a board status report from the current kanban board state. Writes to ~/knowledge-vault/Board/status-latest.md, commits, and posts a summary to ntfy.
 
 ## When to use
 
@@ -15,7 +15,7 @@ On demand for a current board snapshot, or at the end of each scrum master run.
 ### Step 1 — Read board state
 
 ```bash
-BOARD=~/workspace/Board
+BOARD=~/knowledge-vault/Board
 for col in backlog waiting in-progress review verifying needs-info on-hold blocked failed completed; do
   count=$(find "$BOARD/$col/" -name "*.md" ! -name ".gitkeep" 2>/dev/null | wc -l)
   printf "%s: %s\n" "$col" "$count"
@@ -34,12 +34,12 @@ For failed: read `title` and `retry_count`.
 ### Step 2 — Read capacity from state.yaml
 
 ```bash
-MAX=$(grep "max_concurrent_workers:" ~/workspace/Board/state.yaml | awk '{print $2}')
+MAX=$(grep "max_concurrent_workers:" ~/knowledge-vault/Board/state.yaml | awk '{print $2}')
 ```
 
 ### Step 3 — Write report
 
-Write `~/workspace/Board/status-latest.md`:
+Write `~/knowledge-vault/Board/status-latest.md`:
 
 ```markdown
 # Board Status — YYYY-MM-DD HH:MM
@@ -83,6 +83,6 @@ git -C ~/workspace push
 curl -s \
   -H "Title: Board Status $(date +%Y-%m-%d\ %H:%M)" \
   -H "Tags: clipboard" \
-  -d "$(head -20 ~/workspace/Board/status-latest.md)" \
+  -d "$(head -20 ~/knowledge-vault/Board/status-latest.md)" \
   http://10.43.19.253/homelab-improvements || true
 ```

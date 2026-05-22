@@ -1,10 +1,10 @@
 ---
 name: kanban-adr-to-tickets
 description: >-
-  Break an ADR's Implementation Plan section into per-phase Board tickets in ~/workspace/Board/backlog/. Each ticket is fully self-contained: a worker completes it without reading the ADR.
+  Break an ADR's Implementation Plan section into per-phase Board tickets in ~/knowledge-vault/Board/backlog/. Each ticket is fully self-contained: a worker completes it without reading the ADR.
 ---
 
-Break an ADR's Implementation Plan section into per-phase Board tickets in ~/workspace/Board/backlog/. Each ticket is fully self-contained: a worker completes it without reading the ADR.
+Break an ADR's Implementation Plan section into per-phase Board tickets in ~/knowledge-vault/Board/backlog/. Each ticket is fully self-contained: a worker completes it without reading the ADR.
 
 ## When to use
 
@@ -30,7 +30,7 @@ Read the full ADR file. Locate `## Implementation Plan`. Identify all phases (he
 Before writing anything, check for existing phase tickets:
 
 ```bash
-grep -r "epic: <parent-ticket-id>" ~/workspace/Board/ --include="*.md" -l 2>/dev/null
+grep -r "epic: <parent-ticket-id>" ~/knowledge-vault/Board/ --include="*.md" -l 2>/dev/null
 ```
 
 If tickets already exist with this epic, list them and exit. Do not create duplicates.
@@ -43,7 +43,7 @@ Find the next available sequential ID for the domain:
 DOMAIN=<inferred-or-provided-domain>
 TODAY=$(date +%Y-%m-%d)
 # Count all existing tickets for this domain (all dates) to avoid ID collisions
-ALL=$(find ~/workspace/Board/ -name "TICKET-*-${DOMAIN}-*.md" 2>/dev/null | wc -l)
+ALL=$(find ~/knowledge-vault/Board/ -name "TICKET-*-${DOMAIN}-*.md" 2>/dev/null | wc -l)
 # IDs for N phases: $((ALL+1)), $((ALL+2)), ..., $((ALL+N))
 ```
 
@@ -51,7 +51,7 @@ Assign IDs sequentially: `TICKET-$TODAY-$DOMAIN-$(printf "%03d" $((ALL+1)))`, et
 
 ### Step 4 — Write ticket files
 
-For each phase write `~/workspace/Board/backlog/TICKET-<id>.md`.
+For each phase write `~/knowledge-vault/Board/backlog/TICKET-<id>.md`.
 
 Required frontmatter fields:
 

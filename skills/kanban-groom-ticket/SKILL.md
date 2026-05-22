@@ -8,7 +8,7 @@ Take a vague or under-specified Board backlog ticket and flesh it out into a ful
 
 ## When to use
 
-When a ticket in `~/workspace/Board/backlog/` has any of:
+When a ticket in `~/knowledge-vault/Board/backlog/` has any of:
 - `goal:` fewer than 8 lines
 - `dod:` empty or contains no shell commands (prose-only items)
 - `type:` is `~`
@@ -24,7 +24,7 @@ A ticket is **groomed** when ALL of:
 ### Step 1 — Identify ungroomed tickets
 
 ```bash
-for f in ~/workspace/Board/backlog/*.md; do
+for f in ~/knowledge-vault/Board/backlog/*.md; do
   [ "$(basename "$f")" = ".gitkeep" ] && continue
   lines=$(awk '/^goal:/,/^dod:/' "$f" | grep -v "^goal:" | grep -v "^dod:" | wc -l)
   dod_checks=$(grep -c "check:" "$f" 2>/dev/null || echo 0)
