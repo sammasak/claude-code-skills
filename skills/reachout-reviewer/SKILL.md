@@ -44,6 +44,30 @@ Before drafting, check:
 
 Personal projects are secondary signal. Only include them if they demonstrate something the professional work does not.
 
+## Step 0: Capture Raw Source (Required)
+
+Whenever raw message text is present in the conversation — an email, LinkedIn message, or recruiter DM — save it as a source file **before doing any research or drafting**.
+
+**Path pattern:** `~/workspace/whoami/applications/<company-slug>/sources/<type>-<direction>-YYYY-MM-DD.md`
+
+where `<type>` is one of: `email`, `linkedin-message`, `linkedin-dm`, `recruiter-message`
+and `<direction>` is `inbound` or `outbound`.
+
+**Source file format:**
+```markdown
+---
+tags: [whoami, source]
+date: YYYY-MM-DD
+type: email | linkedin-message | linkedin-dm | recruiter-message
+direction: inbound | outbound
+parties: [list of people involved]
+---
+
+<paste raw message text verbatim here>
+```
+
+Sources are **immutable** — create once, never edit. If the company directory does not exist yet, create it along with the `sources/` subdirectory.
+
 ## Pre-Draft Research (Required)
 
 **Do not draft a reply until both steps are complete.**
@@ -159,6 +183,9 @@ Inte rätt timing för mig just nu.
 - Close with "Best regards, Lukas".
 
 ## Checklist
+
+**Source capture (gate)**
+- [ ] Raw message(s) saved to sources/ before any drafting
 
 **Research (gate)**
 - [ ] `whoami/personal-preferences.md` checked for stack and domain exclusions
