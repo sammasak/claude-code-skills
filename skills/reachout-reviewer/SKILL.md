@@ -93,19 +93,30 @@ Use WebSearch to look up the company. Extract:
 - Engineering blog or tech talks (reveals real stack and culture)
 - Recent news (hiring wave, layoffs, product launch, pivot)
 
-### Step 3: Summarize findings before drafting
+### Step 3: Present context before drafting
 
-Output a brief research block before the draft:
+Output three blocks in order before writing a single word of the draft:
 
+**Block 1 — Message being replied to (verbatim):**
 ```
-**Company:** [name, stage, headcount estimate]
-**Stack:** [actual languages/frameworks found]
-**Role signals:** [greenfield/maintenance, frontend-heavy/backend-heavy, etc.]
-**Culture signals:** [anything notable]
+> [quote the full inbound message exactly as received]
+```
+
+**Block 2 — All relevant context from knowledge vault:**
+```
+**Preferences:** [stack preferences, domain exclusions from personal-preferences.md that bear on this]
+**Professional signal:** [what was actually built at current/past employer that maps to this role]
+**Company:** [name, stage, headcount, product summary]
+**Stack:** [actual languages/frameworks found in job ad + research]
+**Role signals:** [greenfield/maintenance, frontend-heavy/backend-heavy, team size, on-site/remote]
+**Culture signals:** [anything notable — reviews, engineering blog, incidents]
 **Open questions:** [things not found, would need to ask]
 ```
 
-The signal paragraph and questions in the reply must map to what was found here. If the stack is unknown after research, that becomes one of the questions.
+**Block 3 — Reply type decision:**
+State the reply type (Interested / Uncertain / Soft decline / Hard decline) and one sentence explaining why.
+
+The draft follows these three blocks. Signal and questions must map directly to what is in Block 2. If the stack is unknown after research, that becomes one of the questions.
 
 ## Reply Type — Decide Before Drafting
 
@@ -164,6 +175,21 @@ Inte rätt timing för mig just nu.
 [Sign-off]
 ```
 
+## Draft Output Format
+
+After the three context blocks, present the draft like this:
+
+```
+---
+[draft text]
+---
+
+**Why this works:**
+[2-3 sentences: what reply type was chosen and why, which context from Block 2 shaped the signal or questions, what the draft deliberately avoids]
+```
+
+The "why" section is for the human to evaluate and redirect before sending. It makes the tradeoffs explicit.
+
 ## Writing Rules (All Types)
 
 - No em dashes (-- or &mdash;) — use commas, periods, or restructure
@@ -195,6 +221,9 @@ Inte rätt timing för mig just nu.
 - [ ] Reply type decided: Interested / Uncertain / Soft decline / Hard decline
 
 **Draft**
+- [ ] Block 1: inbound message quoted verbatim
+- [ ] Block 2: all relevant knowledge vault context surfaced
+- [ ] Block 3: reply type stated with one-sentence reason
 - [ ] Correct template used for reply type
 - [ ] No signal in Uncertain or Decline replies
 - [ ] No empty filler opener
@@ -202,6 +231,7 @@ Inte rätt timing för mig just nu.
 - [ ] Under 65 words (interested), 30-50 words (decline), under 30 words (uncertain)
 - [ ] Sign-off matches conversational register
 - [ ] Ends with question or period, not a soft CTA
+- [ ] "Why this works" section follows the draft
 
 ## Common Mistakes
 
