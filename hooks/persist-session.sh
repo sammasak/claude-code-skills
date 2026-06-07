@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Stop hook — write AI session record to ~/workspace/sessions/ai-sessions/.
+# Stop hook — write AI session record to ~/knowledge/sessions/ai-sessions/.
 #
 # Physical host ONLY. Fires first in the Stop chain.
-# Uses prompt template from ~/workspace/workflows/hooks/persist-session/.
+# Uses prompt template from ~/knowledge/workflows/hooks/persist-session/.
 # Enriched with shared state (topic, repos, tools, errors).
 #
-# Note: session files are committed but not pushed. Run 'cd ~/workspace && git push'
+# Note: session files are committed but not pushed. Run 'cd ~/knowledge && git push'
 # periodically to sync session history to remote. Pushing in the hook adds network
 # dependency to the Stop chain which would delay Claude Code shutdown.
 
@@ -17,7 +17,7 @@ source "$SCRIPT_DIR/lib/log.sh"
 
 START_MS=$(($(date +%s%N) / 1000000))
 
-WORKSPACE="${HOME}/workspace"
+WORKSPACE="${HOME}/knowledge"
 HAIKU_MODEL="claude-haiku-4-5-20251001"
 SKILLS_TEMPLATE_DIR="$SCRIPT_DIR/templates/persist-session"
 WORKSPACE_TEMPLATE_DIR="$WORKSPACE/workflows/hooks/persist-session"
@@ -232,7 +232,7 @@ fi
 # ── L3 work poll ─────────────────────────────────────────────────────────────
 # Physical host only (already guarded above: VM exits if goals.json exists).
 # Poll workstation-api for any active work item VMs that have completed.
-WORK_LIB="${HOME}/workspace/work/lib.sh"
+WORK_LIB="${HOME}/knowledge/work/lib.sh"
 if [ -f "$WORK_LIB" ]; then
   source "$WORK_LIB" 2>/dev/null || true
   work_poll 2>/dev/null || true

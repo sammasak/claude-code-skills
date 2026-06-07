@@ -14,9 +14,9 @@ files and selects the 3–5 most relevant categories from the catalog. One speci
 category reviews in parallel. The controller aggregates and decides.
 
 **Prerequisites:** verify these files exist before starting:
-- `~/workspace/workflows/recursive-review/prompts/assessor.md`
-- `~/workspace/workflows/recursive-review/prompts/reviewer.md`
-- `~/workspace/workflows/recursive-review/categories.yaml`
+- `~/knowledge/workflows/recursive-review/prompts/assessor.md`
+- `~/knowledge/workflows/recursive-review/prompts/reviewer.md`
+- `~/knowledge/workflows/recursive-review/categories.yaml`
 
 If any are missing, abort and tell the user.
 
@@ -29,11 +29,11 @@ If any are missing, abort and tell the user.
 ## Stage 1 — Assess
 
 **Dispatch one assessor subagent** using the Task tool with `subagent_type=general-purpose`.
-Use the prompt template at `~/workspace/workflows/recursive-review/prompts/assessor.md`,
+Use the prompt template at `~/knowledge/workflows/recursive-review/prompts/assessor.md`,
 replacing:
 
 - `{{FILES}}` — the changed file paths for this task (one per line)
-- `{{CATEGORIES_YAML}}` — full contents of `~/workspace/workflows/recursive-review/categories.yaml`
+- `{{CATEGORIES_YAML}}` — full contents of `~/knowledge/workflows/recursive-review/categories.yaml`
 
 **If reviewing against a task spec:** add a `## Task Spec` heading at the end of the
 rendered assessor prompt and paste the full spec text under it. Also instruct the assessor
@@ -64,7 +64,7 @@ dispatch one Task call per category in that chunk's `categories[]` — all Task 
 ALL chunks go in the same single message.
 
 Use the Task tool with `subagent_type=general-purpose` and the reviewer prompt at
-`~/workspace/workflows/recursive-review/prompts/reviewer.md`, replacing:
+`~/knowledge/workflows/recursive-review/prompts/reviewer.md`, replacing:
 
 - `{{CHUNK_FILES}}` — file paths in this chunk
 - `{{CATEGORY}}` — category name

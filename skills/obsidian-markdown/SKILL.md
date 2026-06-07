@@ -1,6 +1,6 @@
 ---
 name: obsidian-markdown
-description: Use when creating or editing notes in an Obsidian vault, writing to ~/workspace, or using Obsidian-specific syntax (wikilinks, callouts, embeds, frontmatter properties).
+description: Use when creating or editing notes in an Obsidian vault, writing to ~/knowledge, or using Obsidian-specific syntax (wikilinks, callouts, embeds, frontmatter properties).
 allowed-tools: Bash, Read, Grep, Glob, Write, Edit
 injectable: true
 ---
@@ -71,7 +71,7 @@ aliases:
 $e^{i\pi} + 1 = 0$             Inline LaTeX
 ```
 
-## Homelab Vault Conventions (`~/workspace`)
+## Homelab Vault Conventions (`~/knowledge`)
 
 This vault uses the ICM (Interpreted Context Methodology) structure:
 

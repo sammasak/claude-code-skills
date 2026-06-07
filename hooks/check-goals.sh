@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # check-goals — Stop hook dispatcher
-# Delegates all logic to ~/workspace/workflows/hooks/check-goals/run.sh.
+# Delegates all logic to ~/knowledge/workflows/hooks/check-goals/run.sh.
 # Fires first in the Stop chain; controls the goal loop for claude-worker VMs.
 
-WORKSPACE="${WORKSPACE:-$HOME/workspace}"
+WORKSPACE="${WORKSPACE:-$HOME/knowledge}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 export CLAUDE_SKILLS_LIB="$SCRIPT_DIR/lib"
 if command -v jq >/dev/null 2>&1; then

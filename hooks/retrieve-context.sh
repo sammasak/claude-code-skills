@@ -6,7 +6,7 @@
 # Output: summary paragraph + file pointers. Silent if nothing relevant.
 #
 # Physical host ONLY (VM agents have their own CONTEXT via goal/CLAUDE.md).
-# Uses prompt templates from ~/workspace/workflows/hooks/retrieve-context/.
+# Uses prompt templates from ~/knowledge/workflows/hooks/retrieve-context/.
 # Session cache: skips re-retrieval if topic hasn't shifted.
 
 set -uo pipefail
@@ -17,7 +17,7 @@ source "$SCRIPT_DIR/lib/log.sh"
 
 START_MS=$(($(date +%s%N) / 1000000))
 
-WORKSPACE="${HOME}/workspace"
+WORKSPACE="${HOME}/knowledge"
 HAIKU_MODEL="claude-haiku-4-5-20251001"
 # Template resolution: skills repo first, workspace customisation second
 SKILLS_TEMPLATE_DIR="$SCRIPT_DIR/templates/retrieve-context"
@@ -192,7 +192,7 @@ if [ -n "$FILES" ] && [ "$FILES" != "NONE" ]; then
   echo ""
   echo "Read if needed:"
   for F in $FILES; do
-    echo "  ~/workspace/$F"
+    echo "  ~/knowledge/$F"
   done
 fi
 echo "────────────────────────────────────────────────────────────"

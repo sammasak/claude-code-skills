@@ -8,4 +8,4 @@ Then list the specific files the assistant should read if needed.
 
 Format your response exactly as:
 SUMMARY: <sentences>
-FILES: <space-separated relative paths from ~/workspace/ or NONE>
+FILES: <space-separated relative paths from ~/knowledge/ or NONE>
