@@ -1,0 +1,27 @@
+skill: rust-engineering
+
+# Queries that should activate rust-engineering
+positives:
+  - "How do I handle errors idiomatically in a Rust library?"
+  - "My Cargo workspace has duplicate dependency versions, how do I deduplicate?"
+  - "What clippy lints should I enable for a new Rust project?"
+  - "How do I make illegal states unrepresentable in Rust?"
+  - "I want to add a newtype wrapper to avoid passing raw strings across API boundaries"
+  - "My Rust binary is too large, how do I optimize the release profile?"
+  - "How do I cross-compile a Rust binary to musl for a minimal container?"
+  - "What's the difference between thiserror and anyhow for error handling?"
+  - "How do I model a state machine using Rust's type system?"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "How do I build a minimal Docker image for my Rust service?"      # → container-workflows
+  - "My Flux deployment of the Rust API keeps failing"                # → kubernetes-gitops
+  - "How do I add Prometheus metrics to my Axum service?"             # → observability-patterns
+  - "I need to encrypt a config file containing my Rust service API key"  # → secrets-management
+  - "How do I write a Nix flake devShell for Rust development?"       # → nix-flake-development
+
+# Queries that should activate no skill
+true_negatives:
+  - "How do I write a Flux GitOps kustomization?"
+  - "What is the best Python library for HTTP requests?"
+  - "Help me understand how TCP handshakes work"

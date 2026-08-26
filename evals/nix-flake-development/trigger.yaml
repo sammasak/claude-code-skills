@@ -1,0 +1,26 @@
+skill: nix-flake-development
+
+# Queries that should activate nix-flake-development
+positives:
+  - "How do I add a new package to my NixOS system configuration?"
+  - "My nixos-rebuild switch is failing with an evaluation error"
+  - "How do I write a flake.nix devShell with Rust and cargo?"
+  - "I want to pin my Home Manager version in my flake inputs"
+  - "How do I update a single flake input without updating everything?"
+  - "My NixOS module is not recognized — how do I wire it into my flake?"
+  - "How do I add a new NixOS host to my flake?"
+  - "I need to create a custom NixOS module with options and config"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "How do I deploy my NixOS-built container image to Kubernetes?"   # → kubernetes-gitops
+  - "My Rust code won't compile because of a lifetime error"          # → rust-engineering
+  - "How do I build a minimal container image for my Go service?"     # → container-workflows
+  - "My cluster secrets are not being decrypted by Flux SOPS"         # → secrets-management
+  - "How do I add Prometheus scraping to my NixOS service?"           # → observability-patterns
+
+# Queries that should activate no skill
+true_negatives:
+  - "What is the difference between Docker and Kubernetes?"
+  - "How do I write an async function in Python?"
+  - "Explain how garbage collection works in Java"

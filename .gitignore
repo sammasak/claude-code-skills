@@ -1,0 +1,9 @@
+.DS_Store
+*.swp
+*.swo
+*~
+.worktrees/
+evals/.venv/
+evals/results/*.json
+**/__pycache__/
+**/*.pyc
