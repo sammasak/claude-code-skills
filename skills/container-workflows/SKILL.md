@@ -45,9 +45,9 @@ trivy image myapp:$(git rev-parse --short HEAD)
 # Tag: semver + SHA (never only latest)
 buildah tag myapp:$(git rev-parse --short HEAD) myapp:1.4.0
 
-# Push
-skopeo copy containers-storage:localhost/myapp:1.4.0 docker://registry.example.com/myapp:1.4.0
-skopeo copy containers-storage:localhost/myapp:$(git rev-parse --short HEAD) docker://registry.example.com/myapp:$(git rev-parse --short HEAD)
+# Push (zot — registry.sammasak.dev)
+skopeo copy containers-storage:localhost/myapp:1.4.0 docker://registry.sammasak.dev/myapp:1.4.0
+skopeo copy containers-storage:localhost/myapp:$(git rev-parse --short HEAD) docker://registry.sammasak.dev/myapp:$(git rev-parse --short HEAD)
 ```
 
 **Tag strategy:** `1.4.0` (release, immutable), `a3f9b2c` (SHA, immutable), `latest` (convenience only, never used in prod).
@@ -57,7 +57,7 @@ skopeo copy containers-storage:localhost/myapp:$(git rev-parse --short HEAD) doc
 | Choice | Why |
 |---|---|
 | **buildah + skopeo** | Rootless, daemonless, OCI-native |
-| **Harbor** | Private registry with vulnerability scanning and RBAC |
+| **zot** | Homelab registry (`registry.sammasak.dev`) — lightweight, OCI-native, robot-account auth via credentials skill |
 | **`FROM scratch`** for Rust | Statically linked musl — ~5 MB, zero runtime deps |
 | **Chainguard/distroless** | CA certs + tzdata + non-root user out of the box |
 | **`python:3.x-slim` + uv** | Fast installs, small image |

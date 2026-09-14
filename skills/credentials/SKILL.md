@@ -28,16 +28,16 @@ set -a && source ~/.env && set +a
 
 Contains: `CLAUDE_CODE_OAUTH_TOKEN`, `GROK_API_KEY`, and other personal API keys.
 
-## Container Registry (Harbor)
+## Container Registry (zot)
 
-Registry: `registry.sammasak.dev`
+Registry: `registry.sammasak.dev` (zot, robot-account auth — Harbor is retired).
 
 Credentials are stored in `~/.config/containers/auth.json`. Extract them when needed:
 
 ```bash
 auth_encoded=$(jq -r '.auths["registry.sammasak.dev"].auth' ~/.config/containers/auth.json)
-harbor_user=$(echo "$auth_encoded" | base64 -d | cut -d: -f1)
-harbor_pass=$(echo "$auth_encoded" | base64 -d | cut -d: -f2-)
+robot_user=$(echo "$auth_encoded" | base64 -d | cut -d: -f1)
+robot_pass=$(echo "$auth_encoded" | base64 -d | cut -d: -f2-)
 ```
 
 Or pass the authfile directly to skopeo:
@@ -53,14 +53,14 @@ skopeo copy --authfile ~/.config/containers/auth.json oci:./dir docker://registr
 Decrypt a SOPS file to read a secret:
 
 ```bash
-sops -d ~/homelab-gitops/apps/workstations/secrets/some.secret.yaml
+sops -d ~/homelab-gitops/apps/<app>/secrets/some.secret.yaml
 ```
 
-Never write plaintext secrets to `/tmp` — always decrypt in place or to the correct repo path.
+Flux's kustomize-controller decrypts the same files in-cluster via `--sops-age-secret` — the age private key never leaves the cluster or your local age identity. Never write plaintext secrets to `/tmp` — always decrypt in place or to the correct repo path (see `secrets-management` skill for the full lifecycle).
 
 ## Checklist Before Running Build/Push Commands
 
 - [ ] Does the command need registry auth? → `auth.json` is auto-used by `publish-oci-image.sh`; for manual `skopeo`/`podman` use `--authfile`
 - [ ] Does the command need API keys? → `set -a && source ~/.env && set +a`
 - [ ] Does the command need a SOPS secret? → `sops -d <file>` and use the value directly
-- [ ] Are env vars already set? → Check with `env | grep -i harbor` or similar before loading
+- [ ] Are env vars already set? → Check with `env | grep -i registry` or similar before loading

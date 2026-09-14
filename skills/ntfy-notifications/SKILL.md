@@ -14,8 +14,7 @@ Publish notifications by POSTing to the in-cluster ntfy service. Never publish t
 You need network reach to the ntfy Service in the `ntfy` namespace. Any of the following works:
 
 - Inside the cluster (a pod, a Job, a HelmRelease's webhook target).
-- A claude-worker VM whose resolver points at cluster DNS.
-- The bare-metal host running the k3s tooling (resolves cluster DNS via the kubelet config).
+- Either k3s host (`acer-swift`, `lenovo`) — both resolve cluster DNS via the kubelet config.
 
 If you have a kubectl context for the homelab cluster you almost certainly also have network reach — those two travel together here.
 

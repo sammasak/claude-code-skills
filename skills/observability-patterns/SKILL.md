@@ -43,9 +43,10 @@ Always JSON:
 
 ## Trace Context
 
-- Propagate trace IDs across ALL service boundaries (HTTP, queues, async jobs)
-- Use W3C Trace Context (`traceparent` header)
-- Attach exemplars to histograms to link metrics to trace IDs
+**The homelab has no tracing backend deployed** (no Tempo/Jaeger — metrics and logs are the two pillars actually wired up). Treat tracing as guidance for services that export elsewhere or for when a backend gets added, not a current requirement:
+
+- Propagate trace IDs across ALL service boundaries (HTTP, queues, async jobs) even without a backend — it's free and makes structured logs correlatable via `trace_id`
+- Use W3C Trace Context (`traceparent` header) if you do instrument
 - Head-based sampling (10%) for high-traffic; tail-based to always capture errors
 
 ## Required Endpoints
@@ -59,9 +60,8 @@ Every service exposes:
 
 - [ ] Structured logger configured (JSON output, correlation IDs)
 - [ ] Prometheus `/metrics` endpoint exposed
-- [ ] OpenTelemetry tracer initialized with OTLP exporter
 - [ ] HTTP middleware adds duration + status code metrics
-- [ ] Trace context propagated to all outbound calls
+- [ ] `trace_id`/request-id propagated into logs, even with no tracing backend
 - [ ] `/livez` and `/readyz` endpoints
 - [ ] Grafana dashboard: request rate, error rate, p50/p95/p99 latency, active requests
 
@@ -70,10 +70,10 @@ Every service exposes:
 | Component | Choice |
 |-----------|--------|
 | Cluster monitoring | kube-prometheus-stack (Prometheus + Grafana + Alertmanager) |
-| Log aggregation | Loki + Grafana Alloy (LogQL queries; replaces Promtail EOL 2026-03-02) |
-| Tracing | OTel SDK → OTLP collector → backend |
-| Python | `structlog` / `opentelemetry-instrumentation-fastapi` / Prometheus client |
-| Rust | `tracing` + `tracing-subscriber` (JSON) / `tracing-opentelemetry` / `metrics-exporter-prometheus` |
+| Log aggregation | Loki + Grafana Alloy (LogQL queries; Alloy replaced Promtail, EOL 2026-03-02) |
+| Tracing | none deployed — no OTLP collector/backend in this homelab |
+| Python | `structlog` / Prometheus client |
+| Rust | `tracing` + `tracing-subscriber` (JSON) / `metrics-exporter-prometheus` |
 
 ## Anti-Patterns
 

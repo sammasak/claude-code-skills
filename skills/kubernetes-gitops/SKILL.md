@@ -15,6 +15,10 @@ Manage Kubernetes clusters declaratively through Git-driven reconciliation loops
 
 **NOTE:** Flux v2.7+ supports global SOPS decryption via `--sops-age-secret` controller flag.
 
+## Cluster Topology
+
+2-node k3s: `acer-swift` is the **only** worker (all app pods land there); `lenovo` is control-plane, tainted, and hosts a few unauthenticated singletons (e.g. ntfy). Losing `acer-swift` is a total outage for workloads — there is no second worker to fail over to. KEDA scale-to-zero is the default posture for internal apps, so an idle service having zero pods is expected, not a fault — check `ScaledObject` state before treating 0 replicas as an incident.
+
 ## Principles
 
 - **Git is the single source of truth** — desired state lives in version control
@@ -97,7 +101,7 @@ helm rollback <name> <revision> -n <ns> # Helm releases
 | **SOPS + age** | Sealed Secrets / Vault | Encrypted in Git; no extra controller |
 | **Traefik v3** | ingress-nginx (retired, ADR-011) | Kubernetes-native IngressRoute CRDs, middleware chains, forward-auth integration |
 | **MetalLB** | cloud LB | Bare-metal L2/BGP for LoadBalancer Services |
-| **KubeVirt** | separate hypervisor | VMs alongside containers on same cluster |
+| **KEDA scale-to-zero** | static replicas | Idle apps cost zero CPU; default posture for internal services |
 
 ## Ingress (Traefik v3)
 
