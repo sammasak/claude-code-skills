@@ -1,6 +1,6 @@
 # User Context
 
-> **Snapshot warning:** The knowledge vault is manually maintained with no automatic syncs. Treat all entries as "probably right as of the last commit." When vault content conflicts with what you observe in code or git, trust what you observe and update the vault.
+> **Snapshot warning:** The knowledge vault is manually maintained with no automatic syncs. Treat all entries as "probably right as of the last commit." When vault content conflicts with what you observe in code or git, trust what you observe.
 
 ## Knowledge Vault
 
@@ -22,11 +22,11 @@ One subagent dispatch is enough. If it returns nothing useful, proceed without v
 
 Multi-step process guides live at `~/knowledge/workflows/<name>/CONTEXT.md`. The routing map in `~/knowledge/CLAUDE.md` lists all available workflows. Activate one by reading its `CONTEXT.md` directly.
 
-## Ownership
+## Documentation Policy
 
-Any session that produces new decisions, learnings, or context: update the vault before closing.
-- Name files after their subject — findable from `ls` alone (never `notes.md`, never `misc/`)
-- One focused topic per file; commit often with clear messages
-- After writing: `cd ~/knowledge && git pull && git add <files> && git commit -m "docs: <what and why>" && git push`
+Capture context commit-first, and keep it lean everywhere — high signal, not volume. Do not document reflexively.
 
-Full authoring conventions: `~/knowledge/CLAUDE.md` under "File and Folder Organisation".
+- **Default — the git commit.** Record the *why* of a change in a short technical commit message: a clear subject plus roughly one line of reason. The diff already shows *what*; add only what it cannot. Do not write essays.
+- **The vault (`~/knowledge`) is for durable reference only** — runbooks, ADRs, reference that outlives a commit. Write there only when the content is genuinely reusable reference, or when the user asks. Never dump session notes, research, or per-project status into it; that context lives in commits. Reading the vault for context is unchanged.
+- **Memory (`MEMORY.md`) is for durable cross-session gotchas only** — a non-obvious fact that would otherwise be rediscovered or repeated (an outage lesson, a load-bearing quirk). Not routine project status. Keep it minimal.
+- When you *do* write vault reference: name files after their subject (never `notes.md`/`misc/`), one topic per file, then `cd ~/knowledge && git pull && git add <files> && git commit && git push`. Conventions: `~/knowledge/CLAUDE.md`.
