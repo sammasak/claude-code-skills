@@ -7,9 +7,10 @@ injectable: true
 
 # SDLC Pipeline Walker
 
-Drives a devenv-generated SDLC stage machine (`platform.sdlc`) to green. State is never
-stored: it's derived each run from which guard task fails first, so there is nothing to
-resume or track between loop iterations except "run it again."
+Drives a devenv-generated SDLC stage machine (`platform.sdlc`) to green. The walker itself
+tracks no session state; devenv's on-disk guard and verdict stamps are the only state, and
+re-running `sdlc:done` always reflects them. There is nothing to resume or track between
+loop iterations except "run it again."
 
 ## The Loop
 
@@ -21,10 +22,10 @@ resume or track between loop iterations except "run it again."
 
 ## Rules
 
-- **Agents never self-certify.** A stage passes only when its guard tasks exit 0, never take a dispatched agent's own word that a stage is done. That's the whole point of the machine.
+- **Agents never self-certify.** A stage passes only when its guard tasks exit 0; never take a dispatched agent's own word that a stage is done. That's the whole point of the machine.
 - **Never push past a red `sdlc:done`.** Re-run the loop until green before `git push`.
 - **Single pipeline at a time, per checkout.** State derives from the working tree, so two pipelines running concurrently in the same checkout will stamp over each other's fingerprints. Don't parallelize this loop.
-- Any working-tree change invalidates every stamp by design, that's re-verification, not a bug. Don't be surprised when a fix to stage N causes stage N-1's guard to re-run too.
+- Any working-tree change invalidates every stamp by design. That's re-verification, not a bug. Don't be surprised when a fix to stage N causes stage N-1's guard to re-run too.
 - Stage order and which stages exist are per-repo config (`platform.sdlc.stages`, preset-dependent). Don't assume the rust table below applies to a non-rust preset.
 
 ## Stage Briefs (rust preset)
