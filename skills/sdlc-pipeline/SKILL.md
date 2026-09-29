@@ -57,7 +57,7 @@ jq -r '.stages["<stage>"].brief' "$SDLC_MACHINE"
 
 ## Rules
 
-- **Agents never self-certify.** A stage passes only when its guard tasks exit 0; never take a dispatched agent's own word that a stage is done. That's the whole point of the machine.
+- **Agents cannot certify a stale tree.** A stage passes only when its guard tasks exit 0 against the current fingerprint; never take a dispatched agent's own word that a stage is done. Review independence is an orchestration convention -- this walker dispatches the review stage to a separate subagent -- not an enforcement mechanism the machine itself checks.
 - **Never push past a red `sdlc:done`.** Re-run the loop until green before `git push`.
 - **Single pipeline at a time, per checkout.** State derives from the working tree, so two pipelines running concurrently in the same checkout will stamp over each other's fingerprints. Don't parallelize this loop.
 - Any working-tree change invalidates every stamp by design. That's re-verification, not a bug. Don't be surprised when a fix to stage N causes stage N-1's guard to re-run too.
