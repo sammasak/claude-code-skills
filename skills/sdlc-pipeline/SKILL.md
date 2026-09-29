@@ -12,12 +12,28 @@ tracks no session state; devenv's on-disk guard and verdict stamps are the only 
 re-running `sdlc:done` always reflects them. There is nothing to resume or track between
 loop iterations except "run it again."
 
+## Prerequisites
+
+This skill assumes a `devenv shell` for the target repo, with the platform module (the one
+defining `platform.sdlc`) enabled, and `jq` available. `sdlc-status` and `$SDLC_MACHINE` are
+shell-scoped: they only exist inside that devenv shell (`sdlc-status` is a package the
+platform module puts on PATH; `$SDLC_MACHINE` is an env var it sets), not on a bare host
+shell or in an agent session that never entered the devenv environment.
+
+If the session is not already inside the devenv shell (no direnv, or a non-interactive agent
+invocation), fall back to `devenv shell -q -- sdlc-status --context` (and likewise prefix any
+other `sdlc-status`/`devenv tasks run` call with `devenv shell -q --`) rather than assuming
+the tools are on PATH.
+
 ## The Loop
 
-1. Start the walk with `sdlc-status --context` (on PATH in the devenv shell). This output IS the walk's opening brief: state per stage, the last-red tail if any, the current stage's brief, and standing verdict findings with freshness marks.
+1. Start the walk with `sdlc-status --context` (on PATH in the devenv shell; use the
+   `devenv shell -q --` fallback above if not already inside one). This output IS the walk's
+   opening brief: state per stage, the last-red tail if any, the current stage's brief, and
+   standing verdict findings with freshness marks.
 2. Run `devenv tasks run sdlc:done`.
 3. All green: report pipeline complete. The done-bar is met by construction, no separate check needed.
-4. Else: the first failing wrapper's name identifies the stage and guard (`sdlc:<stage>-<sanitized-guard>`, or `sdlc:<stage>-verdict` for a review stage). Dispatch that stage's agent as a subagent. The brief is: the failing guard's output, the stage's job description (from `$SDLC_MACHINE`, see below), and the repo's rubric doc for a review stage.
+4. Else: the first failing wrapper's name identifies the stage and guard (`sdlc:<stage>-<sanitized-guard>`, or `sdlc:<stage>-verdict` for a review stage). Dispatch a subagent for that stage. The stage-to-agent convention is: the stage name IS the agent role (there is no separate agent registry mapping stage names to roles). The walker composes that dispatch's brief itself from the stage's own machine.json data: the failing guard's output, the stage's `brief` field (read from `$SDLC_MACHINE`, see below), and the repo's rubric doc for a review stage.
 5. Review stage: the dispatched reviewer follows the `orchestrated-review` skill and writes the verdict file (see below) instead of editing code.
 6. Goto 2.
 
@@ -26,7 +42,7 @@ loop iterations except "run it again."
 Stage order and briefs are no longer hardcoded here; they live in the repo's own machine, rendered at devenv eval and exposed as `$SDLC_MACHINE` (a JSON file path):
 
 ```json
-{ "bar": 8, "order": ["sketch", "..."], "terminal": ["..."],
+{ "name": "<repo>", "bar": 9, "order": ["sketch", "..."], "terminal": ["..."],
   "stages": { "<name>": { "after": [], "guards": [], "verdict": false,
       "brief": "...", "wrappers": ["sdlc:<s>-<g>", "..."] } } }
 ```
