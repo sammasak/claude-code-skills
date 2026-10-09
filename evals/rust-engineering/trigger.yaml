@@ -14,9 +14,9 @@ positives:
 
 # Queries that look similar but should activate a different skill
 hard_negatives:
-  - "How do I build a minimal Docker image for my Rust service?"      # → container-workflows
+  - "How do I build a minimal Docker image for my Rust service?"      # → none/rust-engineering (container-workflows archived)
   - "My Flux deployment of the Rust API keeps failing"                # → kubernetes-gitops
-  - "How do I add Prometheus metrics to my Axum service?"             # → observability-patterns
+  - "How do I add Prometheus metrics to my Axum service?"             # → none (observability-patterns archived)
   - "I need to encrypt a config file containing my Rust service API key"  # → secrets-management
   - "How do I write a Nix flake devShell for Rust development?"       # → nix-flake-development
 

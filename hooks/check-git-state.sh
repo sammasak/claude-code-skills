@@ -20,7 +20,7 @@ if ! git -C "$PWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
 fi
 
 REPO=$(basename "$(git -C "$PWD" rev-parse --show-toplevel)")
-BRANCH=$(git -C "$PWD" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "detached")
+BRANCH=$(git -C "$PWD" symbolic-ref --short -q HEAD || echo "detached")
 DIRTY=$(git -C "$PWD" status --porcelain 2>/dev/null | grep -c . || true)
 
 AHEAD=0

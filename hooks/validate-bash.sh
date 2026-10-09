@@ -22,10 +22,10 @@ block() {
   exit 2
 }
 
-# Single-quoted segments are stripped first so a command merely CONTAINING
-# the literal text (an echo, a jq payload, a commit message) is not blocked;
-# [^|&;]* keeps the match inside the push invocation itself.
-CMD_CODE=$(echo "$CMD" | sed "s/'[^']*'//g")
+# Quoted segments (both styles) are stripped first so a command merely
+# CONTAINING the literal text (an echo, a commit message, a grep pattern) is
+# not blocked; [^|&;]* keeps the match inside the push invocation itself.
+CMD_CODE=$(echo "$CMD" | sed "s/'[^']*'//g; s/\"[^\"]*\"//g")
 if echo "$CMD_CODE" | grep -qE "git push[^|&;]*(--force([^-]|$)|-f\b)"; then
   block "force push is not allowed; revert with a new commit or push a branch."
 fi

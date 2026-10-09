@@ -15,9 +15,9 @@ positives:
 hard_negatives:
   - "How do I deploy my NixOS-built container image to Kubernetes?"   # → kubernetes-gitops
   - "My Rust code won't compile because of a lifetime error"          # → rust-engineering
-  - "How do I build a minimal container image for my Go service?"     # → container-workflows
+  - "How do I build a minimal container image for my Go service?"     # → none/rust-engineering (container-workflows archived)
   - "My cluster secrets are not being decrypted by Flux SOPS"         # → secrets-management
-  - "How do I add Prometheus scraping to my NixOS service?"           # → observability-patterns
+  - "How do I add Prometheus scraping to my NixOS service?"           # → none (observability-patterns archived)
 
 # Queries that should activate no skill
 true_negatives:

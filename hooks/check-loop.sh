@@ -26,10 +26,16 @@ NORMALIZED=$(echo "$CMD" | \
 LOOP_FILE="/tmp/claude-loop-${CLAUDE_SESSION_ID}.log"
 find /tmp -maxdepth 1 -name 'claude-loop-*.log' -mtime +2 -delete 2>/dev/null || true
 
-echo "$NORMALIZED" >> "$LOOP_FILE"
+# Two granularities: fuzzy (normalized) drives advisories, exact (raw hash)
+# drives the hard block — same tool on different files must not hard-block.
+RAW_HASH=$(echo "$CMD" | cksum | cut -d' ' -f1)
+echo "$NORMALIZED|$RAW_HASH" >> "$LOOP_FILE"
 
 COUNT=$(tac "$LOOP_FILE" | while IFS= read -r line; do
-  [ "$line" = "$NORMALIZED" ] && echo "match" || break
+  [ "${line%|*}" = "$NORMALIZED" ] && echo "match" || break
+done | wc -l)
+EXACT_COUNT=$(tac "$LOOP_FILE" | while IFS= read -r line; do
+  [ "$line" = "$NORMALIZED|$RAW_HASH" ] && echo "match" || break
 done | wc -l)
 
 init_state 2>/dev/null || true
@@ -39,11 +45,11 @@ update_state ".loop_count = $COUNT" 2>/dev/null || true
 # JSON additionalContext (advisory, command still runs); at 12+ exit 2 blocks
 # the repeat and feeds the message to the model.
 RESULT="ok"
-if [ "$COUNT" -ge 12 ]; then
+if [ "$EXACT_COUNT" -ge 12 ]; then
   RESULT="loop-critical"
   inc_state 'errors_seen' 2>/dev/null || true
-  log_hook "check-loop" "$RESULT" "$(( ($(date +%s%N) / 1000000) - START_MS ))" "{\"count\":$COUNT}" 2>/dev/null || true
-  echo "Loop detected: $COUNT repetitions of the same command pattern. Use systematic debugging to find the root cause instead of retrying." >&2
+  log_hook "check-loop" "$RESULT" "$(( ($(date +%s%N) / 1000000) - START_MS ))" "{\"count\":$EXACT_COUNT}" 2>/dev/null || true
+  echo "Loop detected: $EXACT_COUNT repetitions of the identical command. Use systematic debugging to find the root cause instead of retrying." >&2
   exit 2
 elif [ "$COUNT" -ge 5 ]; then
   [ "$COUNT" -ge 8 ] && RESULT="loop-warning" || RESULT="loop-notice"

@@ -29,8 +29,6 @@ prompts:
       - rust-engineering: Use when writing Rust code, configuring Cargo workspaces, setting up clippy lints, designing error handling, or optimizing build profiles. Guides compiler-driven development and idiomatic Rust patterns.
       - nix-flake-development: Use when working with NixOS configurations, Nix flakes, module composition, system rebuilds, or Home Manager. Guides declarative system management patterns and safe rebuild workflows.
       - secrets-management: Use when handling secrets, encryption keys, credentials, tokens, or sensitive configuration. Guides SOPS encryption workflows, Kubernetes secret patterns, and secret hygiene.
-      - container-workflows: Use when building container images, writing Dockerfiles, pushing to registries, or optimizing image size and security. Guides rootless builds, multi-stage patterns, and supply chain security.
-      - observability-patterns: Use when adding metrics, logging, tracing, or alerting to services. Guides the three pillars of observability, structured logging standards, and instrumentation patterns.
       - none: The query does not match any available skill.
 
       User query: "{{query}}"
@@ -129,12 +127,12 @@ tests:
       - type: equals
         value: "rust-engineering"
 
-  # rust-engineering hard negatives
+  # rust-engineering owns container builds since container-workflows was archived
   - vars:
       query: "How do I build a minimal Docker image for my Rust service?"
     assert:
       - type: equals
-        value: "container-workflows"
+        value: "rust-engineering"
 
   - vars:
       query: "How do I write a Nix flake devShell for Rust development?"

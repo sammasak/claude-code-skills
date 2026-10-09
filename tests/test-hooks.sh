@@ -47,6 +47,12 @@ check "compound rm -f not misblocked" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"git push origin main && rm -f /tmp/x"}')"
 check "quoted literal not misblocked" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"echo 'git push --force' > note.txt"}')"
+check "double-quoted literal not misblocked" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"echo \"see git push --force docs\" >> README.md"}')"
+check "commit message literal not misblocked" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git commit -m \"disallow git push -f in hooks\""}')"
+check "grep pattern literal not misblocked" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"grep -rn \"git push -f\" docs/"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 

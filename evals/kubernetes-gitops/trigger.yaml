@@ -17,9 +17,9 @@ hard_negatives:
   - "I need to create an age keypair for a new environment"          # → secrets-management
   - "How do I write a NixOS module for my Kubernetes node?"          # → nix-flake-development
   - "My Nix flake won't evaluate because of a missing input"         # → nix-flake-development
-  - "I want to add Prometheus scraping to my Kubernetes service"     # → observability-patterns
+  - "I want to add Prometheus scraping to my Kubernetes service"     # → none (observability-patterns archived)
   - "How do I set up structured logging in my Axum service?"         # → rust-engineering
-  - "My container image is too large, how do I reduce it?"           # → container-workflows
+  - "My container image is too large, how do I reduce it?"           # → none/rust-engineering (container-workflows archived)
 
 # Queries that should activate no skill
 true_negatives:
