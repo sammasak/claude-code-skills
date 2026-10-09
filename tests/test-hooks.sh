@@ -127,8 +127,29 @@ check "stray rs outside workspace skipped" 0 - - \
 if command -v yq >/dev/null 2>&1; then
   printf 'kind: Deployment\nspec: {}\n' > "$TMP/workload.yaml"
   printf 'a: 1\n' > "$TMP/plain.yaml"
+  printf 'kind: Deployment\n# seccompProfile allowPrivilegeEscalation resources:\nspec: {}\n' > "$TMP/comments.yaml"
+  cat > "$TMP/compliant.yaml" <<'YAML'
+kind: Deployment
+spec:
+  template:
+    spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: app
+          securityContext:
+            allowPrivilegeEscalation: false
+          resources:
+            requests: { cpu: 10m, memory: 64Mi }
+            limits: { memory: 128Mi }
+YAML
   check "workload missing baseline reported" 2 "missing" - \
     validate-manifest.sh "$(j m1 "{\"file_path\":\"$TMP/workload.yaml\"}")"
+  check "commented keys do not satisfy probes" 2 "missing" - \
+    validate-manifest.sh "$(j m1 "{\"file_path\":\"$TMP/comments.yaml\"}")"
+  check "compliant workload silent" 0 - - \
+    validate-manifest.sh "$(j m1 "{\"file_path\":\"$TMP/compliant.yaml\"}")"
   check "plain yaml silent" 0 - - \
     validate-manifest.sh "$(j m1 "{\"file_path\":\"$TMP/plain.yaml\"}")"
 fi

@@ -37,12 +37,18 @@ if ! yq eval '.' "$FILE" >/dev/null 2>&1; then
 fi
 
 if yq eval '.kind' "$FILE" 2>/dev/null | grep -qiE "^(Deployment|StatefulSet|DaemonSet)$"; then
-  for probe in seccompProfile allowPrivilegeEscalation "resources:"; do
-    if ! grep -q "$probe" "$FILE"; then
-      echo "Workload manifest $FILE is missing $probe — validate against the cluster baseline in agents/validate-k8s.md (the single source for the policy)." >&2
-      RESULT="warned"
-    fi
-  done
+  # Structural probes (a comment cannot satisfy them); the policy's single
+  # source is agents/validate-k8s.md.
+  warn() {
+    echo "Workload manifest $FILE: $1 — validate against the cluster baseline in agents/validate-k8s.md." >&2
+    RESULT="warned"
+  }
+  yq eval -e '.spec.template.spec.securityContext.seccompProfile.type' "$FILE" >/dev/null 2>&1 \
+    || warn "pod securityContext.seccompProfile.type is missing"
+  yq eval -e '[.spec.template.spec.containers[] | select(.securityContext.allowPrivilegeEscalation == null)] | length == 0' "$FILE" >/dev/null 2>&1 \
+    || warn "a container lacks securityContext.allowPrivilegeEscalation"
+  yq eval -e '[.spec.template.spec.containers[] | select(.resources.limits.memory == null)] | length == 0' "$FILE" >/dev/null 2>&1 \
+    || warn "a container lacks resources.limits.memory (CPU limit stays optional)"
 fi
 
 finish "$RESULT"

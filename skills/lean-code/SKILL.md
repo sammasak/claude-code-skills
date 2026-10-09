@@ -1,6 +1,6 @@
 ---
 name: lean-code
-description: Use when about to add a comment, doc block, error variant, config option, helper, or test beyond what the change strictly needs — in any code writing or review.
+description: Use when about to add a comment, doc block, error variant, config option, helper, or test beyond what the change strictly needs — in any code writing or review. Not for Rust-specific lints, crates, or toolchain choices — rust-engineering owns those.
 ---
 
 # Lean Code

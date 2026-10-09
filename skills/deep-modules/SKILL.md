@@ -1,6 +1,6 @@
 ---
 name: deep-modules
-description: Use when designing or reviewing module boundaries, public APIs, traits/interfaces, or test seams — before adding a wrapper, helper, abstraction layer, or new public type.
+description: Use when designing or reviewing module boundaries, public APIs, traits/interfaces, or test seams — before adding a wrapper, helper, abstraction layer, or new public type. Not for Rust-specific lints, crates, or toolchain choices — rust-engineering owns those.
 ---
 
 # Deep Modules
