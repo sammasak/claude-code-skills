@@ -184,13 +184,16 @@ check "different command unaffected" 0 - - \
 # ── check-git-state (Stop: human-facing stdout, always exit 0) ──
 check "stop report exits zero" 0 - - check-git-state.sh "$(j g1 'null')"
 
-# ── session keying ──
-printf '%s' "$(j key '{"command":"true"}')" | "$HOOKS/check-loop.sh" >/dev/null 2>&1
-if [ -f "${XDG_RUNTIME_DIR:-/tmp}/claude-loop-hooktest-key.log" ]; then PASS=$((PASS + 1)); else
-  FAIL=$((FAIL + 1)); echo "FAIL: loop state not keyed by session_id"
+# ── session keying (jq derives the per-session path; skipped without it) ──
+if command -v jq >/dev/null 2>&1; then
+  printf '%s' "$(j key '{"command":"true"}')" | "$HOOKS/check-loop.sh" >/dev/null 2>&1
+  if [ -f "${XDG_RUNTIME_DIR:-$HOME/.cache}/claude-loop-hooktest-key.log" ]; then PASS=$((PASS + 1)); else
+    FAIL=$((FAIL + 1)); echo "FAIL: loop state not keyed by session_id"
+  fi
 fi
 
 SKIPPED=0
+command -v jq >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 1))
 command -v nix-instantiate >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 2))
 command -v shellcheck >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 2))
 command -v yq >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 4))

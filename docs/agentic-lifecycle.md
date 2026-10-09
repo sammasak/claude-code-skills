@@ -188,6 +188,8 @@ The retired claude-worker goal loop was a **recursive/cyclical** topology: its S
 
 ## 5. The Agentic Lifecycle — Full Swimlane
 
+This section describes the generic lifecycle of a multi-agent system, not this repository: Phases 7–8 (Stop-hook goal review, vector-store memory consolidation) are conceptual — see §12 for the hooks that actually run here.
+
 This sequence diagram traces the complete lifecycle of a single goal through a multi-agent system, showing all actors and the events that flow between them.
 
 ```mermaid
