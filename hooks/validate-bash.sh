@@ -22,13 +22,15 @@ block() {
   exit 2
 }
 
-# [^|&;]* keeps the match inside the push invocation itself, so a later
-# `rm -f` in a compound command does not false-positive.
-if echo "$CMD" | grep -qE "git push[^|&;]*(--force([^-]|$)|-f\b)"; then
+# Single-quoted segments are stripped first so a command merely CONTAINING
+# the literal text (an echo, a jq payload, a commit message) is not blocked;
+# [^|&;]* keeps the match inside the push invocation itself.
+CMD_CODE=$(echo "$CMD" | sed "s/'[^']*'//g")
+if echo "$CMD_CODE" | grep -qE "git push[^|&;]*(--force([^-]|$)|-f\b)"; then
   block "force push is not allowed; revert with a new commit or push a branch."
 fi
 
-if echo "$CMD" | grep -qE "sops.*-e.*/tmp/|sops.*encrypt.*/tmp/"; then
+if echo "$CMD_CODE" | grep -qE "sops.*-e.*/tmp/|sops.*encrypt.*/tmp/"; then
   block "SOPS encrypt from /tmp is unsafe; write plaintext to the repo path, then sops -e --in-place."
 fi
 

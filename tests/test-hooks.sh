@@ -45,6 +45,8 @@ check "short -f flag blocked" 2 "BLOCKED: force push" - \
   validate-bash.sh "$(j b1 '{"command":"git push -f origin main"}')"
 check "compound rm -f not misblocked" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"git push origin main && rm -f /tmp/x"}')"
+check "quoted literal not misblocked" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"echo 'git push --force' > note.txt"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 
