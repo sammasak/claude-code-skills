@@ -61,7 +61,7 @@ graph TD
     FE <-->|"read-only access"| T
 ```
 
-*The four-tier role hierarchy. Model class determines cost and capability; role determines authority and tool access. Orchestrators hold planning context; Judges evaluate completed work; Workers execute; Fast Explorers gather evidence cheaply.*
+*The four-tier role hierarchy (conceptual taxonomy, not shipped orchestration). Model class determines cost and capability; role determines authority and tool access. Orchestrators hold planning context; Judges evaluate completed work; Workers execute; Fast Explorers gather evidence cheaply.*
 
 **Orchestrator (Opus-class):** Receives the raw goal, decides how to decompose it into sub-tasks, selects which specialist to delegate each sub-task to, collects results, and produces the final synthesized output. Because the Orchestrator holds the entire plan in working memory and must reason across multiple domains, it benefits from the strongest reasoning model available.
 
@@ -71,7 +71,7 @@ graph TD
 
 **Judge / Evaluator (Sonnet-class):** Receives the output of a Worker and evaluates it against a rubric, constraint list, or correctness criterion. Does not execute actions — only reads and judges. Because evaluation requires nuanced semantic reasoning, a Sonnet-class model outperforms Haiku here while remaining cheaper than Opus.
 
-In our system, the `k8s-debugger`, `nix-explorer`, `verify-deployment`, and `validate-k8s` agents run on Haiku — they are read-heavy and search-oriented. The `code-reviewer` agent runs on Sonnet — it must reason across multiple dimensions of code quality and apply structured severity tiers.
+The per-agent model assignments live in `agents/*.md` frontmatter — that is the source of truth, not this doc (today: haiku on the mechanical verifiers, sonnet on the explorers and debugger, opus on both reviewers).
 
 ---
 
@@ -108,8 +108,8 @@ The key insight of ReAct is that reasoning traces are not separate from action �
 **Early-exit conditions in practice:**
 
 - **Hook block (exit 2):** A PreToolUse hook (like `validate-bash.sh`) can block an Action before it executes. The model receives a structured error message and must reason about an alternative approach.
-- **Budget exhaustion:** When the model approaches its context limit or iteration ceiling, the Stop hook fires and either re-queues the goal or accepts a partial result.
-- **Goal completion:** The model determines, based on its Observations, that the goal state has been achieved. The Stop hook confirms no pending goals remain.
+- **Budget exhaustion:** when the model approaches its context limit or iteration ceiling, the session stops with a partial result (the live Stop hook only reports git state).
+- **Goal completion:** the model determines, based on its Observations, that the goal state has been achieved.
 
 ---
 
@@ -495,7 +495,7 @@ graph TD
     A1 & A2 & A3 & A4 & A5 -->|"output"| E1
 ```
 
-*The claude-code-skills system architecture. Skills inject domain knowledge as system prompts; the dispatcher routes queries; agents execute with tool access bounded by role; hooks intercept at PreToolUse, PostToolUse, and Stop; the evaluator chain measures output quality along four independent dimensions.*
+*The claude-code-skills system architecture. Skills inject domain knowledge as system prompts; the dispatcher routes queries; agents execute with tool access bounded by role; hooks intercept at PreToolUse, PostToolUse, and Stop; the shipped evaluator chain measures two dimensions (functional correctness, rubric quality).*
 
 **Key architectural decisions:**
 
@@ -529,7 +529,7 @@ flowchart TD
     SRJ_SCORE -->|"no — rubric_passed=false"| SRJ_FAIL["Record: rubric_fail\nCapture reasoning"]
     SRJ_FAIL --> SDE
 
-    SDE["SpecificityDeltaEvaluator\nRe-runs task with NO system prompt\nComputes lexical delta vs baseline\n(--with-specificity flag required)"]
+    SDE["SpecificityDeltaEvaluator\n(UNBUILT design — not in runner/)"]
     SDE -->|"flag set"| SDE_CHECK{"Delta 0.2 - 0.6?"}
     SDE -->|"flag not set"| CSRJ
     SDE_CHECK -->|"healthy range"| CSRJ
@@ -538,7 +538,7 @@ flowchart TD
     SDE_WARN --> CSRJ
     SDE_WARN2 --> CSRJ
 
-    CSRJ["CSRJudge\nExtracts constraints from SKILL.md\nLLM judge (claude-sonnet-4-6)\nPer-constraint pass/fail\n(--with-csr flag required)"]
+    CSRJ["CSRJudge\n(UNBUILT design — not in runner/)"]
     CSRJ -->|"constraints found"| CSR_CHECK{"csr_score >= 0.8?"}
     CSRJ -->|"no constraints"| REPORT
     CSR_CHECK -->|"yes"| REPORT
@@ -550,16 +550,17 @@ flowchart TD
 
 *The shipped two-tier chain with decision branches; the SpecificityDelta/CSRJudge boxes below the fold are UNBUILT designs kept for reference, not running code.*
 
-**Why four tiers instead of one?**
+**Why two shipped tiers (and two designed, unbuilt)?**
 
-A single LLM judge would conflate functional correctness with prose quality, miss rule violations not mentioned in its rubric, and have no way to measure whether the skill body is doing anything at all. The four tiers are orthogonal:
+A single LLM judge would conflate functional correctness with prose quality. The shipped tiers are orthogonal:
 
 - BashGrader is model-free and deterministic — it does not drift.
 - StructuredRubricJudge measures quality against a human-authored rubric, catching outputs that are structurally correct but technically wrong or shallow.
-- (Design note, unbuilt) SpecificityDeltaEvaluator would measure the skill impact vs a no-skill baseline; CSRJudge would check extracted SKILL.md constraints. Neither exists in runner/ today.
-- CSRJudge measures rule adherence, catching outputs that pass bash tests and rubric scoring while silently violating documented constraints (e.g., using `kubectl delete` where `flux suspend` is required).
 
-The CSRJudge uses `claude-sonnet-4-6` rather than Haiku because multi-constraint literal checking at scale is unreliable with smaller models. The constraint list is extracted by a regex-based parser (`constraint_extractor.py`) that recognizes specific markdown patterns: `**CRITICAL**`, `**IMPORTANT**`, `- **Never**`, `- **Always**`, and bullet points containing `must`, `never`, `always`, or `require`.
+Two further dimensions were designed and never built — a skill-impact delta
+against a no-skill baseline, and a constraint-satisfaction judge over
+SKILL.md rules. Nothing in `runner/` implements them; build them only if
+the two shipped tiers prove insufficient.
 
 ---
 

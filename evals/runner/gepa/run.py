@@ -104,6 +104,28 @@ def main() -> None:
     final_score = _evaluate_candidate(best_candidate)
     print(f"Final accuracy: {final_score:.1%} (was {seed_score:.1%})")
 
+    # The run itself is the evidence for any plateau/improvement claim, so it
+    # is persisted like the other runners' reports.
+    import json
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    artifact = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "reflection_lm": args.reflection_lm,
+        "iterations": args.iterations,
+        "seed_accuracy": seed_score,
+        "final_accuracy": final_score,
+        "changed_skills": sorted(
+            s for s, d in best_candidate.items() if d != seed.get(s, "")
+        ),
+    }
+    out = Path(__file__).parent.parent.parent / "results" / (
+        "gepa-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S") + ".json"
+    )
+    out.write_text(json.dumps(artifact, indent=2) + "\n")
+    print(f"Run artifact saved to {out}")
+
     if args.write_back and not args.dry_run:
         print("\nWriting optimized descriptions back to SKILL.md files...")
         write_back_descriptions(best_candidate)

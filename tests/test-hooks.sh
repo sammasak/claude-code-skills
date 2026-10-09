@@ -196,5 +196,5 @@ command -v shellcheck >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 2))
 command -v yq >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 4))
 echo "---"
 echo "passed=$PASS failed=$FAIL skipped=$SKIPPED"
-[ "$SKIPPED" -gt 0 ] && echo "note: run under the nix shell for the full suite" >&2
+if [ "$SKIPPED" -gt 0 ] && [ "${ALLOW_SKIP:-0}" != "1" ]; then echo "refusing a silently under-tested run (set ALLOW_SKIP=1 to accept)" >&2; exit 1; fi
 [ "$FAIL" -eq 0 ]
