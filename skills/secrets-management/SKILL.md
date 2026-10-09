@@ -1,82 +1,34 @@
 ---
 name: secrets-management
-description: "Use when encrypting secrets with SOPS/age, managing Kubernetes Secret manifests, rotating credentials, or setting up secret delivery (sops-nix, sealed secrets). Not for application code that reads env vars or auth tokens at runtime."
+description: "Use when creating, encrypting, editing, or rotating a SOPS secret in homelab-gitops or nixos-config, changing age recipients, or wiring secret delivery (Flux decryption, sops-nix). Not for application code that reads env vars or tokens at runtime."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---
 
-# Secrets Management
+# Secrets Management (homelab)
 
-Protect credentials throughout their lifecycle: generation, storage, deployment, rotation, and revocation.
+SOPS + age everywhere; no Sealed Secrets, no Vault.
 
-**CRITICAL: Never commit plaintext secrets to Git.** Encrypted or external, no exceptions. If you accidentally commit plaintext, rotate immediately — deleting the commit is not enough; history is the problem.
+## Where things live
 
-**IMPORTANT: Rotate after any team member departure, system compromise, or breach.** Assume the secret is known; act accordingly.
+| Repo | Rules file | Secret paths | Delivery |
+|---|---|---|---|
+| `~/homelab-gitops` | `.sops.yaml` at root (`encrypted_regex: ^(data\|stringData)$`) | `clusters/homelab/infra/secrets/`, `apps/<app>/secrets/*.secret.yaml` | Flux Kustomization `spec.decryption` with `secretRef: sops-age` (per Kustomization, not a global controller flag) |
+| `~/nixos-config` | `secrets/.sops.yaml` | `secrets/{homelab,core,claude}/*.yaml` | sops-nix at activation; never in the Nix store |
 
-## Standards
-
-| Rule | Detail |
-|---|---|
-| SOPS for file-level encryption | GitOps-friendly — encrypted files live in Git |
-| `.sops.yaml` at repo root | Path patterns mapped to age key recipients |
-| Encrypt values, not keys | Diffs remain reviewable — you see WHICH secret changed |
-| Separate keys per environment | Dev key cannot decrypt prod |
-| Runtime secrets via env vars | Never baked into container images |
-
-### `.sops.yaml`
-
-```yaml
-creation_rules:
-  - path_regex: clusters/prod/.*\.secret\.yaml$
-    age: age1prod...
-  - path_regex: clusters/dev/.*\.secret\.yaml$
-    age: age1dev...
-```
-
-### Encrypted K8s Secret structure
-
-```yaml
-stringData:
-    db-password: ENC[AES256_GCM,data:...,type:str]  # value encrypted
-    api-token: ENC[AES256_GCM,data:...,type:str]     # keys stay readable
-```
-
-## SOPS Commands
-
-| Task | Command |
-|---|---|
-| Encrypt in place | `sops encrypt -i <file>` |
-| Decrypt to stdout | `sops decrypt <file>` |
-| Edit encrypted file | `sops edit <file>` |
-| Rotate data key | `sops rotate -i <file>` |
-| Update recipients | `sops updatekeys <file>` |
-
-**Never encrypt from `/tmp/`** — always write to the correct repo path then `sops -e --in-place`.
+Personal age key: `~/.config/sops/age/keys.txt`. Host age keys are generated per node by nixos-config. Every gitops rule has two recipients (personal + Flux `sops-age`); a file encrypted for only one breaks either local edit or in-cluster apply.
 
 ## Workflow
 
-1. `age-keygen -o key.txt` — generate age keypair
-2. Configure `.sops.yaml` with path rules and public key
-3. Create secret file (plain YAML)
-4. `sops encrypt -i secret.yaml` — encrypt in place
-5. Commit encrypted file to Git
-6. Flux kustomize-controller decrypts at apply time
-7. Rotate: `sops updatekeys` then `sops rotate -i` (both needed when removing a recipient)
+```bash
+# new secret: generate, encrypt straight to the repo path
+kubectl create secret generic <name> -n <ns> --from-literal=key=value --dry-run=client -o yaml \
+  | sops -e --filename-override apps/<app>/secrets/<name>.secret.yaml /dev/stdin > apps/<app>/secrets/<name>.secret.yaml
+sops apps/<app>/secrets/<name>.secret.yaml        # edit in place
+sops updatekeys <file> && sops rotate -i <file>    # after changing recipients
+```
 
-## Patterns We Use
-
-- **age over PGP** — simpler key management, no key servers, no expiry
-- **SOPS + Flux** — `--sops-age-secret` controller flag (Flux 2.7+) for global decryption
-- **Separate age identity per environment** — compromise is isolated
-- **cert-manager** for TLS — automated issuance and renewal
-
-## Anti-Patterns
-
-| Don't | Why |
-|---|---|
-| Secrets in `Dockerfile` ENV/ARG | Visible in `docker history` |
-| Commit `.env` files | Plaintext in repository history forever |
-| Share secrets across environments | Breach in dev becomes breach in prod |
-| base64 as "encryption" | K8s Secrets are base64-encoded, not encrypted |
-| Never-rotated tokens | Assume eventual compromise — rotate proactively |
-| No secret scanning | Run `gitleaks` in pre-commit to catch plaintext early |
+- Never write plaintext to `/tmp`; write to the real repo path and `sops -e --in-place` so `.sops.yaml` path rules match.
+- The filename must end `.secret.yaml` under `apps/`, or no creation rule matches.
+- `apps/sandboxes/secrets/registry-secret.secret.yaml` is still named `harbor-registry-secret` but is a live zot pull secret. Leave the name alone (renaming needs re-encryption and a coordinated deploy).
+- A plaintext secret that reached a commit must be rotated; rewriting history is not enough.

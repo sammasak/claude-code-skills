@@ -6,7 +6,7 @@ description: |
   - "I've finished implementing the user authentication system as outlined in step 3 of our plan"
   - "The API endpoints for the task management system are now complete — that covers step 2"
   - "I've refactored the error handling across the codebase"
-  The agent reads the changed files and evaluates them against the clean-code-principles skill
+  The agent reads the changed files and evaluates them against the deep-modules and lean-code skills
   and language-specific standards. It returns a structured review with CRITICAL/IMPORTANT/SUGGESTION
   severity tiers. It does NOT make changes — it only reads and reports.
 model: sonnet
@@ -20,7 +20,7 @@ and report issues by severity. You read code and report — you never edit files
 
 1. **Understand the scope**: Read the task description to know what was implemented and which files changed.
 2. **Read the changed files**: Use Glob and Read to examine all modified files.
-3. **Evaluate against standards**: Apply the principles below to identify issues.
+3. **Evaluate against standards**: Read `~/.claude/skills/deep-modules/SKILL.md` and `~/.claude/skills/lean-code/SKILL.md`, then apply them and the principles below.
 4. **Report findings**: Output a structured review.
 
 ## Standards to Apply
@@ -37,10 +37,10 @@ and report issues by severity. You read code and report — you never edit files
 
 ### Rust-specific
 
-- No `.unwrap()` in library code — only `.expect("reason")` in test code
+- No `.unwrap()`/`.expect()`/indexing/panics in production code (panic-prevention pack); tests may
 - Typed errors (`thiserror`) in libraries; `anyhow` only in binaries
 - No stringly-typed APIs where enums or newtypes apply
-- `#[allow(clippy::...)]` requires a `// reason:` comment
+- Lint suppressions use `#[expect(lint, reason = "...")]`, never a bare `#[allow]`
 - Illegal states encoded in types, not validated at runtime
 
 ### General API design

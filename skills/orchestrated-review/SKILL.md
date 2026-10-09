@@ -1,10 +1,6 @@
 ---
 name: orchestrated-review
-description: >
-  Use when reviewing any implementation. Replaces fixed spec+quality two-step with
-  category-driven parallel specialists: an assessor picks relevant categories for the
-  specific artifact, one specialist per category reviews in parallel, controller aggregates.
-  Use after implementer completes a task in subagent-driven-development.
+description: "Use when reviewing an implementation after a task is complete, including after an implementer finishes a task in subagent-driven-development."
 ---
 
 # Orchestrated Code Review
@@ -28,7 +24,7 @@ If any are missing, abort and tell the user.
 
 ## Stage 1 — Assess
 
-**Dispatch one assessor subagent** using the Task tool with `subagent_type=general-purpose`.
+**Dispatch one assessor subagent** using the Agent tool with `subagent_type=general-purpose`, `model: opus`.
 Use the prompt template at `~/knowledge/workflows/recursive-review/prompts/assessor.md`,
 replacing:
 
@@ -55,15 +51,15 @@ opaque list of file paths.
 
 **Edge case:** if the assessor returns `chunks: []`, abort and tell the user: "Assessor found no reviewable files."
 
-**Gate:** do not dispatch any Stage 2 Task calls until the assessor subagent returns its full JSON output, and dispatch them in a **separate response turn** — never in the same message as the assessor Task call.
+**Gate:** do not dispatch any Stage 2 Agent calls until the assessor subagent returns its full JSON output, and dispatch them in a **separate response turn** — never in the same message as the assessor Agent call.
 
 ## Stage 2 — Review (parallel)
 
 **Dispatch all specialist reviewers in a single message.** For each chunk in `chunks[]`,
-dispatch one Task call per category in that chunk's `categories[]` — all Task calls for
+dispatch one Agent call per category in that chunk's `categories[]` — all Agent calls for
 ALL chunks go in the same single message.
 
-Use the Task tool with `subagent_type=general-purpose` and the reviewer prompt at
+Use the Agent tool with `subagent_type=general-purpose`, `model: opus`, and the reviewer prompt at
 `~/knowledge/workflows/recursive-review/prompts/reviewer.md`, replacing:
 
 - `{{CHUNK_FILES}}` — file paths in this chunk
@@ -127,4 +123,4 @@ After a NOT APPROVED decision:
 - Never dispatch reviewers before the assessor returns (categories must be known)
 - Never dispatch reviewers sequentially — all must run in parallel (single message)
 - Never skip aggregation — all reviewer outputs must be collected before determining the decision, even if some categories score low
-- Never combine assessor and reviewer Task calls in the same message — Stage 2 must be dispatched in a **separate response turn** after the assessor result is received
+- Never combine assessor and reviewer Agent calls in the same message — Stage 2 must be dispatched in a **separate response turn** after the assessor result is received

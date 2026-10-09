@@ -1,85 +1,37 @@
 ---
 name: ntfy-notifications
-description: "Use when sending a notification to ntfy from a homelab service, loop, or agent. Covers the canonical in-cluster publish pattern and the silent-failure trap of posting to the Authentik-gated public URL."
+description: "Use when sending a notification to ntfy from a homelab service, loop, script, or agent."
 allowed-tools: Bash
 injectable: true
 ---
 
 # ntfy Notifications
 
-Publish notifications by POSTing to the in-cluster ntfy service. Never publish to the public URL — it is behind Authentik forward-auth and silently swallows POSTs.
+ntfy runs in namespace `ntfy` on the control-plane node (`lenovo`) and is the paging path. It is **deliberately unauthenticated** (no Authentik forward-auth since 2026-08-26, so pages still deliver when SSO is down); `ntfy.sammasak.dev` resolves only on LAN/tailnet. Do not add auth middleware to it.
 
-## Prerequisites
+## Publish
 
-You need network reach to the ntfy Service in the `ntfy` namespace. Any of the following works:
+Pick the URL by where the caller runs:
 
-- Inside the cluster (a pod, a Job, a HelmRelease's webhook target).
-- Either k3s host (`acer-swift`, `lenovo`) — both resolve cluster DNS via the kubelet config.
-
-If you have a kubectl context for the homelab cluster you almost certainly also have network reach — those two travel together here.
-
-## Default pattern — in-cluster DNS
-
-Use this from any pod, any Alertmanager/incident-responder webhook, and any agent or loop running on a host that resolves cluster DNS.
+| Caller | URL |
+|---|---|
+| pod, Job, Alertmanager/incident-responder webhook, host resolving cluster DNS | `http://ntfy.ntfy.svc.cluster.local/<topic>` (preferred) |
+| LAN or tailnet host without cluster DNS | `https://ntfy.sammasak.dev/<topic>` |
+| cluster network reach, no DNS at all | `http://10.43.19.253/<topic>` (ClusterIP, not stable across Service recreation; re-check with `kubectl get svc -n ntfy ntfy`) |
 
 ```bash
-curl -fsS -X POST \
-  -H "Title: <title>" \
-  -H "Tags: <tag>" \
-  -H "Priority: <prio>" \
-  -d "<body>" \
-  http://ntfy.ntfy.svc.cluster.local/<topic>
+curl -fsS -X POST -H "Title: <title>" -H "Tags: <tag>" -H "Priority: <prio>" -d "<body>" <url>
 ```
 
-A successful publish returns a JSON body with an `"id"` field and exit 0.
-
-## Fallback pattern — ClusterIP
-
-Use only when the caller has cluster network reach but cannot resolve cluster DNS (e.g. a host cron job whose `/etc/resolv.conf` does not point at the cluster resolver).
-
-```bash
-curl -fsS -X POST \
-  -H "Title: <title>" \
-  -H "Tags: <tag>" \
-  -H "Priority: <prio>" \
-  -d "<body>" \
-  http://10.43.19.253/<topic>
-```
-
-The ClusterIP is not stable across Service recreation. Re-check with `kubectl get svc -n ntfy ntfy` if you suspect drift.
+Success is exit 0 with a JSON body containing `"id"`. Use `-f`: with plain `-s` a redirect or error page (e.g. if someone re-adds auth) looks like success.
 
 ## Topics
 
-Reuse the existing topics. Do not invent new ones unless there is a clear reason — and if you do, add a one-line entry to this table in the same change.
+Reuse existing topics; if you add one, add a row here in the same change.
 
 | Topic | Used by |
 |---|---|
-| `homelab-improvements` | improvement loop, DevEx Monitor |
-| `homelab-alerts` | Alertmanager, incident-responder |
+| `homelab-alerts` | Alertmanager (via `alertmanager-ntfy-bridge`), incident-responder |
+| `homelab-improvements` | improvement/DevEx loops |
 
-## Header conventions
-
-| Header | Values used in this repo |
-|---|---|
-| `Title` | Short human-readable subject |
-| `Tags` | Emoji shortcodes — `wrench`, `white_check_mark`, `warning`, etc. |
-| `Priority` | `min`, `default`, `high` |
-
-## Known gotchas
-
-**Do not POST to `https://ntfy.sammasak.dev/<topic>`.** The public URL is fronted by Traefik with the `authentik-authentik-forward-auth@kubernetescrd` middleware (Pattern A). An unauthenticated POST is 302-redirected to `/outpost.goauthentik.io/start?...`, curl reports exit 0, and the message is silently dropped. The public hostname is for *subscribing* (mobile app, browser) — not publishing. (Source: `~/homelab-improvement-loop/loop.log`, May 2026, four consecutive passes lost notifications this way.)
-
-**Prefer the DNS form over the ClusterIP.** `10.43.19.253` is the ClusterIP at the time of writing but is not stable across Service recreation. Re-check with `kubectl get svc -n ntfy ntfy` if a fallback is needed.
-
-**Use `curl -fsS`, not `curl -s`.** `-s` swallows errors and the 302 above will look like success. `-f` makes non-2xx responses produce a non-zero exit so the failure surfaces.
-
-## Verification
-
-```bash
-kubectl get svc -n ntfy ntfy
-# expect: a ClusterIP set on port 80, type ClusterIP
-
-curl -fsS -X POST -H "Title: skill verify" -d "ok" \
-  http://ntfy.ntfy.svc.cluster.local/homelab-improvements
-# expect: JSON body containing "id", exit 0
-```
+Headers: `Title` short subject; `Tags` emoji shortcodes (`wrench`, `white_check_mark`, `warning`); `Priority` `min` / `default` / `high`.

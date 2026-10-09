@@ -1,43 +1,21 @@
 ---
 name: python-agentic-development
-description: "Use when building AI agents, designing LLM tool interfaces, working with pydantic-ai, pydantic-graph, or MCP. Guides agentic architecture, tool design, evaluation, and production patterns."
+description: "Use when building an LLM agent or tool server in Python, or working with pydantic-ai, pydantic-graph, pydantic-evals, or MCP."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---
 
-# Python Agentic Development
+# Python Agentic Development (homelab choices)
 
-## Principles
+| Concern | Choice |
+|---|---|
+| Agent framework | `pydantic-ai` (typed `deps_type`, `output_type` Pydantic models) |
+| Multi-step workflows | `pydantic-graph` |
+| Evaluation | `pydantic-evals` datasets (see `evals/` in this repo) |
+| MCP client | `pydantic_ai.mcp.MCPServerStreamableHTTP` |
+| Unit tests | `agent.override(model=TestModel())`, no live LLM calls |
+| Model IDs | take current IDs from the `assigning-subagent-models` ladder, e.g. `Agent("anthropic:claude-sonnet-5")` |
 
-- **Start simple** -- only add agents when simpler approaches fail.
-- **Design tools for agents** -- explicit names, constrained inputs, clear errors.
-- **Structured outputs always** -- use `output_type` with Pydantic models.
-- **Observability from day one** -- track tokens, latency, and errors.
-- **Human-in-the-loop** -- approval required for mutations and destructive actions.
+Tracing: no OTLP backend is deployed in the homelab, so agent token/latency accounting goes to logs and Prometheus metrics (see `observability-patterns`), not Logfire/Tempo, unless the project exports elsewhere.
 
-## Standards
-
-- **Framework**: Use `pydantic-ai` for typed dependencies and structured outputs.
-- **MCP Integration**: Prefer `MCPServerStreamableHTTP` for connecting to tool servers.
-- **Testing**: Use `TestModel` for deterministic agent testing without LLM calls.
-- **Full Reference**: Read `docs/python-agentic-patterns.md` for toolset composition, evaluation examples, and multi-step workflow details.
-
-## Patterns We Use
-
-| Component | Choice | Why |
-|-----------|--------|-----|
-| Agent framework | `pydantic-ai` | Typed deps, toolset composition |
-| Workflows | `pydantic-graph` | Stateful multi-step with branching |
-| Evaluation | `pydantic-evals` | Dataset-driven prompt testing |
-| Observability | Logfire / OTel | Full agent traces, token accounting |
-
-<restrictions>
-
-## Anti-Patterns
-
-- **Never** regex-parse raw LLM text; use structured outputs.
-- **Avoid** monolithic agents; compose with toolsets and graphs.
-- **Do not** test agents by calling the live LLM; use `TestModel`.
-- **Set hard limits**: always configure `retries`, timeouts, and iteration caps.
-
-</restrictions>
+General Python tooling: `python-engineering`.

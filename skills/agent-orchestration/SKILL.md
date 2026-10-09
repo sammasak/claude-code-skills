@@ -5,8 +5,6 @@ allowed-tools: Bash, Read, Write, Edit, Grep, Glob
 injectable: true
 ---
 
-Use when dispatching work to background or parallel subagents, defining custom subagents, or choosing between local agent dispatch and running Claude on another machine (herdr).
-
 # agent-orchestration
 
 ## Local dispatch: the Agent tool
@@ -26,13 +24,13 @@ tools: [Bash, Read, Grep]
 System prompt / instructions for this agent go here.
 ```
 
-The homelab's built-in agents (`verify-deployment.md`, `validate-k8s.md`, `code-reviewer.md`, `k8s-debugger.md`, `nix-explorer.md`) are managed via Home Manager and live in the Nix store — edit them by updating the NixOS Home Manager config and rebuilding, not by editing the linked file directly.
+The homelab's built-in agents (`verify-deployment.md`, `validate-k8s.md`, `code-reviewer.md`, `k8s-debugger.md`, `nix-explorer.md`) come from `~/claude-code-skills/agents/` and are symlinked into `~/.claude/agents` by Home Manager — edit them in that repo, push, then `just bump claude-code-skills` + switch in `~/nixos-config`; never edit the linked file directly.
 
 **Every spawn needs an explicit model** — see the `assigning-subagent-models` skill for the effort-tier ladder. Don't leave a subagent to silently inherit the parent's model.
 
 ## Remote dispatch: running on another machine
 
-For work that needs a *different host* (not just isolation — an actual remote machine), use `herdr`, the terminal workspace manager, to open a session on that host and run `claude` there. There is no VM-provisioning layer in this homelab (KubeVirt and the claude-worker/claude-ctl VM fleet were torn down) — herdr sessions on existing hosts are the only remote pattern.
+For work that needs a *different host* (not just isolation — an actual remote machine), use `herdr`, the terminal workspace manager, to open a session on that host and run `claude` there. herdr sessions on the existing hosts are the only remote pattern; there is no VM-provisioning layer.
 
 ## Decision Matrix
 

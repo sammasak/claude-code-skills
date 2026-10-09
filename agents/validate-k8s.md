@@ -4,7 +4,7 @@ description: |
   Use this agent when writing Kubernetes manifests to validate them against
   cluster security standards. Checks security context, resource limits,
   and namespace PSS labels. Reports any missing required fields.
-model: haiku
+model: claude-haiku-4-5-20251001
 tools: [bash, read]
 ---
 
@@ -35,14 +35,14 @@ securityContext:
 
 ## Resource Requirements
 
-Every container MUST declare:
+Every container MUST declare requests (cpu + memory) and a memory limit.
+A CPU limit is optional by cluster policy — do not flag its absence.
 ```yaml
 resources:
   requests:
     cpu: <value>
     memory: <value>
   limits:
-    cpu: <value>
     memory: <value>
 ```
 
@@ -65,7 +65,7 @@ File: <path>
 - allowPrivilegeEscalation: false: PRESENT / MISSING
 - capabilities.drop ALL: PRESENT / MISSING
 - resources.requests: PRESENT / MISSING
-- resources.limits: PRESENT / MISSING
+- resources.limits.memory: PRESENT / MISSING
 - PSS label (namespace only): PRESENT / MISSING / N/A
 
 Status: PASS / FAIL (list missing fields)

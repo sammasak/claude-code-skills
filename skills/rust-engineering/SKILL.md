@@ -1,56 +1,37 @@
 ---
 name: rust-engineering
-description: "Use when writing Rust code, configuring Cargo workspaces, setting up clippy lints, designing error handling, or optimizing build profiles. Guides compiler-driven development and idiomatic Rust patterns. Excludes general Rust language questions without project tooling context (e.g., general async/await advice)."
+description: "Use when writing Rust code in a homelab repo, adding crates, changing Cargo workspace lints or profiles, running Rust gates, or building a container image from a Rust binary."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---
 
-# Rust Engineering
+# Rust Engineering (homelab conventions)
 
-<when_to_use>
-Use this skill when writing new Rust code, adding crates, configuring Cargo workspaces or lints, designing error types, choosing async patterns, or building container images from Rust binaries.
-</when_to_use>
+Standard is ADR-026 + ADR-027 (`~/knowledge/homelab/decisions/`). Reference repo: `~/rust-devenv-template` — copy from it, not from a sibling repo (per-repo specifics like herman's are not portable).
 
-## Principles
+## Dev environment and gates
 
-- **The compiler is your ally** -- ownership, borrowing, and lifetimes prevent categories of bugs
-- **If it compiles, it's probably correct** -- encode invariants in types
-- **Make illegal states unrepresentable** -- use enums for closed variants, newtypes for domain meaning
-- **Parse, don't validate** -- convert unstructured input into typed structures at the boundary
-- **Zero-cost abstractions** -- iterators, traits, and generics compile to the same code you'd write by hand
+devenv is the full dev environment (packages, tasks, git hooks); central policy comes from `~/devenv-platform`. Run gates as devenv tasks, never a repo-local `dev` script or a second flake hook owner:
 
-## Standards
+| When | Task |
+|---|---|
+| pre-commit hook | `devenv tasks run rust:fmt-check` |
+| pre-push hook | `devenv tasks run rust:ci` (strict clippy, cargo-deny, rustdoc, nextest + doctests) |
+| release/merge | `devenv tasks run rust:verify` (ci + coverage floor) |
+| on demand | `rust:bench`, `rust:audit`, `rust:deps`, `rust:mutants` |
 
-- **Lints**: Use `edition = "2024"`. Apply clippy `pedantic` at workspace level.
-- **Error Handling**: Use `thiserror` for libraries, `anyhow` for binaries.
-- **Type Design**: Use Newtypes and `impl Trait` where possible.
-- **Full Reference**: Read `docs/rust-engineering-patterns.md` for our specific patterns, Justfile tasks, and musl static linking instructions.
+Repos with `platform.sdlc` are driven by the `sdlc-pipeline` skill. Toolchain is pinned stable via `rust-toolchain.toml`; no nightly.
 
-## Workflow
+## Lints
 
-1. `cargo check` -> 2. `cargo clippy` -> 3. `cargo test` -> 4. `cargo build`
+`[workspace.lints.clippy]` denies `all` + `pedantic` + `nursery` plus the panic-prevention pack (`unwrap_used`, `expect_used`, `indexing_slicing`, `arithmetic_side_effects`, `panic`, `exit`, `as_conversions`, `string_slice`, ...) and `allow_attributes_without_reason`. `clippy.toml` allows unwrap/expect/panic/indexing in tests. Suppress with `#[expect(lint, reason = "...")]`. A `[profile.clippy]` is required (separate artifact dir, avoids the cold-clippy rebuild cliff).
 
-## Compiler-Driven Development (CDD)
+## Preferred crates (ADR-027 type + test pillars)
 
-Model the domain in types first. Let the compiler reject invalid programs. For complex lifecycle or state transitions, refer to the Pattern Library in `docs/rust-engineering-patterns.md`.
+- Types: private fields + `bon` fallible builder, `secrecy::SecretString` for secrets, `strum` for enum `ALL`/`COUNT`, tagged serde enums, sqlx `query!`.
+- Tests: `proptest`, `insta`, `rstest`, `cargo-mutants` (in verify), per-component `*-test-support` fixture crates.
+- Services: `axum` + `tower`, `kube-rs` for cluster clients, `thiserror` in libraries.
 
-### Testing Hierarchy
+## Container images
 
-| Layer | Tool | What it proves |
-|-------|------|----------------|
-| 1 — Compiler | `cargo check` | Invalid states don't compile |
-| 2 — Lints | `cargo clippy` | Idiomatic patterns, no obvious bugs |
-| 3 — Property tests | `proptest` | Invariants hold for arbitrary inputs |
-| 4 — Unit/Integration | `cargo test` | Business logic and interaction |
-
-<restrictions>
-
-## Anti-Patterns
-
-- **Never** use `.unwrap()` in library code. Use `Result` or `.expect("reason")` in tests.
-- **Avoid** `String` where `&str` suffices.
-- **Do not** use `#[allow(clippy::...)]` without a `// reason:` comment.
-- **Minimize** public API; start private, expose deliberately.
-- **Do not** accept compiler silence as full correctness proof; write property and unit tests.
-
-</restrictions>
+Static musl binary on `FROM scratch` (copy CA certs from the builder). Build/push via the `container-workflows` skill.

@@ -1,32 +1,23 @@
 ---
 name: knowledge-vault
-description: Use when reading ~/knowledge for context (who a person/company/situation is, prior decisions), or when explicitly asked to write durable reference (a runbook or ADR) to the vault. Documentation is commit-first and human-gated — never write to the vault reflexively.
+description: Use when the user mentions a person, company, situation, or prior decision you don't recognise, when you need context from ~/knowledge, or when explicitly asked to write a runbook, ADR, or other durable reference to the vault.
 ---
 
-# Knowledge Vault
+# Knowledge Vault (`~/knowledge`)
 
-`~/knowledge` is a personal reference vault, organised as rooms (directories with `INDEX.md` for discovery + `CONTEXT.md` for operation). See `~/knowledge/CLAUDE.md` for the routing map.
+Plain GFM markdown in a git repo, organised as rooms (`INDEX.md` for discovery + `CONTEXT.md` for operating in the room). `~/knowledge/CLAUDE.md` is the routing map. Career/people: `whoami/`; personal admin: `personal/`; systems: `homelab/`; multi-step guides: `workflows/<name>/CONTEXT.md`.
 
-## Reading for context (when confused)
+## Reading
 
-If you don't recognise a person, company, situation, or reference the user mentions, check the vault before asking.
+- Search through one `Explore` subagent asked to return `filepath: 'key context'` lines only; never `ls`/`grep`/`find`/`qmd` the vault in the main thread.
+- `Read` a specific file for depth. If the subagent finds nothing, proceed without vault context.
 
-- **Never** run `ls`/`grep`/`find`/`qmd` against `~/knowledge` in the main thread — it pollutes context.
-- Dispatch one `Agent` subagent (`subagent_type: 'Explore'`) to search the relevant room; ask it to return `filepath: 'key context'` lines only.
-- Read the summaries; `Read` a specific file if you need depth. If the subagent finds nothing useful, proceed without vault context — no fallback search in the main thread.
-- Career/people live in `whoami/applications/<slug>/`; personal admin in `personal/`; systems in `homelab/`.
+## Writing (gated)
 
-## Writing — commit-first and gated
+The *why* of a change goes in the commit message. Write to the vault only for durable reference (runbook, ADR, RFC) or when the user asks; never session notes, research dumps, or project status.
 
-The default home for the *why* of a change is a **short technical commit message**, not the vault. Write to the vault ONLY when:
-
-1. the content is **durable reusable reference** — a runbook or an ADR (`decisions/ADR-NNN-slug.md`), or
-2. the user **explicitly asks** you to.
-
-Never dump session notes, research, or per-project status into the vault.
-
-When you do write:
-
-- **Markdown conventions:** relative markdown links `[text](../room/file.md)`, NOT `[[wikilinks]]`; standard GFM only — no `![[embeds]]`, `> [!callout]`, `==highlight==`, `%%comment%%`, `^block-id`, or `#inline/tag`. YAML frontmatter is fine.
-- Name files after their subject (never `notes.md`, never `misc/`); one focused topic per file.
+- Links: relative markdown paths from the current file, e.g. `[age keys](../nix/sops-nixos.md#age-keys)`; check with `test -f "$(dirname <file>)/<relpath>"`. Standard GFM only: no `[[...]]` links, embeds, or callout syntax.
+- Placement: ADRs at `<room>/decisions/ADR-NNN-slug.md`, RFCs at `<room>/decisions/RFC-YYYY-MM-slug.md`, binary sources in a co-located `sources/`. Name files after their subject (never `notes.md` or `misc/`), one topic per file.
+- ADR frontmatter: `status` (proposed | accepted | deprecated | superseded), `date`, `supersedes`, `related`; sections Context, Decision (one sentence), Options Considered (table), Consequences, Links.
+- After adding or renaming files, update the room's `INDEX.md` to match.
 - Sync: `cd ~/knowledge && git pull && git add <files> && git commit && git push`.

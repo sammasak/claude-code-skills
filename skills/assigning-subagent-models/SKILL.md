@@ -1,10 +1,8 @@
 ---
 name: assigning-subagent-models
-description: "Use when building, creating, or editing a multi-agent workflow (the Workflow JS harness with agent()/pipeline()/parallel()) or dispatching any subagent via the Agent tool or .claude/agents/*.md — every subagent must be given an explicit model chosen by effort tier, never left to inherit."
+description: "Use when writing or editing a Workflow script (agent()/pipeline()/parallel()), dispatching a subagent with the Agent tool, or writing a .claude/agents/*.md definition."
 injectable: true
 ---
-
-Use when building, creating, or editing a multi-agent workflow (the Workflow JS harness with agent()/pipeline()/parallel()) or dispatching any subagent via the Agent tool or .claude/agents/*.md — every subagent must be given an explicit model chosen by effort tier, never left to inherit.
 
 # assigning-subagent-models
 
@@ -29,10 +27,10 @@ Pick the tier by the **cost of being wrong** and the **kind of thinking** requir
 
 | Tier | Pinned ID | Alias | Use for |
 |------|-----------|-------|---------|
-| **Author / plan** | `claude-fable-5` or `claude-opus-4-8` | `fable` / `opus` | Designing, creating, or editing the workflow itself; top-tier reasoning and architecture. This is the model *you* run as while authoring. |
-| **Hard** | `claude-opus-4-8` | `opus` | Fact-checking, implementation, adversarial verification, synthesis, judging, decisions — anything where a wrong answer is costly. |
-| **Light** | `claude-sonnet-4-6` | `sonnet` | Research, information gathering, search fan-out, summarization, first-pass drafting. |
-| **Trivial** | `claude-haiku-4-5` | `haiku` | Mechanical work: lint/format, simple greps, boilerplate transforms, rote extraction. |
+| **Author / plan** | `claude-fable-5-1` or `claude-opus-5-5` | `fable` / `opus` | Designing, creating, or editing the workflow itself; top-tier reasoning and architecture. This is the model *you* run as while authoring. |
+| **Hard** | `claude-opus-5-5` | `opus` | Fact-checking, implementation, adversarial verification, synthesis, judging, decisions — anything where a wrong answer is costly. |
+| **Light** | `claude-sonnet-5` | `sonnet` | Research, information gathering, search fan-out, summarization, first-pass drafting. |
+| **Trivial** | `claude-haiku-4-5-20251001` | `haiku` | Mechanical work: lint/format, simple greps, boilerplate transforms, rote extraction. |
 
 **Heuristic:** *research / gather → Sonnet. verify / implement / decide → Opus. design the whole thing → Fable or Opus. pure mechanical → Haiku.*
 
@@ -44,10 +42,10 @@ The pinned ID names intent; the surface decides the literal token. Always keep t
 
 | Surface | Accepts | Pass |
 |---------|---------|------|
-| `.claude/agents/*.md` frontmatter `model:` | Pinned ID | `model: claude-opus-4-8` |
-| CLI `--model` flag | Pinned ID | `--model claude-opus-4-8` |
-| `Agent` tool `model` parameter | **Alias only** | `model: 'opus'  // claude-opus-4-8` |
-| `Workflow` `agent()` / phase `model` opt | Alias | `{ model: 'opus', ... }  // claude-opus-4-8` |
+| `.claude/agents/*.md` frontmatter `model:` | Pinned ID | `model: claude-opus-5-5` |
+| CLI `--model` flag | Pinned ID | `--model claude-opus-5-5` |
+| `Agent` tool `model` parameter | **Alias only** | `model: 'opus'  // claude-opus-5-5` |
+| `Workflow` `agent()` / phase `model` opt | Alias | `{ model: 'opus', ... }  // claude-opus-5-5` |
 
 ## Example — a Workflow with a model on every spawn
 
@@ -56,24 +54,24 @@ The pinned ID names intent; the surface decides the literal token. Always keep t
 const research = await pipeline(
   CANDIDATES,
   (lib) => agent(`Research the library "${lib}" from primary sources.`,
-    { model: 'sonnet', label: `research:${lib}`, schema: RESEARCH }),  // claude-sonnet-4-6 — gathering
+    { model: 'sonnet', label: `research:${lib}`, schema: RESEARCH }),  // claude-sonnet-5 — gathering
 )
 
 const design = await agent('Synthesize a recommendation from the research.',
-  { model: 'opus', label: 'design', schema: DESIGN })                  // claude-opus-4-8 — decision
+  { model: 'opus', label: 'design', schema: DESIGN })                  // claude-opus-5-5 — decision
 
 const impl = await agent('Implement the chosen integration.',
-  { model: 'opus', label: 'implement', schema: IMPL })                 // claude-opus-4-8 — costly if wrong
+  { model: 'opus', label: 'implement', schema: IMPL })                 // claude-opus-5-5 — costly if wrong
 
 const lint = await agent('Run the formatter and report warnings.',
-  { model: 'haiku', label: 'lint' })                                   // claude-haiku-4-5 — mechanical
+  { model: 'haiku', label: 'lint' })                                   // claude-haiku-4-5-20251001 — mechanical
 ```
 
 ## Example — an Agent-tool dispatch and an agent definition
 
 ```
 // Agent tool — the model field is REQUIRED, alias only:
-Agent({ subagent_type: 'general-purpose', model: 'sonnet', /* claude-sonnet-4-6 */
+Agent({ subagent_type: 'general-purpose', model: 'sonnet', /* claude-sonnet-5 */
         description: 'Gather API docs', prompt: '...' })
 ```
 
@@ -81,7 +79,7 @@ Agent({ subagent_type: 'general-purpose', model: 'sonnet', /* claude-sonnet-4-6 
 # .claude/agents/verifier.md — pinned ID in frontmatter:
 ---
 name: verifier
-model: claude-opus-4-8   # hard tier: fact-checking is costly if wrong
+model: claude-opus-5-5   # hard tier: fact-checking is costly if wrong
 ---
 ```
 
@@ -89,7 +87,7 @@ model: claude-opus-4-8   # hard tier: fact-checking is costly if wrong
 
 - **Omitting the model to "keep it simple."** The spawn then inherits the main-loop model invisibly. Simplicity is naming the model, not hiding it.
 - **Modeling the `agent()` calls but forgetting the standalone `Agent`-tool dispatch** (or the final summary/lint step). *Every* spawn, including the last one, gets a model.
-- **Passing a pinned ID to the `Agent` tool's `model` param.** It rejects `claude-opus-4-8` — pass `opus` and put the pinned ID in a comment.
+- **Passing a pinned ID to the `Agent` tool's `model` param.** It rejects `claude-opus-5-5` — pass `opus` and put the pinned ID in a comment.
 - **Defaulting everything to `opus` "to be safe."** Research and gathering fan-outs are the bulk of most workflows; running them on Opus burns budget for no quality gain. Match the tier.
 - **Guessing model IDs from memory.** Use the ladder above; the IDs there are current.
 

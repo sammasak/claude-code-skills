@@ -1,87 +1,27 @@
 ---
 name: observability-patterns
-description: "Use when adding metrics, logging, tracing, or alerting to services. Guides the three pillars of observability, structured logging standards, and instrumentation patterns. Not for language-specific logging setup (e.g., configuring a logger in Rust/Axum) — route those to the relevant language skill."
+description: "Use when adding metrics, logs, dashboards, or alerts to a homelab service, or when deciding whether to add tracing. Not for language-specific logger setup; route that to the language skill."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---
 
-# Observability Patterns
+# Observability (homelab stack)
 
-Instrument services from day one — never bolt it on after an incident.
+The full standard lives in `~/homelab-gitops/docs/observability-standard.md`; this is the strip that changes decisions.
 
-## Three Pillars
+| Component | What is deployed |
+|---|---|
+| Metrics | kube-prometheus-stack (Prometheus Operator, Grafana, Alertmanager); scrape via `ServiceMonitor`/`PodMonitor` |
+| Logs | Loki + Grafana Alloy DaemonSet (Promtail is gone); 30-day retention; query with LogQL in Grafana Explore |
+| Traces | **None.** No Tempo/Jaeger/OTLP collector. Do not add OTel exporters expecting a backend; propagate a `trace_id`/request-id into logs and correlate metrics and logs by namespace, pod, and timestamp |
+| Alerting | Alertmanager -> `alertmanager-ntfy-bridge` -> ntfy topic `homelab-alerts` (see `ntfy-notifications`) |
+| Dashboards | Grafana at https://grafana.sammasak.dev; dashboard ConfigMaps and `PrometheusRule` alerts live in `~/homelab-gitops/apps/monitoring-dashboards/`; "Universal App Health" is the first stop in an incident |
+| Python | `structlog` JSON + `prometheus_client` |
+| Rust | `tracing` + `tracing-subscriber` (JSON) + `metrics-exporter-prometheus` |
 
-| Pillar  | Question           | Shape                              |
-|---------|--------------------|-------------------------------------|
-| Metrics | WHAT is happening? | Counters, gauges, histograms        |
-| Logs    | WHY it happened?   | Contextual structured events        |
-| Traces  | WHERE it happened? | Request flow across service boundaries |
+## Service checklist
 
-**Alert on symptoms, not causes.** Alert on error rate crossing a threshold, not on a specific error message. Instrument at system boundaries (HTTP handlers, queue consumers, DB calls) — not deep internals.
-
-## Structured Logging
-
-Always JSON:
-```json
-{"timestamp":"2026-01-15T08:12:03Z","level":"error","msg":"payment failed","trace_id":"abc123","user_id":"u-789","error":"timeout"}
-```
-
-| Level | Meaning | Production? |
-|-------|---------|-------------|
-| ERROR | Requires human action now | Yes |
-| WARN  | Degraded but self-healing | Yes |
-| INFO  | Business-significant events only | Yes |
-| DEBUG | Development diagnostics | Never |
-
-## Metrics — RED Method
-
-| Signal | Metric | Example |
-|--------|--------|---------|
-| Rate | Requests per second | `http_requests_total` |
-| Errors | Error rate % | `http_errors_total / http_requests_total` |
-| Duration | Latency histograms | `http_request_duration_seconds` |
-
-## Trace Context
-
-**The homelab has no tracing backend deployed** (no Tempo/Jaeger — metrics and logs are the two pillars actually wired up). Treat tracing as guidance for services that export elsewhere or for when a backend gets added, not a current requirement:
-
-- Propagate trace IDs across ALL service boundaries (HTTP, queues, async jobs) even without a backend — it's free and makes structured logs correlatable via `trace_id`
-- Use W3C Trace Context (`traceparent` header) if you do instrument
-- Head-based sampling (10%) for high-traffic; tail-based to always capture errors
-
-## Required Endpoints
-
-Every service exposes:
-- `/metrics` — Prometheus scrape target
-- `/livez` — Liveness probe (`/healthz` deprecated since K8s 1.16)
-- `/readyz` — Readiness probe
-
-## Pre-Staging Checklist
-
-- [ ] Structured logger configured (JSON output, correlation IDs)
-- [ ] Prometheus `/metrics` endpoint exposed
-- [ ] HTTP middleware adds duration + status code metrics
-- [ ] `trace_id`/request-id propagated into logs, even with no tracing backend
-- [ ] `/livez` and `/readyz` endpoints
-- [ ] Grafana dashboard: request rate, error rate, p50/p95/p99 latency, active requests
-
-## Patterns We Use
-
-| Component | Choice |
-|-----------|--------|
-| Cluster monitoring | kube-prometheus-stack (Prometheus + Grafana + Alertmanager) |
-| Log aggregation | Loki + Grafana Alloy (LogQL queries; Alloy replaced Promtail, EOL 2026-03-02) |
-| Tracing | none deployed — no OTLP collector/backend in this homelab |
-| Python | `structlog` / Prometheus client |
-| Rust | `tracing` + `tracing-subscriber` (JSON) / `metrics-exporter-prometheus` |
-
-## Anti-Patterns
-
-| Don't | Why |
-|-------|-----|
-| Log PII or secrets | Compliance and security risk |
-| Use unstructured log lines | Can't query, aggregate, or alert |
-| Alert on every individual error | Alert fatigue — alert on rates |
-| Skip trace context in cross-service calls | Can't follow requests across boundaries |
-| High-cardinality labels (e.g., user IDs) | Prometheus OOM, index explosion |
-| Log full request/response bodies | Storage cost + PII risk |
+- JSON logs to stdout (Alloy tails `/var/log/pods/`), with request-id.
+- `/metrics` plus a `ServiceMonitor`; RED metrics on HTTP handlers; no user IDs or other unbounded values as labels.
+- A health endpoint for probes (`apps/_template` points both probes at `/health`; adjust to the app's real path).
+- Scale-to-zero apps (KEDA HTTP add-on) show zero pods when idle; write alerts on request error rate, not on pod absence.

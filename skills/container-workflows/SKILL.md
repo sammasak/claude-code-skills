@@ -1,76 +1,34 @@
 ---
 name: container-workflows
-description: "Use when building container images, writing Dockerfiles, pushing to registries, or optimizing image size and security. Guides rootless builds, multi-stage patterns, and supply chain security."
+description: "Use when building, scanning, tagging, or pushing a container image, or writing a Containerfile/Dockerfile for a homelab service."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---
 
-# Container Workflows
+# Container Workflows (homelab)
 
-Build minimal, rootless, reproducible container images and ship them safely to registries.
+## Registry and references
 
-## Principles
+- Registry: zot at `registry.sammasak.dev` (Harbor is retired). App images go under `registry.sammasak.dev/lab/<app>`; also `agents/` and `components/` namespaces exist.
+- Auth: `~/.config/containers/auth.json` (see `credentials`).
+- Tag with the short git SHA; GitOps manifests reference the image by `@sha256:` digest (see `~/homelab-gitops/apps/_template`). `latest` is never deployed.
+- Repos on `~/devenv-platform` can render the image from `platform.services` via `devenv container build <name>` instead of a hand-written Containerfile.
 
-- **Smallest attack surface** — fewest packages = fewest CVEs
-- **Rootless builds** — no Docker daemon required (buildah)
-- **Separate build and runtime stages** — compilers never reach production
-- **Images are immutable** — never exec into a running container; rebuild and redeploy
+## Tooling on this host
 
-## Dockerfile Standards
-
-| Rule | Detail |
-|---|---|
-| Multi-stage | Always — builder compiles, runtime stage runs |
-| Runtime base | `FROM scratch` / `cgr.dev/chainguard/static` for static binaries; `*-slim` for interpreted |
-| Pin digests | `FROM python:3.13-slim@sha256:...` — never float on mutable tags |
-| Non-root USER | `USER nobody` or dedicated UID — never root |
-| COPY specific files | Never `COPY . .`; `.dockerignore` is a safety net only |
-| HEALTHCHECK | Always define one for orchestrator integration |
-| OCI labels | `org.opencontainers.image.source`, `.version`, `.revision`, `.created` |
-| Syntax directive | `# syntax=docker/dockerfile:1` at top |
-
-**Secrets:** Never in `ENV`/`ARG`/`COPY` (visible in `docker history`). Use `RUN --mount=type=secret,id=token`.
-
-**Packages:** Always `apt-get install --no-install-recommends`. Combine update+install+clean in one `RUN`. Use `--mount=type=cache` for package manager caches.
-
-## Build-to-Push Workflow
+buildah, trivy and podman are not on PATH; skopeo is. Run them through nix:
 
 ```bash
-# Build (rootless)
-buildah build -t myapp:$(git rev-parse --short HEAD) .
-
-# Scan — always before push
-trivy image myapp:$(git rev-parse --short HEAD)
-
-# Tag: semver + SHA (never only latest)
-buildah tag myapp:$(git rev-parse --short HEAD) myapp:1.4.0
-
-# Push (zot — registry.sammasak.dev)
-skopeo copy containers-storage:localhost/myapp:1.4.0 docker://registry.sammasak.dev/myapp:1.4.0
-skopeo copy containers-storage:localhost/myapp:$(git rev-parse --short HEAD) docker://registry.sammasak.dev/myapp:$(git rev-parse --short HEAD)
+nix run nixpkgs#buildah -- build -t localhost/<app>:$(git rev-parse --short HEAD) .
+skopeo copy containers-storage:localhost/<app>:<sha> docker-archive:/tmp/<app>.tar:<app>:<sha>
+nix run nixpkgs#trivy -- image --input /tmp/<app>.tar --severity HIGH,CRITICAL --exit-code 1
+skopeo copy containers-storage:localhost/<app>:<sha> docker://registry.sammasak.dev/lab/<app>:<sha>
 ```
 
-**Tag strategy:** `1.4.0` (release, immutable), `a3f9b2c` (SHA, immutable), `latest` (convenience only, never used in prod).
+## Known traps
 
-## Patterns We Use
-
-| Choice | Why |
-|---|---|
-| **buildah + skopeo** | Rootless, daemonless, OCI-native |
-| **zot** | Homelab registry (`registry.sammasak.dev`) — lightweight, OCI-native, robot-account auth via credentials skill |
-| **`FROM scratch`** for Rust | Statically linked musl — ~5 MB, zero runtime deps |
-| **Chainguard/distroless** | CA certs + tzdata + non-root user out of the box |
-| **`python:3.x-slim` + uv** | Fast installs, small image |
-| **`just` commands** | `just build`, `just scan`, `just push` wrap the cycle |
-
-## Anti-Patterns
-
-**A successful build does not mean a secure image.** Always run `trivy image <name>` before pushing.
-
-| Don't | Do instead |
-|---|---|
-| Run as root | `USER nobody` or dedicated UID |
-| Compilers in runtime image | Multi-stage builds |
-| `:latest` in production | Pin semver + digest |
-| Secrets via `ENV`/`ARG` | `RUN --mount=type=secret` or runtime injection |
-| Docker-in-Docker in CI | Use buildah — rootless, no privileged containers |
+- trivy needs a **docker-archive** export; an oci-archive fails with "manifest.json not found".
+- Rootless `podman run` is broken here (no netavark). Inspect image contents with `nix shell nixpkgs#buildah -c buildah unshare` + `buildah mount` instead.
+- Pinned base digests go stale: one that scanned clean months ago now trips HIGH CVEs. At every build, re-scan and bump the `FROM ...@sha256:` digest rather than lowering the gate. Do not copy an old app's pinned digest blindly.
+- Static sites: copy the `apps/herman-web` pattern (`nginx-unprivileged`, uid 101).
+- Rust: static musl binary on `FROM scratch` plus CA certs. Python: see `python-engineering`.

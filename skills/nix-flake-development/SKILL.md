@@ -1,98 +1,33 @@
 ---
 name: nix-flake-development
-description: "Use when working with NixOS configurations, Nix flakes, module composition, system rebuilds, or Home Manager. Guides declarative system management patterns and safe rebuild workflows."
+description: "Use when editing ~/nixos-config, adding a NixOS or Home Manager module, updating a flake input, or rebuilding/deploying a homelab host."
 allowed-tools: Bash Read Grep Glob
 injectable: true
 ---
 
-# Nix Flake Development
+# Nix Flake Development (homelab)
 
-Declarative, reproducible system configuration through Nix flakes and module composition.
+`~/nixos-config` (branch `main`) is flake-parts with auto-discovery: `flake-modules/` loads in numbered order, `modules/roles/*.nix` and `modules/home/*.nix` become registry modules automatically, hosts are declared in `flake-modules/hosts/<name>.nix` + `hosts/<name>/`. Home Manager is shared by every host via `modules/home/default.nix`. Its `CLAUDE.md` is the detailed reference, including a Comment Policy that `just lint-comments` enforces.
 
-## Principles
+## Hosts
 
-| Principle | Rule |
-|---|---|
-| Declarative | The repo *is* the system — no manual state mutations |
-| Reproducibility | `flake.lock` pins every input; commit it, never gitignore |
-| Composition | Small focused modules combined per host via `imports` |
-| Module system | Expose behavior via `mkOption`; consume via `config.*` |
+Flake attributes: `acer-swift`, `lenovo` (hostname `lenovo-21CB001PMX`), `msi-ms7758`. The Justfile maps hostname to attribute, so `just switch` with no argument targets the current machine.
 
-> Requires `nix.settings.experimental-features = [ "nix-command" "flakes" ]`.
-
-## flake.nix Structure
-
-```nix
-{
-  inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    home-manager = {
-      url = "github:nix-community/home-manager";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-  };
-  outputs = { self, nixpkgs, home-manager, ... }: {
-    nixosConfigurations.<hostname> = mkHost { ... };
-  };
-}
-```
-
-**Input rules:** Pin to a branch/rev. Use `inputs.X.follows = "nixpkgs"` for transitive deps. Update one input at a time when debugging.
-
-## Key `lib` Functions
-
-| Function | Use |
-|---|---|
-| `mkIf` | Conditional config blocks |
-| `mkMerge` | Combine multiple config fragments |
-| `mkDefault` | Override-able default (priority 1000) |
-| `mkForce` | Override everything — use sparingly |
-| `mkEnableOption` | Boolean option defaulting to `false` |
-
-## Module Pattern
-
-```nix
-options.homelab.services.myapp.enable = lib.mkEnableOption "myapp";
-config = lib.mkIf config.homelab.services.myapp.enable {
-  systemd.services.myapp = { ... };
-};
-```
-
-## Rebuild Workflow
+## Commands
 
 ```bash
-nix flake check                                        # validate all outputs
-nixos-rebuild build --flake .#<hostname>               # build without activating
-sudo nixos-rebuild test --flake .#<hostname>           # ephemeral (reverts on reboot)
-sudo nixos-rebuild switch --flake .#<hostname>         # activate + set boot default
+just check            # comment lint + shellcheck + secrets gate + flake checks
+just verify           # every host builds
+just diff [HOST]      # nh build + package diff vs the running system
+just switch [HOST]    # nixos-rebuild switch --install-bootloader
+just bump [input]     # nix flake update (all or one input)
+just deploy-acer      # deploy-rs with magic rollback; acer has no BMC, so prove on deploy-lenovo first
 ```
 
-### Updating a flake input before a rebuild
+## Known traps
 
-```bash
-nix flake update <input>
-sudo nixos-rebuild switch --flake .#<hostname>
-# or for agent image: just release-agent latest
-```
-
-The build uses exactly the commit in `flake.lock`. **Pushing to GitHub does not update the lock.**
-
-## Patterns We Use
-
-- **Role-based host composition** — `hosts/<name>/` + `variables.nix` per host
-- **`mkHost` helper** — wires nixpkgs, overlays, Home Manager, and host modules
-- **Home Manager as NixOS module** — shares system nixpkgs instance
-- **SOPS for secrets** — encrypted in-repo, decrypted at activation; never in Nix store
-- **`homelab.*` / `profile.*` namespaces** — avoids collision with upstream options
-
-## Anti-Patterns
-
-| Don't | Do Instead |
-|---|---|
-| `nix-env -iA` for system packages | Declare in `environment.systemPackages` or Home Manager |
-| `inputs.nixpkgs.url = "nixpkgs"` (unpinned) | `url = "github:NixOS/nixpkgs/nixos-unstable"` |
-| Monolithic `configuration.nix` (500+ lines) | Split into role modules under `modules/` |
-| Import-from-derivation (IFD) at eval time | Pre-generate or use `builtins.readFile` |
-| Manual edits to `/etc/*` | Declare via `environment.etc` or service options |
-| `mkForce` to fix option conflicts | Understand merge precedence; restructure modules |
-| `lib.mdDoc` for option descriptions | Removed in 24.11 — Markdown is the default |
+- Bootloader: `lenovo` and `acer-swift` use **systemd-boot**; `msi-ms7758` is the exception, GRUB with a Windows chainload entry (small shared ESP). `just switch` always passes `--install-bootloader`; before a flake update, check whether the bootloader/kernel store paths change.
+- A rebuild or HM switch breaks the Bash tool in every running Claude session (stale shell snapshots: exit 1, no output). File tools keep working; restart the session. Park state outside the `/tmp` scratchpad first.
+- The build uses the commit pinned in `flake.lock`; pushing a dependency repo changes nothing until `just bump <input>`. Skills reach `~/.claude` this way: push `~/claude-code-skills`, then `just bump claude-code-skills` and switch. Never edit `~/.claude/skills` directly (HM symlinks into the store).
+- `git+` inputs to private repos need ssh URLs (`github:` 404s without a token) and a `?rev=` pin.
+- Secrets: sops-nix with rules in `secrets/.sops.yaml`; see `secrets-management`.

@@ -1,46 +1,24 @@
 ---
 name: python-engineering
-description: "Use when writing Python code, configuring tooling, structuring projects, or working with FastAPI, httpx, pytest, or the Astral toolchain (uv, ruff, ty)."
+description: "Use when writing Python code, setting up a Python project or its tooling, or containerising a Python service."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---
 
-# Python Engineering
+# Python Engineering (homelab choices)
 
-## Principles
+Python is a minority language here (Rust is the default for services); the reference project is `evals/` in this repo.
 
-- **Type everything** -- `ty` + `ruff` catch bugs before tests run.
-- **Pydantic at boundaries** -- validate at entry/exit, trust internals.
-- **Async-first** -- `httpx`, `asyncio.TaskGroup`, structured concurrency.
-- **Explicit over implicit** -- no star imports, no mutable defaults.
-- **Dependency injection** -- pass clients/sessions in.
+| Concern | Choice |
+|---|---|
+| Packages / venv | `uv` (`uv sync --locked`, `uv run`); `uv_build` backend |
+| Lint + format | `ruff` (target py313, line-length 99) |
+| Type check | `ty` (beta; `mypy` acceptable where ty falls short) |
+| HTTP | `httpx.AsyncClient`, injected rather than module-global |
+| API | FastAPI + Pydantic v2 at the boundaries |
+| Logging | `structlog` JSON (see `observability-patterns`) |
+| Tests | `pytest` + `pytest-asyncio` |
 
-## Standards
+## Container image
 
-- **Toolchain**: Use `uv` (package management), `ruff` (lint/format), and `ty` (type checking).
-- **Modern Typing**: Use `X | None` and `list[int]` (Python 3.12+).
-- **Full Reference**: Read `docs/python-engineering-patterns.md` for Ruff/ty configs, Dockerfile templates, and build system details.
-
-## Workflow
-
-1. **Models** (Pydantic) -> 2. **Logic** (typed) -> 3. **Tests** (pytest) -> 4. **Integration** (FastAPI)
-
-## Patterns We Use
-
-| Concern | Choice | Why |
-|---------|--------|-----|
-| Package management | `uv sync --locked` | Deterministic and fast |
-| API framework | FastAPI | Async, typed DI, OpenAPI |
-| Logging | `structlog` | Structured JSON, async-safe |
-| Containers | `python:3.13-slim` | Minimal and fast |
-
-<restrictions>
-
-## Anti-Patterns
-
-- **Never** use `pip install` in production; use `uv sync`.
-- **Avoid** `requests` in async code; use `httpx.AsyncClient`.
-- **Do not** use `print()` for logging; use `structlog`.
-- **Minimize** module-level global clients; use dependency injection.
-
-</restrictions>
+Multi-stage on `python:3.13-slim` (pin the digest), uv copied from `ghcr.io/astral-sh/uv`, `UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy`, `uv sync --locked --no-dev` in the builder, copy `/app` (with `.venv`) to the runtime stage, run as non-root. Push via the `container-workflows` skill.

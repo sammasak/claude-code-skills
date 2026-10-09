@@ -1,127 +1,46 @@
 ---
 name: kubernetes-gitops
-description: "Use when working with Kubernetes clusters, GitOps deployments, Flux reconciliation, Helm releases, or cluster troubleshooting. Guides declarative cluster management and GitOps workflows. Not for secrets encryption or SOPS operations — route those to secrets-management."
+description: "Use when changing or debugging anything in the homelab k3s cluster: manifests, Flux Kustomizations, HelmReleases, ingress, scaling, or node problems. Not for SOPS encryption; route that to secrets-management."
 allowed-tools: Bash, Read, Grep, Glob
 injectable: true
 ---
 
-# Kubernetes GitOps
+# Kubernetes GitOps (homelab)
 
-Manage Kubernetes clusters declaratively through Git-driven reconciliation loops.
+`~/homelab-gitops` (Flux, pushes to `main`) is the source of truth and its `CLAUDE.md` is the detailed reference. Change the cluster through Git; a manual `kubectl apply` gets reverted by Flux.
 
-**CRITICAL: Never push changes directly to the cluster from a workstation.** All changes must go through Git — direct `kubectl apply` creates invisible drift the controller will fight against.
+## Topology
 
-**IMPORTANT: Always run `flux diff kustomization <name>` before reconciling.** Preview changes to avoid accidentally applying destructive patches.
-
-**NOTE:** Flux v2.7+ supports global SOPS decryption via `--sops-age-secret` controller flag.
-
-## Cluster Topology
-
-2-node k3s: `acer-swift` is the **only** worker (all app pods land there); `lenovo` is control-plane, tainted, and hosts a few unauthenticated singletons (e.g. ntfy). Losing `acer-swift` is a total outage for workloads — there is no second worker to fail over to. KEDA scale-to-zero is the default posture for internal apps, so an idle service having zero pods is expected, not a fault — check `ScaledObject` state before treating 0 replicas as an incident.
-
-## Principles
-
-- **Git is the single source of truth** — desired state lives in version control
-- **Pull-based reconciliation** — the cluster pulls from Git; CI never pushes
-- **Drift detection** — controllers converge actual toward declared state
-- **Declarative desired state** — describe *what*, never script *how*
-
-## Repository Structure
-
-```
-clusters/<cluster>/flux-system/        # Flux entrypoint
-clusters/<cluster>/infrastructure.yaml # ordering: infra before apps
-apps/base/                             # Kustomize bases
-apps/overlays/{staging,production}/    # env-specific patches
-infrastructure/controllers/            # shared infra
-```
-
-### Kustomization Layering
-
-| Layer | Purpose |
+| Node | Role |
 |---|---|
-| `base/` | App defaults, common labels, base manifests |
-| `overlays/<env>/` | Env-specific patches, replicas, limits |
-| `clusters/<name>/` | Cluster bindings, Flux orchestration |
+| `acer-swift` | the only always-on worker; every app pod runs here, so losing it is a total app outage |
+| `lenovo-21cb001pmx` | control-plane, tainted; hosts ntfy, Tailscale subnet router, AdGuard DNS |
+| `msi-ms7758` | intermittent opt-in worker, taint `sammasak.dev/intermittent=true:NoSchedule`; scheduled power window Mon-Fri ~09:00-21:00 (WoL from lenovo), otherwise off; never WoL it at night |
 
-### HelmRelease (key fields)
+Platform: Flux, Cilium (CNI + kube-proxy replacement), MetalLB (pool 192.168.10.202-204), Traefik v3 on .203 (`*.sammasak.dev`), cert-manager (`letsencrypt-prod`, Cloudflare DNS-01), Authentik, KEDA + HTTP add-on, Kyverno, zot. Gone (do not reintroduce without an ADR): ingress-nginx, Harbor, Falco, Tempo, Pushgateway, Cloudflare tunnel, VM workloads.
 
-```yaml
-spec:
-  interval: 30m
-  chart:
-    spec:
-      version: "1.x"                  # semver range
-  valuesFrom:
-    - kind: ConfigMap                 # values in Git, not inline
-  install:
-    remediation:
-      retries: 3
-  upgrade:
-    remediation:
-      remediateLastFailure: true
-  driftDetection:
-    mode: enabled
-```
+## Conventions
 
-### Workload Requirements
+- New app: `cp -r apps/_template apps/<app>`, then add `<app>/` to `apps/kustomization.yaml` (forgetting this deploys nothing, silently). Full walkthrough: `docs/adding-an-app.md`.
+- Validate before pushing: `./scripts/validate.sh` (or `just validate`).
+- `chat` and `llm` are separate Flux Kustomizations so slow model pulls cannot block `apps`.
+- Ingress: `ingressClassName: traefik`, `traefik.ingress.kubernetes.io/*` annotations, `router.tls: "true"`, `cert-manager.io/cluster-issuer: letsencrypt-prod`. Authentik-gated apps add `traefik.ingress.kubernetes.io/router.middlewares: "authentik-authentik-forward-auth@kubernetescrd"`. ntfy is deliberately un-gated.
+- Resources: CPU/memory requests and a memory limit; CPU limits are optional and usually wrong. Namespace PSS: `enforce: baseline`, `warn`/`audit: restricted`.
+- Images by `@sha256:` digest from `registry.sammasak.dev/lab/`.
 
-- [ ] `resources.requests` and `resources.limits` on every container
-- [ ] `readinessProbe` and `livenessProbe` on every Deployment
-- [ ] Namespace Pod Security Standard label (`restricted` or `baseline`)
-- [ ] Per-workload ServiceAccount; NetworkPolicy restricting ingress/egress
+## Scale-to-zero traps
 
-## Workflow
+- HTTP apps sit at zero replicas behind the KEDA HTTP interceptor. Zero pods when idle is expected; check the `HTTPScaledObject` before calling it an incident.
+- A single failing check after idle is usually a cold start; retry once before declaring an outage.
+- If the KEDA interceptor is down, every scaled app 502s at once.
+
+## Debug entry points
 
 ```bash
-# Health check
-flux check && kubectl get nodes -o wide
-flux get all -A && flux logs --all-namespaces --level=error
-
-# Force reconciliation
-flux diff kustomization <name>
-flux reconcile source git flux-system
-flux reconcile kustomization flux-system --with-source
-
-# Debug failed HelmRelease
-flux logs --kind=HelmRelease --name=<name> -n <ns>
-helm history <name> -n <ns>
-kubectl describe helmrelease <name> -n <ns>
-
-# Rollback
-sudo nixos-rebuild switch --rollback    # NixOS hosts
-helm rollback <name> <revision> -n <ns> # Helm releases
+flux get kustomizations && flux get helmreleases -A
+flux logs --all-namespaces --level=error
+flux reconcile kustomization apps --with-source
+just unhealthy        # in ~/homelab-gitops
 ```
 
-## Patterns We Use
-
-| Choice | Over | Why |
-|---|---|---|
-| **FluxCD** | ArgoCD | Lightweight, pure K8s CRDs, composable with Kustomize |
-| **SOPS + age** | Sealed Secrets / Vault | Encrypted in Git; no extra controller |
-| **Traefik v3** | ingress-nginx (retired, ADR-011) | Kubernetes-native IngressRoute CRDs, middleware chains, forward-auth integration |
-| **MetalLB** | cloud LB | Bare-metal L2/BGP for LoadBalancer Services |
-| **KEDA scale-to-zero** | static replicas | Idle apps cost zero CPU; default posture for internal services |
-
-## Ingress (Traefik v3)
-
-- **Annotation prefix:** `traefik.ingress.kubernetes.io/` (NEVER use `nginx.ingress.kubernetes.io/`)
-- **Standard Ingress annotations for Authentik-gated apps:**
-  ```yaml
-  annotations:
-    traefik.ingress.kubernetes.io/router.middlewares: "authentik-authentik-forward-auth@kubernetescrd"
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-  ```
-- **Middleware CRDs:** Traefik Middleware resources live in the `authentik` namespace (shared `authentik-forward-auth`). Reference them as `<namespace>-<name>@kubernetescrd` in annotations.
-- **TLS:** All external routes must set `router.tls: "true"` and use cert-manager with `letsencrypt-prod` cluster issuer.
-- **Anti-pattern:** Never write `nginx.ingress.kubernetes.io/` annotations. ingress-nginx is fully retired and removed from the cluster.
-
-## Anti-Patterns
-
-- **Do not claim rollout succeeded because `kubectl apply` exited 0.** Run `kubectl rollout status` — apply only submits desired state
-- **`kubectl apply` from laptops in prod** — bypasses Git, creates invisible drift
-- **Mutable image tags** (`:latest`) — use image automation or pinned digests
-- **Plaintext secrets in Git** — always SOPS-encrypt; if committed plain, rotate immediately
-- **Missing resource requests/limits** — noisy neighbors and OOM kills
-- **Manual drift fixes without updating Git** — the controller will revert
+For deeper diagnosis dispatch the `k8s-debugger` agent.
