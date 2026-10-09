@@ -2,9 +2,10 @@
 # Shared session state — read/write JSON file scoped to CLAUDE_SESSION_ID.
 # Source this file from any hook: source "$(dirname "$0")/lib/state.sh"
 #
-# Schema v2: adds schema_version field; upgrade_state() migrates v1 files.
+# Schema v3: only fields a live hook writes (errors_seen, loop_count);
+# upgrade_state() migrates older files.
 
-STATE_SCHEMA_VERSION=2
+STATE_SCHEMA_VERSION=3
 
 init_state() {
   # Resolved here, not at source time: hooks learn the session id from stdin
@@ -20,18 +21,8 @@ init_state() {
   "schema_version": ${STATE_SCHEMA_VERSION},
   "session_id": "${CLAUDE_SESSION_ID:-$$}",
   "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-  "prompt_count": 0,
-  "retrieve": {
-    "rooms_activated": [],
-    "last_activated_at": null,
-    "last_prompt_words": "",
-    "context_injected": false
-  },
-  "repos_touched": [],
-  "tools_used": {},
   "errors_seen": 0,
-  "loop_count": 0,
-  "goal_status": null
+  "loop_count": 0
 }
 STATEEOF
 }

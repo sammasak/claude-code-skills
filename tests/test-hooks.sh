@@ -67,6 +67,28 @@ check "multiline commit message literal not misblocked" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"git commit -m \"subject line\n\nnever git push --force here\n\""}')"
 check "env-prefixed force blocked" 2 "BLOCKED: force push" - \
   validate-bash.sh "$(j b1 '{"command":"env git push --force origin main"}')"
+check "git -C force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"git -C /home/x/repo push --force"}')"
+check "var-assignment prefix force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"GIT_TRACE=1 git push -f origin main"}')"
+check "backslash-escaped git force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"\\git push --force origin main"}')"
+check "bash -c payload force blocked" 2 "BLOCKED" - \
+  validate-bash.sh "$(j b1 '{"command":"bash -c \u0027git push --force origin main\u0027"}')"
+check "plus-refspec force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"git push origin +main"}')"
+check "flag-suffix branch name allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git push origin feature--force"}')"
+check "kubectl delete pvc blocked" 2 "BLOCKED: destructive kubectl" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl -n herman delete pvc data-0"}')"
+check "kubectl delete namespace blocked" 2 "BLOCKED: destructive kubectl" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl delete namespace staging"}')"
+check "kubectl get pvc allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl get pvc -A"}')"
+check "kubectl delete pod allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl delete pod crashed-xyz -n app"}')"
+check "kubectl mention in echo allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"echo 'kubectl delete pvc x' >> runbook.md"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 

@@ -22,19 +22,37 @@ block() {
   exit 2
 }
 
-# Rule 1 — mentions are not invocations: balanced quoted CONTENT is stripped
-# across the whole command (sed -z, so quotes spanning lines cannot poison
-# later lines), then a push must sit at command position with the flag as its
-# own token. Rule 2 — flags cannot hide in quotes: a real push invocation
-# whose raw segment quotes a leading-dash argument is refused outright
-# (nothing legitimate quotes flags to git push).
-INVOC='(^|[|&;]|\$\()[[:space:]]*((env|command|sudo|nice)[[:space:]]+)*git[[:space:]]+push'
-STRIPPED=$(echo "$CMD" | sed -z "s/'[^']*'//g; s/\"[^\"]*\"//g")
-if echo "$STRIPPED" | grep -qE "${INVOC}[^|&;]*(--force([^-]|\$)|[[:space:]]-f([[:space:]]|\$))"; then
-  block "force push is not allowed; revert with a new commit or push a branch."
+# Structural matching, not substring matching. An invocation sits at command
+# position, tolerating VAR= assignments, wrapper commands, an escaped \git,
+# and git's global flags; shell -c payloads are unwrapped and rescanned so a
+# wrapper cannot smuggle the invocation. Mentions stay immune: quoted CONTENT
+# is stripped (multi-line aware, sed -z) before matching, and a real push
+# that QUOTES a leading-dash argument is refused as flag smuggling. The same
+# skeleton guards destructive kubectl deletes (stateful-volume safety).
+SQ="'"
+PFX='(^|[|&;]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice)[[:space:]]+)*\\?'
+GP="${PFX}git([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
+KD="${PFX}kubectl[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?(pvc|persistentvolumeclaims?|namespaces?|ns)([[:space:]/]|\$)"
+
+SCAN="$CMD"
+for _ in 1 2 3; do
+  BEFORE=$(echo "$SCAN" | wc -l)
+  PAYLOADS=$(echo "$SCAN" | grep -oE "${PFX}(bash|sh|zsh|fish)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-c[[:space:]]+(${SQ}[^${SQ}]*${SQ}|\"[^\"]*\")" 2>/dev/null \
+    | sed -E "s/^.*-c[[:space:]]+[${SQ}\"]//; s/[${SQ}\"]\$//" | sort -u)
+  [ -z "$PAYLOADS" ] && break
+  SCAN=$(printf '%s\n%s' "$SCAN" "$PAYLOADS" | sort -u)
+  [ "$(echo "$SCAN" | wc -l)" -eq "$BEFORE" ] && break
+done
+STRIPPED=$(echo "$SCAN" | sed -z "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
+
+if echo "$STRIPPED" | grep -qE "${GP}[^|&;]*([[:space:]]--force([^-]|\$)|[[:space:]]-f([[:space:]]|\$)|[[:space:]][+][^[:space:]])"; then
+  block "force push (including plus-refspec) is not allowed; revert with a new commit or push a branch."
 fi
-if echo "$CMD" | grep -qE "${INVOC}[^|&;]*[\"'][[:space:]]*-"; then
+if echo "$SCAN" | grep -qE "${GP}[^|&;]*[\"${SQ}][[:space:]]*-"; then
   block "quoted flags to git push are not allowed."
+fi
+if echo "$STRIPPED" | grep -qE "$KD"; then
+  block "destructive kubectl delete (pvc/namespace) needs the human; see the stateful-volume safety policy."
 fi
 if echo "$STRIPPED" | grep -qE "sops[^|&;]*(-e|encrypt)[^|&;]*/tmp/"; then
   block "SOPS encrypt from /tmp is unsafe; write plaintext to the repo path, then sops -e --in-place."

@@ -37,7 +37,7 @@ Pick the tier by the **cost of being wrong** and the **kind of thinking** requir
 
 ## Surfaces: which token to pass where
 
-The pinned ID names intent; the surface decides the literal token. Always keep the pinned ID visible (in a comment) even where you must pass an alias, so the *why* survives.
+The pinned ID names intent; the surface decides the literal token. Always keep the pinned ID visible (in a comment) even where you must pass an alias, so the *why* survives. Valid Agent-tool aliases: `fable`, `opus`, `sonnet`, `haiku` — `fable` is reserved for author-tier work (blind reviews, workflow authoring), never fan-out.
 
 | Surface | Accepts | Pass |
 |---------|---------|------|
