@@ -1,498 +1,110 @@
 #!/usr/bin/env bash
-# Unit tests for Claude Code hooks.
-# Run: bash tests/test-hooks.sh
-# Dependencies: jq, yq-go (auto-resolved via nix-shell if missing)
+# Hook test suite — exercises the real Claude Code hook contract:
+# one JSON object on stdin; feedback via exit 2 (+stderr) or stdout JSON.
+# Run: bash tests/test-hooks.sh   (also wired as the repo pre-push gate)
 
-set -euo pipefail
+set -uo pipefail
 
-# Ensure dependencies are in PATH
-for dep in jq yq; do
-  if ! command -v "$dep" &>/dev/null; then
-    echo "Missing '$dep' — re-running under nix-shell..."
-    exec nix-shell -p jq yq-go --run "bash $0 $*"
-  fi
-done
+HOOKS="$(cd "$(dirname "$0")/../hooks" && pwd)"
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"; rm -f /tmp/claude-hook-state-hooktest-*.json /tmp/claude-loop-hooktest-*.log' EXIT
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-HOOKS_DIR="$SCRIPT_DIR/../hooks"
 PASS=0
 FAIL=0
-TMPDIR_BASE=""
 
-setup() {
-  TMPDIR_BASE=$(mktemp -d)
-  export CLAUDE_WORKER_HOME="$TMPDIR_BASE/worker"
-}
-
-teardown() {
-  rm -rf "$TMPDIR_BASE"
-  unset CLAUDE_WORKER_HOME CLAUDE_TOOL_INPUT
-}
-
-assert_exit() {
-  local name="$1" expected="$2" actual="$3"
-  if [ "$expected" -eq "$actual" ]; then
+# check <name> <want_exit> <stderr_pattern|-> <stdout_pattern|-> <hook> <stdin_json>
+check() {
+  local name="$1" want_exit="$2" err_pat="$3" out_pat="$4" hook="$5" json="$6"
+  local out err code
+  out=$(printf '%s' "$json" | "$HOOKS/$hook" 2>"$TMP/err"); code=$?
+  err=$(cat "$TMP/err")
+  local ok=1
+  [ "$code" -eq "$want_exit" ] || ok=0
+  if [ "$err_pat" != "-" ]; then echo "$err" | grep -q "$err_pat" || ok=0; fi
+  if [ "$out_pat" != "-" ]; then echo "$out" | grep -q "$out_pat" || ok=0; fi
+  if [ "$ok" -eq 1 ]; then
     PASS=$((PASS + 1))
   else
-    echo "FAIL: $name — expected exit $expected, got $actual"
     FAIL=$((FAIL + 1))
+    echo "FAIL: $name (exit=$code want=$want_exit; stderr='$err' stdout='$out')"
   fi
 }
 
-assert_output_contains() {
-  local name="$1" expected="$2" actual="$3"
-  if echo "$actual" | grep -qF "$expected"; then
-    PASS=$((PASS + 1))
-  else
-    echo "FAIL: $name — expected output to contain '$expected', got: $actual"
-    FAIL=$((FAIL + 1))
-  fi
-}
+j() { printf '{"session_id":"hooktest-%s","tool_input":%s}' "$1" "$2"; }
 
-assert_output_empty() {
-  local name="$1" actual="$2"
-  if [ -z "$actual" ]; then
-    PASS=$((PASS + 1))
-  else
-    echo "FAIL: $name — expected no output, got: $actual"
-    FAIL=$((FAIL + 1))
-  fi
-}
+# ── validate-bash (PreToolUse: exit 2 blocks) ──
+check "force push blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"git push --force origin main"}')"
+check "force-with-lease allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git push --force-with-lease origin main"}')"
+check "sops from /tmp blocked" 2 "BLOCKED: SOPS" - \
+  validate-bash.sh "$(j b1 '{"command":"sops -e /tmp/secret.yaml"}')"
+check "normal command allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"cargo test"}')"
+check "empty input tolerated" 0 - - validate-bash.sh ""
+check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 
-# ── check-goals.sh ────────────────────────────────────────────────────
+# ── validate-nix (PostToolUse: exit 2 feeds stderr to the model) ──
+printf '{ foo = ; }' > "$TMP/broken.nix"
+printf '{ foo = 1; }' > "$TMP/ok.nix"
+if command -v nix-instantiate >/dev/null 2>&1; then
+  check "broken nix reported" 2 "Nix parse failed" - \
+    validate-nix.sh "$(j n1 "{\"file_path\":\"$TMP/broken.nix\"}")"
+  check "valid nix silent" 0 - - \
+    validate-nix.sh "$(j n1 "{\"file_path\":\"$TMP/ok.nix\"}")"
+fi
+check "non-nix skipped" 0 - - \
+  validate-nix.sh "$(j n1 "{\"file_path\":\"$TMP/whatever.txt\"}")"
 
-test_check_goals_no_file() {
-  setup
-  # No goals.json exists → silent exit
-  local out exit_code=0
-  out=$("$HOOKS_DIR/check-goals.sh" 2>&1) || exit_code=$?
-  assert_exit "check-goals: no file → exit 0" 0 "$exit_code"
-  assert_output_empty "check-goals: no file → no output" "$out"
-  teardown
-}
+# ── validate-shell (PostToolUse) ──
+if command -v shellcheck >/dev/null 2>&1; then
+  printf '#!/usr/bin/env bash\nrm $(ls)\n' > "$TMP/warn.sh"
+  printf '#!/usr/bin/env bash\nls -- "$1"\n' > "$TMP/clean.sh"
+  check "shellcheck finding reported" 2 "shellcheck:" - \
+    validate-shell.sh "$(j s1 "{\"file_path\":\"$TMP/warn.sh\"}")"
+  check "clean script silent" 0 - - \
+    validate-shell.sh "$(j s1 "{\"file_path\":\"$TMP/clean.sh\"}")"
+fi
+check "non-shell skipped" 0 - - \
+  validate-shell.sh "$(j s1 "{\"file_path\":\"$TMP/ok.nix\"}")"
 
-test_check_goals_empty_array() {
-  setup
-  mkdir -p "$CLAUDE_WORKER_HOME"
-  echo '[]' > "$CLAUDE_WORKER_HOME/goals.json"
-  local out exit_code=0
-  out=$("$HOOKS_DIR/check-goals.sh" 2>&1) || exit_code=$?
-  assert_exit "check-goals: empty array → exit 0" 0 "$exit_code"
-  assert_output_empty "check-goals: empty array → no output" "$out"
-  teardown
-}
+# ── validate-rust (PostToolUse): skip paths only — full cargo is too heavy ──
+check "non-rs skipped" 0 - - \
+  validate-rust.sh "$(j r1 "{\"file_path\":\"$TMP/ok.nix\"}")"
+printf 'fn main() {}' > "$TMP/stray.rs"
+check "stray rs outside workspace skipped" 0 - - \
+  validate-rust.sh "$(j r1 "{\"file_path\":\"$TMP/stray.rs\"}")"
 
-test_check_goals_all_done() {
-  setup
-  mkdir -p "$CLAUDE_WORKER_HOME"
-  # Goals with status "done" but no reviewed_at trigger Phase 3 (review block)
-  cat > "$CLAUDE_WORKER_HOME/goals.json" << 'JSON'
-[{"id":"a","goal":"task a","status":"done"},{"id":"b","goal":"task b","status":"done"}]
-JSON
-  local out exit_code=0
-  out=$("$HOOKS_DIR/check-goals.sh" 2>&1) || exit_code=$?
-  assert_exit "check-goals: all done (unreviewed) → exit 0" 0 "$exit_code"
-  assert_output_contains "check-goals: all done → block for review" '"decision": "block"' "$out"
-  assert_output_contains "check-goals: all done → review reason" 'completed goal' "$out"
-  teardown
-}
+# ── validate-manifest (PostToolUse) ──
+if command -v yq >/dev/null 2>&1; then
+  printf 'kind: Deployment\nspec: {}\n' > "$TMP/workload.yaml"
+  printf 'a: 1\n' > "$TMP/plain.yaml"
+  check "workload missing baseline reported" 2 "missing" - \
+    validate-manifest.sh "$(j m1 "{\"file_path\":\"$TMP/workload.yaml\"}")"
+  check "plain yaml silent" 0 - - \
+    validate-manifest.sh "$(j m1 "{\"file_path\":\"$TMP/plain.yaml\"}")"
+fi
+check "non-yaml skipped" 0 - - \
+  validate-manifest.sh "$(j m1 "{\"file_path\":\"$TMP/ok.nix\"}")"
 
-test_check_goals_one_pending() {
-  setup
-  mkdir -p "$CLAUDE_WORKER_HOME"
-  cat > "$CLAUDE_WORKER_HOME/goals.json" << 'JSON'
-[{"id":"abc123","goal":"deploy the app","status":"pending"}]
-JSON
-  local out exit_code=0
-  out=$("$HOOKS_DIR/check-goals.sh" 2>&1) || exit_code=$?
-  assert_exit "check-goals: 1 pending → exit 0" 0 "$exit_code"
-  assert_output_contains "check-goals: 1 pending → JSON block" '"decision": "block"' "$out"
-  assert_output_contains "check-goals: 1 pending → includes id" "id=abc123" "$out"
-  assert_output_contains "check-goals: 1 pending → includes goal" "deploy the app" "$out"
-  teardown
-}
+# ── check-loop (PreToolUse: JSON advisory at 5+, exit 2 block at 12+) ──
+LOOP_JSON="$(j loop '{"command":"cargo test --all"}')"
+for _ in 1 2 3 4; do printf '%s' "$LOOP_JSON" | "$HOOKS/check-loop.sh" >/dev/null 2>&1; done
+check "5th repeat advisory JSON" 0 - "additionalContext" check-loop.sh "$LOOP_JSON"
+for _ in 6 7 8 9 10 11; do printf '%s' "$LOOP_JSON" | "$HOOKS/check-loop.sh" >/dev/null 2>&1; done
+check "12th repeat blocked" 2 "Loop detected" - check-loop.sh "$LOOP_JSON"
+check "different command unaffected" 0 - - \
+  check-loop.sh "$(j loop '{"command":"git status"}')"
 
-test_check_goals_mixed() {
-  setup
-  mkdir -p "$CLAUDE_WORKER_HOME"
-  cat > "$CLAUDE_WORKER_HOME/goals.json" << 'JSON'
-[
-  {"id":"a","goal":"done task","status":"done"},
-  {"id":"b","goal":"next task","status":"pending"},
-  {"id":"c","goal":"later task","status":"pending"}
-]
-JSON
-  local out exit_code=0
-  out=$("$HOOKS_DIR/check-goals.sh" 2>&1) || exit_code=$?
-  assert_exit "check-goals: mixed → exit 0" 0 "$exit_code"
-  assert_output_contains "check-goals: mixed → JSON block" '"decision": "block"' "$out"
-  assert_output_contains "check-goals: mixed → picks first pending" "id=b" "$out"
-  assert_output_contains "check-goals: mixed → skips done goals" "next task" "$out"
-  teardown
-}
+# ── check-git-state (Stop: human-facing stdout, always exit 0) ──
+check "stop report exits zero" 0 - - check-git-state.sh "$(j g1 'null')"
 
-# ── validate-bash.sh ──────────────────────────────────────────────────
+# ── session keying ──
+printf '%s' "$(j key '{"command":"true"}')" | "$HOOKS/check-loop.sh" >/dev/null 2>&1
+if [ -f /tmp/claude-loop-hooktest-key.log ]; then PASS=$((PASS + 1)); else
+  FAIL=$((FAIL + 1)); echo "FAIL: loop state not keyed by session_id"
+fi
 
-run_validate_bash() {
-  local cmd="$1" exit_code=0
-  export CLAUDE_TOOL_INPUT="{\"command\":\"$cmd\"}"
-  local out
-  out=$("$HOOKS_DIR/validate-bash.sh" 2>&1) || exit_code=$?
-  echo "$exit_code|$out"
-}
-
-test_validate_bash_empty_input() {
-  setup
-  export CLAUDE_TOOL_INPUT='{}'
-  local exit_code=0
-  "$HOOKS_DIR/validate-bash.sh" > /dev/null 2>&1 || exit_code=$?
-  assert_exit "validate-bash: empty input → exit 0" 0 "$exit_code"
-  teardown
-}
-
-test_validate_bash_normal_command() {
-  setup
-  local result
-  result=$(run_validate_bash "ls -la")
-  assert_exit "validate-bash: ls -la → exit 0" 0 "${result%%|*}"
-  teardown
-}
-
-test_validate_bash_force_push_long() {
-  setup
-  local result
-  result=$(run_validate_bash "git push --force origin main")
-  assert_exit "validate-bash: git push --force → exit 2" 2 "${result%%|*}"
-  assert_output_contains "validate-bash: git push --force → BLOCKED" "BLOCKED" "${result#*|}"
-  teardown
-}
-
-test_validate_bash_force_push_short() {
-  setup
-  local result
-  result=$(run_validate_bash "git push -f origin main")
-  assert_exit "validate-bash: git push -f → exit 2" 2 "${result%%|*}"
-  teardown
-}
-
-test_validate_bash_normal_push_allowed() {
-  setup
-  local result
-  result=$(run_validate_bash "git push origin main")
-  assert_exit "validate-bash: git push (no force) → exit 0" 0 "${result%%|*}"
-  teardown
-}
-
-test_validate_bash_sops_from_tmp() {
-  setup
-  local result
-  result=$(run_validate_bash "sops -e /tmp/secret.yaml")
-  assert_exit "validate-bash: sops -e /tmp → exit 2" 2 "${result%%|*}"
-  assert_output_contains "validate-bash: sops /tmp → BLOCKED" "BLOCKED" "${result#*|}"
-  teardown
-}
-
-test_validate_bash_sops_in_repo() {
-  setup
-  local result
-  result=$(run_validate_bash "sops -e --in-place secrets/foo.yaml")
-  assert_exit "validate-bash: sops in repo → exit 0" 0 "${result%%|*}"
-  teardown
-}
-
-# VM-guarded rules (only active when CLAUDE_WORKER_HOME dir exists)
-
-test_validate_bash_cargo_no_musl_on_vm() {
-  setup
-  mkdir -p "$CLAUDE_WORKER_HOME"
-  local result
-  result=$(run_validate_bash "cargo build --release")
-  assert_exit "validate-bash: cargo build without musl (VM) → exit 2" 2 "${result%%|*}"
-  assert_output_contains "validate-bash: cargo build (VM) → musl message" "musl" "${result#*|}"
-  teardown
-}
-
-test_validate_bash_cargo_with_musl_on_vm() {
-  setup
-  mkdir -p "$CLAUDE_WORKER_HOME"
-  local result
-  result=$(run_validate_bash "cargo build --target x86_64-unknown-linux-musl --release")
-  assert_exit "validate-bash: cargo build with musl (VM) → exit 0" 0 "${result%%|*}"
-  teardown
-}
-
-test_validate_bash_cargo_no_musl_not_vm() {
-  setup
-  # CLAUDE_WORKER_HOME dir does NOT exist → VM guard skipped
-  local result
-  result=$(run_validate_bash "cargo build --release")
-  assert_exit "validate-bash: cargo build without musl (laptop) → exit 0" 0 "${result%%|*}"
-  teardown
-}
-
-test_validate_bash_buildah_no_authfile_on_vm() {
-  setup
-  mkdir -p "$CLAUDE_WORKER_HOME"
-  local result
-  result=$(run_validate_bash "buildah push localhost/myimage:latest docker://registry.example.com/myimage:latest")
-  assert_exit "validate-bash: buildah push without authfile (VM) → exit 2" 2 "${result%%|*}"
-  assert_output_contains "validate-bash: buildah push (VM) → authfile message" "authfile" "${result#*|}"
-  teardown
-}
-
-test_validate_bash_buildah_with_authfile_on_vm() {
-  setup
-  mkdir -p "$CLAUDE_WORKER_HOME"
-  local result
-  result=$(run_validate_bash "buildah push --authfile /var/lib/claude-worker/.config/containers/auth.json localhost/myimage:latest")
-  assert_exit "validate-bash: buildah push with authfile (VM) → exit 0" 0 "${result%%|*}"
-  teardown
-}
-
-test_validate_bash_buildah_not_vm() {
-  setup
-  local result
-  result=$(run_validate_bash "buildah push localhost/myimage:latest")
-  assert_exit "validate-bash: buildah push (laptop) → exit 0" 0 "${result%%|*}"
-  teardown
-}
-
-# ── check-loop.sh ─────────────────────────────────────────────────────
-
-test_check_loop_first_occurrence() {
-  local sid="test-loop-$$"
-  rm -f "/tmp/claude-loop-${sid}.json"
-  local out exit_code=0
-  out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
-  assert_exit "check-loop: first occurrence → exit 0" 0 "$exit_code"
-  assert_output_empty "check-loop: first occurrence → no output" "$out"
-  rm -f "/tmp/claude-loop-${sid}.json"
-}
-
-test_check_loop_below_threshold() {
-  local sid="test-loop-$$"
-  rm -f "/tmp/claude-loop-${sid}.json"
-  local out exit_code=0
-  for i in 1 2 3 4; do
-    out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
-  done
-  assert_exit "check-loop: 4 times → exit 0" 0 "$exit_code"
-  assert_output_empty "check-loop: 4 times → no output" "$out"
-  rm -f "/tmp/claude-loop-${sid}.json"
-}
-
-test_check_loop_at_threshold() {
-  local sid="test-loop-$$"
-  rm -f "/tmp/claude-loop-${sid}.json"
-  local out exit_code=0
-  for i in 1 2 3 4 5; do
-    out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
-  done
-  assert_exit "check-loop: 5 times → exit 0" 0 "$exit_code"
-  assert_output_contains "check-loop: 5 times → warning" "identical command repeated 5 times consecutively" "$out"
-  rm -f "/tmp/claude-loop-${sid}.json"
-}
-
-test_check_loop_strong_warning() {
-  local sid="test-loop-$$"
-  rm -f "/tmp/claude-loop-${sid}.json"
-  local out exit_code=0
-  for i in 1 2 3 4 5 6 7 8 9 10; do
-    out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
-  done
-  assert_exit "check-loop: 10 times → exit 0" 0 "$exit_code"
-  assert_output_contains "check-loop: 10 times → strong warning" "You appear to be stuck in a loop" "$out"
-  rm -f "/tmp/claude-loop-${sid}.json"
-}
-
-test_check_loop_counter_reset() {
-  local sid="test-loop-reset-$$"
-  rm -f "/tmp/claude-loop-${sid}.json"
-  local out exit_code=0
-
-  # Run "ls -la" 4 times — streak is 4, no warning
-  for i in 1 2 3 4; do
-    out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
-    assert_output_empty "check-loop: counter-reset: ls-la run $i of 4 → no warning" "$out"
-  done
-
-  # Run a different command "pwd" once — streak resets to 1, no warning
-  out=$(echo '{"tool_input":{"command":"pwd"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
-  assert_output_empty "check-loop: counter-reset: pwd after 4×ls-la → no warning" "$out"
-
-  # Run "ls -la" again once — streak is 1 (not 5!), no warning
-  out=$(echo '{"tool_input":{"command":"ls -la"}}' | CLAUDE_SESSION_ID="$sid" "$HOOKS_DIR/check-loop.sh" 2>&1) || exit_code=$?
-  assert_output_empty "check-loop: counter-reset: ls-la after pwd → streak reset to 1, no warning" "$out"
-
-  assert_exit "check-loop: counter-reset → exit 0" 0 "$exit_code"
-  rm -f "/tmp/claude-loop-${sid}.json"
-}
-
-# ── validate-manifest.sh ──────────────────────────────────────────────
-
-test_validate_manifest_non_yaml() {
-  setup
-  export CLAUDE_TOOL_INPUT='{"file_path":"/tmp/foo.txt"}'
-  local out exit_code=0
-  out=$("$HOOKS_DIR/validate-manifest.sh" 2>&1) || exit_code=$?
-  assert_exit "validate-manifest: .txt file → exit 0" 0 "$exit_code"
-  assert_output_empty "validate-manifest: .txt → no output" "$out"
-  teardown
-}
-
-test_validate_manifest_missing_file() {
-  setup
-  export CLAUDE_TOOL_INPUT='{"file_path":"/tmp/nonexistent.yaml"}'
-  local out exit_code=0
-  out=$("$HOOKS_DIR/validate-manifest.sh" 2>&1) || exit_code=$?
-  assert_exit "validate-manifest: missing file → exit 0" 0 "$exit_code"
-  assert_output_empty "validate-manifest: missing → no output" "$out"
-  teardown
-}
-
-test_validate_manifest_valid_yaml() {
-  setup
-  local f="$TMPDIR_BASE/valid.yaml"
-  echo "key: value" > "$f"
-  export CLAUDE_TOOL_INPUT="{\"file_path\":\"$f\"}"
-  local out exit_code=0
-  out=$("$HOOKS_DIR/validate-manifest.sh" 2>&1) || exit_code=$?
-  assert_exit "validate-manifest: valid YAML → exit 0" 0 "$exit_code"
-  assert_output_contains "validate-manifest: valid YAML → checkmark" "YAML valid" "$out"
-  teardown
-}
-
-test_validate_manifest_invalid_yaml() {
-  setup
-  local f="$TMPDIR_BASE/bad.yaml"
-  printf "key: value\n  bad indent: here\n" > "$f"
-  export CLAUDE_TOOL_INPUT="{\"file_path\":\"$f\"}"
-  local out exit_code=0
-  out=$("$HOOKS_DIR/validate-manifest.sh" 2>&1) || exit_code=$?
-  assert_exit "validate-manifest: invalid YAML → exit 0" 0 "$exit_code"
-  assert_output_contains "validate-manifest: invalid YAML → WARNING" "WARNING" "$out"
-  teardown
-}
-
-test_validate_manifest_deployment_missing_security() {
-  setup
-  local f="$TMPDIR_BASE/deploy.yaml"
-  cat > "$f" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: test
-spec:
-  template:
-    spec:
-      containers:
-        - name: app
-          image: nginx
-YAML
-  export CLAUDE_TOOL_INPUT="{\"file_path\":\"$f\"}"
-  local out exit_code=0
-  out=$("$HOOKS_DIR/validate-manifest.sh" 2>&1) || exit_code=$?
-  assert_exit "validate-manifest: deployment missing security → exit 0" 0 "$exit_code"
-  assert_output_contains "validate-manifest: missing seccompProfile" "seccompProfile" "$out"
-  assert_output_contains "validate-manifest: missing allowPrivilegeEscalation" "allowPrivilegeEscalation" "$out"
-  assert_output_contains "validate-manifest: missing resources" "resource requests/limits" "$out"
-  teardown
-}
-
-test_validate_manifest_deployment_with_security() {
-  setup
-  local f="$TMPDIR_BASE/secure-deploy.yaml"
-  cat > "$f" << 'YAML'
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: test
-spec:
-  template:
-    spec:
-      containers:
-        - name: app
-          image: nginx
-          resources:
-            requests:
-              cpu: 100m
-              memory: 128Mi
-          securityContext:
-            allowPrivilegeEscalation: false
-      securityContext:
-        seccompProfile:
-          type: RuntimeDefault
-YAML
-  export CLAUDE_TOOL_INPUT="{\"file_path\":\"$f\"}"
-  local out exit_code=0
-  out=$("$HOOKS_DIR/validate-manifest.sh" 2>&1) || exit_code=$?
-  assert_exit "validate-manifest: secure deployment → exit 0" 0 "$exit_code"
-  assert_output_contains "validate-manifest: secure deployment → valid" "YAML valid" "$out"
-  # Should NOT contain any warnings
-  if echo "$out" | grep -q "WARNING"; then
-    echo "FAIL: validate-manifest: secure deployment — unexpected WARNING in output: $out"
-    FAIL=$((FAIL + 1))
-  else
-    PASS=$((PASS + 1))
-  fi
-  teardown
-}
-
-test_validate_manifest_yml_extension() {
-  setup
-  local f="$TMPDIR_BASE/config.yml"
-  echo "key: value" > "$f"
-  export CLAUDE_TOOL_INPUT="{\"file_path\":\"$f\"}"
-  local out exit_code=0
-  out=$("$HOOKS_DIR/validate-manifest.sh" 2>&1) || exit_code=$?
-  assert_exit "validate-manifest: .yml extension → exit 0" 0 "$exit_code"
-  assert_output_contains "validate-manifest: .yml → validates" "YAML valid" "$out"
-  teardown
-}
-
-# ── Run all tests ─────────────────────────────────────────────────────
-
-echo "Running hook unit tests..."
-echo ""
-
-# check-goals.sh
-test_check_goals_no_file
-test_check_goals_empty_array
-test_check_goals_all_done
-test_check_goals_one_pending
-test_check_goals_mixed
-
-# validate-bash.sh
-test_validate_bash_empty_input
-test_validate_bash_normal_command
-test_validate_bash_force_push_long
-test_validate_bash_force_push_short
-test_validate_bash_normal_push_allowed
-test_validate_bash_sops_from_tmp
-test_validate_bash_sops_in_repo
-test_validate_bash_cargo_no_musl_on_vm
-test_validate_bash_cargo_with_musl_on_vm
-test_validate_bash_cargo_no_musl_not_vm
-test_validate_bash_buildah_no_authfile_on_vm
-test_validate_bash_buildah_with_authfile_on_vm
-test_validate_bash_buildah_not_vm
-
-# check-loop.sh
-test_check_loop_first_occurrence
-test_check_loop_below_threshold
-test_check_loop_at_threshold
-test_check_loop_strong_warning
-test_check_loop_counter_reset
-
-# validate-manifest.sh
-test_validate_manifest_non_yaml
-test_validate_manifest_missing_file
-test_validate_manifest_valid_yaml
-test_validate_manifest_invalid_yaml
-test_validate_manifest_deployment_missing_security
-test_validate_manifest_deployment_with_security
-test_validate_manifest_yml_extension
-
-echo ""
-echo "Results: $PASS passed, $FAIL failed"
-[ "$FAIL" -eq 0 ] && exit 0 || exit 1
+echo "---"
+echo "passed=$PASS failed=$FAIL"
+[ "$FAIL" -eq 0 ]

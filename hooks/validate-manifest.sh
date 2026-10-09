@@ -19,6 +19,8 @@ FILE=$(hook_file_path)
 
 finish() {
   log_hook "validate-manifest" "$1" "$(( ($(date +%s%N) / 1000000) - START_MS ))" 2>/dev/null || true
+  # PostToolUse exit 2 feeds stderr to the model without blocking; exit 0 doesn't.
+  [ "$1" = "warned" ] && exit 2
   exit 0
 }
 
@@ -37,7 +39,7 @@ fi
 if yq eval '.kind' "$FILE" 2>/dev/null | grep -qiE "^(Deployment|StatefulSet|DaemonSet)$"; then
   for probe in seccompProfile allowPrivilegeEscalation "resources:"; do
     if ! grep -q "$probe" "$FILE"; then
-      echo "Workload manifest $FILE is missing $probe (cluster baseline: runAsNonRoot, drop ALL caps, requests + memory limit; CPU limit optional)." >&2
+      echo "Workload manifest $FILE is missing $probe — validate against the cluster baseline in agents/validate-k8s.md (the single source for the policy)." >&2
       RESULT="warned"
     fi
   done

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Repo pre-push gate: the hook suite must be green before hooks ship.
+# Enable once per clone: git config core.hooksPath .githooks
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+bash tests/test-hooks.sh

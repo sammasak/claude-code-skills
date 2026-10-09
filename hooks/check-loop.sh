@@ -35,18 +35,21 @@ done | wc -l)
 init_state 2>/dev/null || true
 update_state ".loop_count = $COUNT" 2>/dev/null || true
 
+# Feedback channels: below the critical threshold the warning rides stdout
+# JSON additionalContext (advisory, command still runs); at 12+ exit 2 blocks
+# the repeat and feeds the message to the model.
 RESULT="ok"
 if [ "$COUNT" -ge 12 ]; then
   RESULT="loop-critical"
-  echo "Loop detected ($COUNT repetitions of the same command pattern). Use systematic debugging to find the root cause instead of retrying." >&2
   inc_state 'errors_seen' 2>/dev/null || true
-elif [ "$COUNT" -ge 8 ]; then
-  RESULT="loop-warning"
-  echo "Possible loop ($COUNT repetitions of similar command). Consider a different approach." >&2
-  inc_state 'errors_seen' 2>/dev/null || true
+  log_hook "check-loop" "$RESULT" "$(( ($(date +%s%N) / 1000000) - START_MS ))" "{\"count\":$COUNT}" 2>/dev/null || true
+  echo "Loop detected: $COUNT repetitions of the same command pattern. Use systematic debugging to find the root cause instead of retrying." >&2
+  exit 2
 elif [ "$COUNT" -ge 5 ]; then
-  RESULT="loop-notice"
-  echo "Same command pattern repeated $COUNT times." >&2
+  [ "$COUNT" -ge 8 ] && RESULT="loop-warning" || RESULT="loop-notice"
+  [ "$COUNT" -ge 8 ] && inc_state 'errors_seen' 2>/dev/null || true
+  jq -cn --arg ctx "Same command pattern repeated $COUNT times this session; consider a different approach." \
+    '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:$ctx}}'
 fi
 
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))

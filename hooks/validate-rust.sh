@@ -89,4 +89,7 @@ fi
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
 log_hook "validate-rust" "$RESULT" "$ELAPSED" 2>/dev/null || true
 
+# PostToolUse exit 2 is the only channel that feeds stderr back to the model
+# (the tool already ran, so nothing is blocked); exit 0 stderr goes nowhere.
+[ "$RESULT" = "error" ] && exit 2
 exit 0

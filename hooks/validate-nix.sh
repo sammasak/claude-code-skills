@@ -48,4 +48,6 @@ fi
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
 log_hook "validate-nix" "$RESULT" "$ELAPSED" 2>/dev/null || true
 
+# PostToolUse exit 2 feeds stderr to the model without blocking; exit 0 doesn't.
+[ "$RESULT" = "error" ] && exit 2
 exit 0

@@ -3,7 +3,8 @@
 # At session stop, if the working directory is a git repo, print a one-line
 # summary of anything that would strand work: dirty files, commits not pushed
 # to upstream, or being behind upstream (per the last fetch — no network calls).
-# Advisory only: always exits 0, never blocks the Stop.
+# Audience is the HUMAN in the transcript, not the model: always exits 0 and
+# never blocks the Stop — exit 2 here would force the session to continue.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/lib/input.sh"

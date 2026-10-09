@@ -23,7 +23,7 @@ tools: [Bash, Read, Grep]
 System prompt / instructions for this agent go here.
 ```
 
-The homelab's built-in agents (`verify-deployment.md`, `validate-k8s.md`, `code-reviewer.md`, `k8s-debugger.md`, `nix-explorer.md`) come from `~/claude-code-skills/agents/` and are symlinked into `~/.claude/agents` by Home Manager — edit them in that repo, push, then `just bump claude-code-skills` + switch in `~/nixos-config`; never edit the linked file directly.
+The homelab's built-in agents (`verify-deployment.md`, `validate-k8s.md`, `code-reviewer.md`, `k8s-debugger.md`, `nix-explorer.md`, `meta-reviewer.md`, `skill-optimizer.md`) come from `~/claude-code-skills/agents/` and are symlinked into `~/.claude/agents` by Home Manager — edit them in that repo, push, then `just bump claude-code-skills` + `just switch` in `~/nixos-config`; never edit the linked file directly.
 
 **Every spawn needs an explicit model** — see the `assigning-subagent-models` skill for the effort-tier ladder. Don't leave a subagent to silently inherit the parent's model.
 
