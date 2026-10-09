@@ -1,6 +1,6 @@
 ---
 name: rust-engineering
-description: "Use when writing Rust code in a homelab repo, adding crates, changing Cargo workspace lints or profiles, running Rust gates, or building a container image from a Rust binary."
+description: "Use when writing Rust code in a homelab repo, adding crates, changing Cargo workspace lints or profiles, running Rust gates, applying the type pillar (illegal states unrepresentable, newtypes, typed errors), or building a container image from a Rust binary."
 allowed-tools: Bash, Read, Grep, Glob
 ---
 

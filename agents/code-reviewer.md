@@ -42,12 +42,6 @@ standards (panic-prevention pack, typed errors, newtypes over strings,
 `#[expect]` over `#[allow]`, illegal-states-unrepresentable); apply it, do
 not restate it here.
 
-### General API design
-
-- HTTP handlers validate input at the boundary; business logic doesn't re-validate
-- Status codes are semantically correct (201 for creation, 404 for not found, 422 for bad input)
-- Error responses include enough information to debug without exposing internals
-
 ## Output Format
 
 ```
