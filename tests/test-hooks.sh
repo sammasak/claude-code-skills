@@ -190,6 +190,11 @@ if [ -f "${XDG_RUNTIME_DIR:-/tmp}/claude-loop-hooktest-key.log" ]; then PASS=$((
   FAIL=$((FAIL + 1)); echo "FAIL: loop state not keyed by session_id"
 fi
 
+SKIPPED=0
+command -v nix-instantiate >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 2))
+command -v shellcheck >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 2))
+command -v yq >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 4))
 echo "---"
-echo "passed=$PASS failed=$FAIL"
+echo "passed=$PASS failed=$FAIL skipped=$SKIPPED"
+[ "$SKIPPED" -gt 0 ] && echo "note: run under the nix shell for the full suite" >&2
 [ "$FAIL" -eq 0 ]

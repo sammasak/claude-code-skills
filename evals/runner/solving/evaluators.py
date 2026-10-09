@@ -113,8 +113,10 @@ class StructuredRubricJudge(Evaluator[SolvingInput, SolvingOutput, SolvingMetada
                 "rubric_reasoning": "No output to evaluate",
             }
 
+        from runner.anthropic_model import anthropic_model
+
         judge = Agent(
-            self.model,
+            anthropic_model(self.model.removeprefix("anthropic:")),
             output_type=RubricScore,
             instructions=self._build_judge_prompt(ctx.metadata.quality_rubric),
         )

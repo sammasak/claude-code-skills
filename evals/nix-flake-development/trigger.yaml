@@ -2,6 +2,7 @@ skill: nix-flake-development
 
 # Queries that should activate nix-flake-development
 positives:
+  - "How do I add Prometheus scraping to my NixOS service?"
   - "How do I add a new package to my NixOS system configuration?"
   - "My nixos-rebuild switch is failing with an evaluation error"
   - "How do I write a flake.nix devShell with Rust and cargo?"
@@ -17,7 +18,6 @@ hard_negatives:
   - "My Rust code won't compile because of a lifetime error"          # → rust-engineering
   - "How do I build a minimal container image for my Go service?"     # → none
   - "My cluster secrets are not being decrypted by Flux SOPS"         # → secrets-management
-  - "How do I add Prometheus scraping to my NixOS service?"           # → nix-flake-development
 
 # Queries that should activate no skill
 true_negatives:

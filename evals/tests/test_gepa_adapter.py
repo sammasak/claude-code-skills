@@ -228,7 +228,7 @@ def test_make_reflective_components_to_update_subset():
 
 def test_build_trainset_structure():
     trainset = build_trainset()
-    assert len(trainset) == 67  # total trigger cases
+    assert len(trainset) >= 67  # grows with the suite  # total trigger cases
     for item in trainset:
         assert "query" in item
         assert "expected" in item

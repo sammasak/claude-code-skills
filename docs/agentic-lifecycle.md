@@ -17,7 +17,7 @@ A technical reference for understanding how LLM agents plan, act, delegate, eval
 9. [Human-in-the-Loop](#9-human-in-the-loop)
 10. [Our System: claude-code-skills Architecture](#10-our-system-claude-code-skills-architecture)
 11. [Evaluator Chain Detail](#11-evaluator-chain-detail)
-12. [Goal Loop (Stop Hook)](#12-goal-loop-stop-hook)
+12. [Session Hooks (current reality)](#12-session-hooks-current-reality)
 
 ---
 
@@ -182,7 +182,7 @@ graph LR
 | Market-based | Dynamic load balancing, competing hypotheses | Tasks have strict ordering constraints |
 | Event-driven Async | Reactive systems, background monitoring, triggers | Causality chains must be predictable and auditable |
 
-Our goal-loop system (Section 12) is a **recursive/cyclical** topology: the Stop hook re-queues pending goals as blocking instructions, and the same Claude process iterates over them until the queue is empty.
+The retired claude-worker goal loop was a **recursive/cyclical** topology: its Stop hook re-queued pending goals as blocking instructions until the queue emptied (see §12 for what runs today).
 
 ---
 
@@ -481,7 +481,7 @@ graph TD
     subgraph "Hook System"
         H1["PreToolUse / Bash\nvalidate-bash.sh\nBlocks: force-push, cargo without musl\nbuildah without authfile, SOPS from /tmp"]
         H2["PostToolUse / Write+Edit\nvalidate-manifest.sh\nWarns: YAML syntax errors\nmissing security context fields"]
-        H3["Stop Hook\ncheck-goals.sh\nPhase 1-4 goal loop control\nBlocks exit while goals pending"]
+        H3["Stop Hook\ncheck-git-state.sh\nreports dirty/unpushed state\nnever blocks"]
     end
 
     subgraph "Evaluator Chain"

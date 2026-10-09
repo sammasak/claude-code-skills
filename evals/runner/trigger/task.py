@@ -11,25 +11,9 @@ from runner.trigger.dataset import EVALS_ROOT, SKILLS, TriggerInput
 
 
 def _dispatcher_model():
-    """Anthropic model honoring either credential the README names.
+    from runner.anthropic_model import anthropic_model
 
-    ANTHROPIC_API_KEY flows through pydantic-ai's default provider;
-    CLAUDE_CODE_OAUTH_TOKEN is a bearer token, which needs an explicit
-    anthropic client (auth_token) — the default x-api-key path rejects it.
-    """
-    import os
-
-    token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
-    if os.environ.get("ANTHROPIC_API_KEY") or not token:
-        return "anthropic:claude-haiku-4-5-20251001"
-    from anthropic import AsyncAnthropic
-    from pydantic_ai.models.anthropic import AnthropicModel
-    from pydantic_ai.providers.anthropic import AnthropicProvider
-
-    client = AsyncAnthropic(auth_token=token)
-    return AnthropicModel(
-        "claude-haiku-4-5-20251001", provider=AnthropicProvider(anthropic_client=client)
-    )
+    return anthropic_model()
 
 SKILLS_ROOT = EVALS_ROOT.parent / "skills"
 EXTRA_SKILLS = ["container-workflows", "observability-patterns"]

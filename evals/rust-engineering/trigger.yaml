@@ -2,6 +2,7 @@ skill: rust-engineering
 
 # Queries that should activate rust-engineering
 positives:
+  - "How do I add Prometheus metrics to my Axum service?"
   - "How do I handle errors idiomatically in a Rust library?"
   - "My Cargo workspace has duplicate dependency versions, how do I deduplicate?"
   - "What clippy lints should I enable for a new Rust project?"
@@ -16,7 +17,6 @@ positives:
 hard_negatives:
   - "How do I build a minimal Docker image for my Rust service?"      # → rust-engineering (container-workflows archived)
   - "My Flux deployment of the Rust API keeps failing"                # → kubernetes-gitops
-  - "How do I add Prometheus metrics to my Axum service?"             # → rust-engineering
   - "I need to encrypt a config file containing my Rust service API key"  # → secrets-management
   - "How do I write a Nix flake devShell for Rust development?"       # → nix-flake-development
 

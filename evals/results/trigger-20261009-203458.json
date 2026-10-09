@@ -1,5 +1,5 @@
 {
-  "name": "trigger-20261009-200044",
+  "name": "trigger-20261009-203458",
   "cases": [
     {
       "name": "agent-orchestration::positive::dispatch-three-subagents-in-parallel-to-research-these-libra",
@@ -30,8 +30,8 @@
           }
         }
       },
-      "task_duration": 1.4485360500402749,
-      "total_duration": 1.4493920803070068,
+      "task_duration": 0.8549157780362293,
+      "total_duration": 0.8607714176177979,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -66,8 +66,8 @@
           }
         }
       },
-      "task_duration": 0.8449041390558705,
-      "total_duration": 0.8499910831451416,
+      "task_duration": 0.7675907369703054,
+      "total_duration": 0.7681019306182861,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -102,8 +102,8 @@
           }
         }
       },
-      "task_duration": 1.4281332259997725,
-      "total_duration": 1.428936243057251,
+      "task_duration": 0.7023212000494823,
+      "total_duration": 0.7030675411224365,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -138,8 +138,8 @@
           }
         }
       },
-      "task_duration": 0.8348747600102797,
-      "total_duration": 0.8355696201324463,
+      "task_duration": 0.85894645890221,
+      "total_duration": 0.859459400177002,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -174,8 +174,8 @@
           }
         }
       },
-      "task_duration": 6.062181863002479,
-      "total_duration": 6.062758922576904,
+      "task_duration": 0.8007317460142076,
+      "total_duration": 0.8011832237243652,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -210,8 +210,8 @@
           }
         }
       },
-      "task_duration": 0.518067745026201,
-      "total_duration": 0.5184283256530762,
+      "task_duration": 0.5219598109833896,
+      "total_duration": 0.5223569869995117,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -246,8 +246,8 @@
           }
         }
       },
-      "task_duration": 0.48871683795005083,
-      "total_duration": 0.4894139766693115,
+      "task_duration": 0.5028741909191012,
+      "total_duration": 0.5034077167510986,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -282,8 +282,8 @@
           }
         }
       },
-      "task_duration": 1.2825189649593085,
-      "total_duration": 1.2834241390228271,
+      "task_duration": 1.3013986540026963,
+      "total_duration": 1.3018088340759277,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -318,8 +318,8 @@
           }
         }
       },
-      "task_duration": 0.7159511509817094,
-      "total_duration": 0.7168729305267334,
+      "task_duration": 0.8195431990316138,
+      "total_duration": 0.8202135562896729,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -354,8 +354,8 @@
           }
         }
       },
-      "task_duration": 0.7460871150251478,
-      "total_duration": 0.7471137046813965,
+      "task_duration": 0.7663182149408385,
+      "total_duration": 0.7729482650756836,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -390,8 +390,8 @@
           }
         }
       },
-      "task_duration": 0.546193215996027,
-      "total_duration": 0.5470693111419678,
+      "task_duration": 0.5811283519724384,
+      "total_duration": 0.5817725658416748,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -426,8 +426,8 @@
           }
         }
       },
-      "task_duration": 0.5500742070144042,
-      "total_duration": 0.5510022640228271,
+      "task_duration": 0.5345690749818459,
+      "total_duration": 0.5352978706359863,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -462,8 +462,8 @@
           }
         }
       },
-      "task_duration": 1.6708852999145165,
-      "total_duration": 1.6718688011169434,
+      "task_duration": 1.2979077470954508,
+      "total_duration": 1.2986221313476562,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -498,8 +498,8 @@
           }
         }
       },
-      "task_duration": 0.9654951810371131,
-      "total_duration": 0.9660248756408691,
+      "task_duration": 0.7634074509842321,
+      "total_duration": 0.7639560699462891,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -534,8 +534,8 @@
           }
         }
       },
-      "task_duration": 0.5282394369132817,
-      "total_duration": 0.5290994644165039,
+      "task_duration": 0.5295497240731493,
+      "total_duration": 0.5301775932312012,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -570,8 +570,8 @@
           }
         }
       },
-      "task_duration": 0.7356335839722306,
-      "total_duration": 0.736527681350708,
+      "task_duration": 0.654420254053548,
+      "total_duration": 0.6553037166595459,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -606,8 +606,8 @@
           }
         }
       },
-      "task_duration": 0.5195049929898232,
-      "total_duration": 0.5204427242279053,
+      "task_duration": 0.6789541760226712,
+      "total_duration": 0.6795744895935059,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -642,8 +642,8 @@
           }
         }
       },
-      "task_duration": 0.7663612379692495,
-      "total_duration": 0.767169713973999,
+      "task_duration": 0.7590990019962192,
+      "total_duration": 0.7595539093017578,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -678,8 +678,8 @@
           }
         }
       },
-      "task_duration": 0.7313159860204905,
-      "total_duration": 0.7322559356689453,
+      "task_duration": 1.3401363140437752,
+      "total_duration": 1.3406896591186523,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -714,8 +714,8 @@
           }
         }
       },
-      "task_duration": 0.5009886639891192,
-      "total_duration": 0.5015125274658203,
+      "task_duration": 0.47854585491586477,
+      "total_duration": 0.4794344902038574,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -750,8 +750,8 @@
           }
         }
       },
-      "task_duration": 0.5300685729598626,
-      "total_duration": 0.5310249328613281,
+      "task_duration": 0.5230389940552413,
+      "total_duration": 0.5235676765441895,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -786,8 +786,8 @@
           }
         }
       },
-      "task_duration": 0.541025054990314,
-      "total_duration": 0.5418131351470947,
+      "task_duration": 0.5198508050525561,
+      "total_duration": 0.5202665328979492,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -822,8 +822,8 @@
           }
         }
       },
-      "task_duration": 1.235829914920032,
-      "total_duration": 1.2368834018707275,
+      "task_duration": 1.3890224139904603,
+      "total_duration": 1.390005350112915,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -858,8 +858,8 @@
           }
         }
       },
-      "task_duration": 0.49829223204869777,
-      "total_duration": 0.4994509220123291,
+      "task_duration": 0.5403959980467334,
+      "total_duration": 0.5409746170043945,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -894,8 +894,8 @@
           }
         }
       },
-      "task_duration": 2.820733310072683,
-      "total_duration": 2.821655035018921,
+      "task_duration": 0.6998916089069098,
+      "total_duration": 0.7006008625030518,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -930,8 +930,8 @@
           }
         }
       },
-      "task_duration": 0.5427529950393364,
-      "total_duration": 0.5436160564422607,
+      "task_duration": 0.5290991379879415,
+      "total_duration": 0.5294375419616699,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -966,8 +966,8 @@
           }
         }
       },
-      "task_duration": 1.4918301040306687,
-      "total_duration": 1.4925768375396729,
+      "task_duration": 0.7324599829735234,
+      "total_duration": 0.7333939075469971,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1002,8 +1002,8 @@
           }
         }
       },
-      "task_duration": 0.7796742229256779,
-      "total_duration": 0.7802143096923828,
+      "task_duration": 0.7090264639118686,
+      "total_duration": 0.709435224533081,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1038,8 +1038,8 @@
           }
         }
       },
-      "task_duration": 0.7414864039747044,
-      "total_duration": 0.7424657344818115,
+      "task_duration": 1.172337505966425,
+      "total_duration": 1.1728920936584473,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1074,8 +1074,8 @@
           }
         }
       },
-      "task_duration": 0.9354863640619442,
-      "total_duration": 0.9363799095153809,
+      "task_duration": 0.6419602400856093,
+      "total_duration": 0.642575740814209,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1110,8 +1110,8 @@
           }
         }
       },
-      "task_duration": 0.9397043409990147,
-      "total_duration": 0.940645694732666,
+      "task_duration": 1.2651220090920106,
+      "total_duration": 1.2661395072937012,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1146,8 +1146,8 @@
           }
         }
       },
-      "task_duration": 0.8960678930161521,
-      "total_duration": 0.8970358371734619,
+      "task_duration": 0.6808781319996342,
+      "total_duration": 0.6816298961639404,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1182,8 +1182,8 @@
           }
         }
       },
-      "task_duration": 1.3976760419318452,
-      "total_duration": 1.3985354900360107,
+      "task_duration": 0.6838243709644303,
+      "total_duration": 0.6843478679656982,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1218,8 +1218,8 @@
           }
         }
       },
-      "task_duration": 0.8032904100837186,
-      "total_duration": 0.8041553497314453,
+      "task_duration": 0.7029327279888093,
+      "total_duration": 0.7035210132598877,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1254,8 +1254,8 @@
           }
         }
       },
-      "task_duration": 0.7701966140884906,
-      "total_duration": 0.7714128494262695,
+      "task_duration": 1.262111836927943,
+      "total_duration": 1.262627124786377,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1290,8 +1290,8 @@
           }
         }
       },
-      "task_duration": 0.7419371049618348,
-      "total_duration": 0.7430994510650635,
+      "task_duration": 0.5207959449617192,
+      "total_duration": 0.5217676162719727,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1326,8 +1326,8 @@
           }
         }
       },
-      "task_duration": 1.520434821024537,
-      "total_duration": 1.5210356712341309,
+      "task_duration": 0.5872133580269292,
+      "total_duration": 0.5876989364624023,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1362,8 +1362,8 @@
           }
         }
       },
-      "task_duration": 1.225998493959196,
-      "total_duration": 1.2268996238708496,
+      "task_duration": 1.9013819240499288,
+      "total_duration": 1.9017906188964844,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1398,8 +1398,8 @@
           }
         }
       },
-      "task_duration": 0.5385119679849595,
-      "total_duration": 0.5394637584686279,
+      "task_duration": 0.590387920034118,
+      "total_duration": 0.5914473533630371,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1434,8 +1434,8 @@
           }
         }
       },
-      "task_duration": 0.8706731060519814,
-      "total_duration": 0.8717703819274902,
+      "task_duration": 0.5240077809430659,
+      "total_duration": 0.5251636505126953,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1470,8 +1470,8 @@
           }
         }
       },
-      "task_duration": 0.5292160550598055,
-      "total_duration": 0.5300033092498779,
+      "task_duration": 0.5168742309324443,
+      "total_duration": 0.5176303386688232,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1506,8 +1506,8 @@
           }
         }
       },
-      "task_duration": 1.3305975489784032,
-      "total_duration": 1.331603765487671,
+      "task_duration": 0.6623926549218595,
+      "total_duration": 0.6629891395568848,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1542,8 +1542,44 @@
           }
         }
       },
-      "task_duration": 1.350274333031848,
-      "total_duration": 1.3507449626922607,
+      "task_duration": 0.8334155060583726,
+      "total_duration": 0.8337874412536621,
+      "source_case_name": null,
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "evaluator_failures": []
+    },
+    {
+      "name": "kubernetes-gitops::positive::i-want-to-add-prometheus-scraping-to-my-kubernetes-service",
+      "inputs": {
+        "query": "I want to add Prometheus scraping to my Kubernetes service"
+      },
+      "metadata": {
+        "category": "positive",
+        "source_skill": "kubernetes-gitops"
+      },
+      "expected_output": "kubernetes-gitops",
+      "output": "kubernetes-gitops",
+      "metrics": {
+        "input_tokens": 966,
+        "output_tokens": 7
+      },
+      "attributes": {},
+      "scores": {},
+      "labels": {},
+      "assertions": {
+        "EqualsExpected": {
+          "name": "EqualsExpected",
+          "value": true,
+          "reason": null,
+          "source": {
+            "name": "EqualsExpected",
+            "arguments": null
+          }
+        }
+      },
+      "task_duration": 0.5453194220317528,
+      "total_duration": 0.5458083152770996,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1578,8 +1614,8 @@
           }
         }
       },
-      "task_duration": 0.8392568269046023,
-      "total_duration": 0.8402013778686523,
+      "task_duration": 0.6449110229732469,
+      "total_duration": 0.6453354358673096,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1614,8 +1650,8 @@
           }
         }
       },
-      "task_duration": 1.4230944020673633,
-      "total_duration": 1.4239611625671387,
+      "task_duration": 0.7211916689993814,
+      "total_duration": 0.7216110229492188,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1650,8 +1686,8 @@
           }
         }
       },
-      "task_duration": 0.5450695320032537,
-      "total_duration": 0.5459916591644287,
+      "task_duration": 0.5032059570075944,
+      "total_duration": 0.5036602020263672,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1686,8 +1722,8 @@
           }
         }
       },
-      "task_duration": 0.6721746369730681,
-      "total_duration": 0.6732020378112793,
+      "task_duration": 0.6272054919973016,
+      "total_duration": 0.6277234554290771,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1722,8 +1758,8 @@
           }
         }
       },
-      "task_duration": 0.781171118025668,
-      "total_duration": 0.7821002006530762,
+      "task_duration": 1.9063220500247553,
+      "total_duration": 1.9069442749023438,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1758,8 +1794,8 @@
           }
         }
       },
-      "task_duration": 0.8126165990252048,
-      "total_duration": 0.8135566711425781,
+      "task_duration": 0.6861083569237962,
+      "total_duration": 0.6864850521087646,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1794,8 +1830,8 @@
           }
         }
       },
-      "task_duration": 1.8416750360047445,
-      "total_duration": 1.842470407485962,
+      "task_duration": 0.9738825160311535,
+      "total_duration": 0.9743969440460205,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1830,8 +1866,8 @@
           }
         }
       },
-      "task_duration": 1.2344391259830445,
-      "total_duration": 1.2354040145874023,
+      "task_duration": 1.4764753940980881,
+      "total_duration": 1.477250099182129,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1866,8 +1902,8 @@
           }
         }
       },
-      "task_duration": 0.82652947306633,
-      "total_duration": 0.8274130821228027,
+      "task_duration": 0.6451225950149819,
+      "total_duration": 0.6455583572387695,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1902,8 +1938,8 @@
           }
         }
       },
-      "task_duration": 0.508834782987833,
-      "total_duration": 0.5095412731170654,
+      "task_duration": 0.5302898490335792,
+      "total_duration": 0.530714750289917,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1938,8 +1974,8 @@
           }
         }
       },
-      "task_duration": 1.0333602089667693,
-      "total_duration": 1.0343313217163086,
+      "task_duration": 0.713695231010206,
+      "total_duration": 0.7141711711883545,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -1974,44 +2010,8 @@
           }
         }
       },
-      "task_duration": 1.4183461220236495,
-      "total_duration": 1.419177770614624,
-      "source_case_name": null,
-      "trace_id": "00000000000000000000000000000000",
-      "span_id": "0000000000000000",
-      "evaluator_failures": []
-    },
-    {
-      "name": "kubernetes-gitops::hard_neg::i-want-to-add-prometheus-scraping-to-my-kubernetes-service",
-      "inputs": {
-        "query": "I want to add Prometheus scraping to my Kubernetes service"
-      },
-      "metadata": {
-        "category": "hard_negative",
-        "source_skill": "kubernetes-gitops"
-      },
-      "expected_output": "kubernetes-gitops",
-      "output": "kubernetes-gitops",
-      "metrics": {
-        "input_tokens": 966,
-        "output_tokens": 7
-      },
-      "attributes": {},
-      "scores": {},
-      "labels": {},
-      "assertions": {
-        "EqualsExpected": {
-          "name": "EqualsExpected",
-          "value": true,
-          "reason": null,
-          "source": {
-            "name": "EqualsExpected",
-            "arguments": null
-          }
-        }
-      },
-      "task_duration": 0.5018000860000029,
-      "total_duration": 0.5028531551361084,
+      "task_duration": 0.7094969949685037,
+      "total_duration": 0.7100226879119873,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2046,8 +2046,8 @@
           }
         }
       },
-      "task_duration": 0.5558453160338104,
-      "total_duration": 0.5567305088043213,
+      "task_duration": 0.5471266619861126,
+      "total_duration": 0.554793119430542,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2082,8 +2082,8 @@
           }
         }
       },
-      "task_duration": 0.5413004740839824,
-      "total_duration": 0.5421967506408691,
+      "task_duration": 0.529552414896898,
+      "total_duration": 0.5304534435272217,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2118,8 +2118,8 @@
           }
         }
       },
-      "task_duration": 2.130366020021029,
-      "total_duration": 2.131324291229248,
+      "task_duration": 0.7450602420140058,
+      "total_duration": 0.7457566261291504,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2154,8 +2154,8 @@
           }
         }
       },
-      "task_duration": 0.9528984409989789,
-      "total_duration": 0.953960657119751,
+      "task_duration": 1.483048288966529,
+      "total_duration": 1.4838831424713135,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2190,8 +2190,8 @@
           }
         }
       },
-      "task_duration": 0.5106637149583548,
-      "total_duration": 0.5114562511444092,
+      "task_duration": 0.49544606695417315,
+      "total_duration": 0.4961838722229004,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2226,8 +2226,8 @@
           }
         }
       },
-      "task_duration": 1.0351730179972947,
-      "total_duration": 1.0361571311950684,
+      "task_duration": 0.6557197329821065,
+      "total_duration": 0.6569726467132568,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2262,8 +2262,8 @@
           }
         }
       },
-      "task_duration": 1.0854814540361986,
-      "total_duration": 1.086303472518921,
+      "task_duration": 0.6605765409767628,
+      "total_duration": 0.661569356918335,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2298,8 +2298,8 @@
           }
         }
       },
-      "task_duration": 1.74447712500114,
-      "total_duration": 1.74534273147583,
+      "task_duration": 0.6919278079876676,
+      "total_duration": 0.6926841735839844,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2334,8 +2334,8 @@
           }
         }
       },
-      "task_duration": 1.7965630579274148,
-      "total_duration": 1.7972333431243896,
+      "task_duration": 3.295153528917581,
+      "total_duration": 3.2960169315338135,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2370,8 +2370,8 @@
           }
         }
       },
-      "task_duration": 1.843571414006874,
-      "total_duration": 1.844053030014038,
+      "task_duration": 0.8029856760986149,
+      "total_duration": 0.8034231662750244,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2406,8 +2406,8 @@
           }
         }
       },
-      "task_duration": 0.5193455079570413,
-      "total_duration": 0.5202455520629883,
+      "task_duration": 0.5140268310206011,
+      "total_duration": 0.5149147510528564,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2442,8 +2442,8 @@
           }
         }
       },
-      "task_duration": 1.230884536053054,
-      "total_duration": 1.2314138412475586,
+      "task_duration": 3.007181457011029,
+      "total_duration": 3.00795578956604,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2478,8 +2478,8 @@
           }
         }
       },
-      "task_duration": 0.4968373259762302,
-      "total_duration": 0.4977238178253174,
+      "task_duration": 0.5443038789089769,
+      "total_duration": 0.5451817512512207,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2514,8 +2514,8 @@
           }
         }
       },
-      "task_duration": 1.8729412419488654,
-      "total_duration": 1.8739678859710693,
+      "task_duration": 0.7553975869668648,
+      "total_duration": 0.7562589645385742,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2550,8 +2550,8 @@
           }
         }
       },
-      "task_duration": 0.524075211957097,
-      "total_duration": 0.5245199203491211,
+      "task_duration": 0.5238811320159584,
+      "total_duration": 0.5247619152069092,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2586,8 +2586,8 @@
           }
         }
       },
-      "task_duration": 0.8849864579970017,
-      "total_duration": 0.8854973316192627,
+      "task_duration": 0.7478172410046682,
+      "total_duration": 0.7488584518432617,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2622,8 +2622,44 @@
           }
         }
       },
-      "task_duration": 0.5176092570181936,
-      "total_duration": 0.5184886455535889,
+      "task_duration": 0.5219089419115335,
+      "total_duration": 0.5228433609008789,
+      "source_case_name": null,
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "evaluator_failures": []
+    },
+    {
+      "name": "nix-flake-development::positive::how-do-i-add-prometheus-scraping-to-my-nixos-service",
+      "inputs": {
+        "query": "How do I add Prometheus scraping to my NixOS service?"
+      },
+      "metadata": {
+        "category": "positive",
+        "source_skill": "nix-flake-development"
+      },
+      "expected_output": "nix-flake-development",
+      "output": "nix-flake-development",
+      "metrics": {
+        "input_tokens": 968,
+        "output_tokens": 10
+      },
+      "attributes": {},
+      "scores": {},
+      "labels": {},
+      "assertions": {
+        "EqualsExpected": {
+          "name": "EqualsExpected",
+          "value": true,
+          "reason": null,
+          "source": {
+            "name": "EqualsExpected",
+            "arguments": null
+          }
+        }
+      },
+      "task_duration": 0.5652417830424383,
+      "total_duration": 0.5658903121948242,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2658,8 +2694,8 @@
           }
         }
       },
-      "task_duration": 0.5492541519924998,
-      "total_duration": 0.5500211715698242,
+      "task_duration": 0.5576558219036087,
+      "total_duration": 0.558189868927002,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2694,8 +2730,8 @@
           }
         }
       },
-      "task_duration": 0.5544147500768304,
-      "total_duration": 0.5550658702850342,
+      "task_duration": 0.5203000520123169,
+      "total_duration": 0.5208446979522705,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2730,8 +2766,8 @@
           }
         }
       },
-      "task_duration": 0.5526393580948934,
-      "total_duration": 0.5534863471984863,
+      "task_duration": 0.5325280010001734,
+      "total_duration": 0.5329897403717041,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2766,8 +2802,8 @@
           }
         }
       },
-      "task_duration": 1.3660372849553823,
-      "total_duration": 1.3669354915618896,
+      "task_duration": 0.6610260599991307,
+      "total_duration": 0.6615238189697266,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2802,8 +2838,8 @@
           }
         }
       },
-      "task_duration": 0.8446201069746166,
-      "total_duration": 0.8457105159759521,
+      "task_duration": 0.674113635905087,
+      "total_duration": 0.674633264541626,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2838,8 +2874,8 @@
           }
         }
       },
-      "task_duration": 1.8961056580301374,
-      "total_duration": 1.8970580101013184,
+      "task_duration": 1.1260074359597638,
+      "total_duration": 1.1264300346374512,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2874,8 +2910,8 @@
           }
         }
       },
-      "task_duration": 2.5115163810551167,
-      "total_duration": 2.5124073028564453,
+      "task_duration": 0.707627329044044,
+      "total_duration": 0.7082178592681885,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2910,8 +2946,8 @@
           }
         }
       },
-      "task_duration": 0.578464727033861,
-      "total_duration": 0.579481840133667,
+      "task_duration": 0.5602397660259157,
+      "total_duration": 0.5608010292053223,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2946,8 +2982,8 @@
           }
         }
       },
-      "task_duration": 2.0715513869654387,
-      "total_duration": 2.072065830230713,
+      "task_duration": 0.6705556599190459,
+      "total_duration": 0.6710324287414551,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -2982,8 +3018,8 @@
           }
         }
       },
-      "task_duration": 0.6260951210279018,
-      "total_duration": 0.6267743110656738,
+      "task_duration": 0.5101987840607762,
+      "total_duration": 0.5106663703918457,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3018,8 +3054,8 @@
           }
         }
       },
-      "task_duration": 1.2423078420106322,
-      "total_duration": 1.2433152198791504,
+      "task_duration": 0.6243205270729959,
+      "total_duration": 0.624802827835083,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3054,44 +3090,8 @@
           }
         }
       },
-      "task_duration": 0.5187330970074981,
-      "total_duration": 0.5196032524108887,
-      "source_case_name": null,
-      "trace_id": "00000000000000000000000000000000",
-      "span_id": "0000000000000000",
-      "evaluator_failures": []
-    },
-    {
-      "name": "nix-flake-development::hard_neg::how-do-i-add-prometheus-scraping-to-my-nixos-service",
-      "inputs": {
-        "query": "How do I add Prometheus scraping to my NixOS service?"
-      },
-      "metadata": {
-        "category": "hard_negative",
-        "source_skill": "nix-flake-development"
-      },
-      "expected_output": "nix-flake-development",
-      "output": "nix-flake-development",
-      "metrics": {
-        "input_tokens": 968,
-        "output_tokens": 10
-      },
-      "attributes": {},
-      "scores": {},
-      "labels": {},
-      "assertions": {
-        "EqualsExpected": {
-          "name": "EqualsExpected",
-          "value": true,
-          "reason": null,
-          "source": {
-            "name": "EqualsExpected",
-            "arguments": null
-          }
-        }
-      },
-      "task_duration": 0.551128454040736,
-      "total_duration": 0.551943302154541,
+      "task_duration": 0.5221783340675756,
+      "total_duration": 0.5228433609008789,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3126,8 +3126,8 @@
           }
         }
       },
-      "task_duration": 1.2026210060575977,
-      "total_duration": 1.2035703659057617,
+      "task_duration": 0.6813248799880967,
+      "total_duration": 0.6820025444030762,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3162,8 +3162,8 @@
           }
         }
       },
-      "task_duration": 0.5583647709572688,
-      "total_duration": 0.5592799186706543,
+      "task_duration": 0.5131867130985484,
+      "total_duration": 0.5136969089508057,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3198,8 +3198,8 @@
           }
         }
       },
-      "task_duration": 1.406995102064684,
-      "total_duration": 1.407890796661377,
+      "task_duration": 0.6516634679865092,
+      "total_duration": 0.6521687507629395,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3234,8 +3234,8 @@
           }
         }
       },
-      "task_duration": 0.5068548510316759,
-      "total_duration": 0.5077292919158936,
+      "task_duration": 0.5190973139833659,
+      "total_duration": 0.5196571350097656,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3270,8 +3270,8 @@
           }
         }
       },
-      "task_duration": 1.8610867110546678,
-      "total_duration": 1.861879825592041,
+      "task_duration": 0.7267592330463231,
+      "total_duration": 0.727405309677124,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3306,8 +3306,8 @@
           }
         }
       },
-      "task_duration": 1.6717045760015026,
-      "total_duration": 1.6725831031799316,
+      "task_duration": 0.6870095690246671,
+      "total_duration": 0.6875836849212646,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3342,8 +3342,8 @@
           }
         }
       },
-      "task_duration": 1.426096189999953,
-      "total_duration": 1.4265871047973633,
+      "task_duration": 1.1997443140717223,
+      "total_duration": 1.200256109237671,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3378,8 +3378,8 @@
           }
         }
       },
-      "task_duration": 0.8350262120366096,
-      "total_duration": 0.835956335067749,
+      "task_duration": 0.7359150669071823,
+      "total_duration": 0.7364490032196045,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3414,8 +3414,8 @@
           }
         }
       },
-      "task_duration": 0.5025012739934027,
-      "total_duration": 0.5035929679870605,
+      "task_duration": 0.5032020779326558,
+      "total_duration": 0.5037271976470947,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3450,8 +3450,8 @@
           }
         }
       },
-      "task_duration": 0.7349063860019669,
-      "total_duration": 0.7357800006866455,
+      "task_duration": 0.9432982240105048,
+      "total_duration": 0.9439778327941895,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3486,8 +3486,8 @@
           }
         }
       },
-      "task_duration": 1.6674327159998938,
-      "total_duration": 1.668109655380249,
+      "task_duration": 0.6607179059647024,
+      "total_duration": 0.6612341403961182,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3522,8 +3522,8 @@
           }
         }
       },
-      "task_duration": 0.7094553590286523,
-      "total_duration": 0.7104461193084717,
+      "task_duration": 0.6677223340375349,
+      "total_duration": 0.6682825088500977,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3558,8 +3558,8 @@
           }
         }
       },
-      "task_duration": 1.8046897620661184,
-      "total_duration": 1.805638074874878,
+      "task_duration": 1.2788425770122558,
+      "total_duration": 1.2793657779693604,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3594,8 +3594,8 @@
           }
         }
       },
-      "task_duration": 1.9777554610045627,
-      "total_duration": 1.978750467300415,
+      "task_duration": 0.6898506321012974,
+      "total_duration": 0.6903581619262695,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3630,8 +3630,8 @@
           }
         }
       },
-      "task_duration": 0.7856943480437621,
-      "total_duration": 0.7866127490997314,
+      "task_duration": 1.1861121469410136,
+      "total_duration": 1.187103509902954,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3666,8 +3666,8 @@
           }
         }
       },
-      "task_duration": 0.7696034639375284,
-      "total_duration": 0.7702231407165527,
+      "task_duration": 0.6699272150872275,
+      "total_duration": 0.6707034111022949,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3702,8 +3702,8 @@
           }
         }
       },
-      "task_duration": 0.7299796229926869,
-      "total_duration": 0.7312655448913574,
+      "task_duration": 0.5331951580010355,
+      "total_duration": 0.533881664276123,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3738,8 +3738,44 @@
           }
         }
       },
-      "task_duration": 0.6267760649789125,
-      "total_duration": 0.6276991367340088,
+      "task_duration": 0.5248672330053523,
+      "total_duration": 0.5259246826171875,
+      "source_case_name": null,
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "evaluator_failures": []
+    },
+    {
+      "name": "rust-engineering::positive::how-do-i-add-prometheus-metrics-to-my-axum-service",
+      "inputs": {
+        "query": "How do I add Prometheus metrics to my Axum service?"
+      },
+      "metadata": {
+        "category": "positive",
+        "source_skill": "rust-engineering"
+      },
+      "expected_output": "rust-engineering",
+      "output": "rust-engineering",
+      "metrics": {
+        "input_tokens": 967,
+        "output_tokens": 6
+      },
+      "attributes": {},
+      "scores": {},
+      "labels": {},
+      "assertions": {
+        "EqualsExpected": {
+          "name": "EqualsExpected",
+          "value": true,
+          "reason": null,
+          "source": {
+            "name": "EqualsExpected",
+            "arguments": null
+          }
+        }
+      },
+      "task_duration": 1.8101756259566173,
+      "total_duration": 1.8108747005462646,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3774,8 +3810,8 @@
           }
         }
       },
-      "task_duration": 1.637847936945036,
-      "total_duration": 1.638331413269043,
+      "task_duration": 0.8204747090348974,
+      "total_duration": 0.8211164474487305,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3810,8 +3846,8 @@
           }
         }
       },
-      "task_duration": 1.567161325016059,
-      "total_duration": 1.5680437088012695,
+      "task_duration": 1.3428227169206366,
+      "total_duration": 1.343402624130249,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3846,8 +3882,8 @@
           }
         }
       },
-      "task_duration": 0.5473610089393333,
-      "total_duration": 0.548128604888916,
+      "task_duration": 0.5469109850237146,
+      "total_duration": 0.5474395751953125,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3882,8 +3918,8 @@
           }
         }
       },
-      "task_duration": 0.5151167779695243,
-      "total_duration": 0.516019344329834,
+      "task_duration": 0.7473564990796149,
+      "total_duration": 0.7478716373443604,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3918,8 +3954,8 @@
           }
         }
       },
-      "task_duration": 0.8191047670552507,
-      "total_duration": 0.8198986053466797,
+      "task_duration": 0.6693860020022839,
+      "total_duration": 0.6700952053070068,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3954,8 +3990,8 @@
           }
         }
       },
-      "task_duration": 0.5133789510000497,
-      "total_duration": 0.5141234397888184,
+      "task_duration": 0.550638095010072,
+      "total_duration": 0.5512697696685791,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -3990,8 +4026,8 @@
           }
         }
       },
-      "task_duration": 1.3492606539512053,
-      "total_duration": 1.3501439094543457,
+      "task_duration": 0.7210306039778516,
+      "total_duration": 0.7217090129852295,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4026,8 +4062,8 @@
           }
         }
       },
-      "task_duration": 0.5519943420076743,
-      "total_duration": 0.552797794342041,
+      "task_duration": 0.5092292299959809,
+      "total_duration": 0.5099332332611084,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4062,8 +4098,8 @@
           }
         }
       },
-      "task_duration": 1.6771934240823612,
-      "total_duration": 1.67783522605896,
+      "task_duration": 1.220468003069982,
+      "total_duration": 1.2211718559265137,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4098,8 +4134,8 @@
           }
         }
       },
-      "task_duration": 0.5262090649921447,
-      "total_duration": 0.5269970893859863,
+      "task_duration": 0.5059777649585158,
+      "total_duration": 0.5067298412322998,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4134,44 +4170,8 @@
           }
         }
       },
-      "task_duration": 0.5294221240328625,
-      "total_duration": 0.5303137302398682,
-      "source_case_name": null,
-      "trace_id": "00000000000000000000000000000000",
-      "span_id": "0000000000000000",
-      "evaluator_failures": []
-    },
-    {
-      "name": "rust-engineering::hard_neg::how-do-i-add-prometheus-metrics-to-my-axum-service",
-      "inputs": {
-        "query": "How do I add Prometheus metrics to my Axum service?"
-      },
-      "metadata": {
-        "category": "hard_negative",
-        "source_skill": "rust-engineering"
-      },
-      "expected_output": "rust-engineering",
-      "output": "rust-engineering",
-      "metrics": {
-        "input_tokens": 967,
-        "output_tokens": 6
-      },
-      "attributes": {},
-      "scores": {},
-      "labels": {},
-      "assertions": {
-        "EqualsExpected": {
-          "name": "EqualsExpected",
-          "value": true,
-          "reason": null,
-          "source": {
-            "name": "EqualsExpected",
-            "arguments": null
-          }
-        }
-      },
-      "task_duration": 0.7429321800591424,
-      "total_duration": 0.7440826892852783,
+      "task_duration": 0.5598930841078982,
+      "total_duration": 0.5604760646820068,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4206,8 +4206,8 @@
           }
         }
       },
-      "task_duration": 1.4441711959661916,
-      "total_duration": 1.4451615810394287,
+      "task_duration": 0.6503085339209065,
+      "total_duration": 0.6509995460510254,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4242,8 +4242,8 @@
           }
         }
       },
-      "task_duration": 0.55040597403422,
-      "total_duration": 0.5514559745788574,
+      "task_duration": 0.5408844769699499,
+      "total_duration": 0.5414614677429199,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4278,8 +4278,8 @@
           }
         }
       },
-      "task_duration": 0.5129277290543541,
-      "total_duration": 0.514049768447876,
+      "task_duration": 0.49903243489097804,
+      "total_duration": 0.49960827827453613,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4314,8 +4314,8 @@
           }
         }
       },
-      "task_duration": 1.4521816979395226,
-      "total_duration": 1.4531428813934326,
+      "task_duration": 0.6860855319537222,
+      "total_duration": 0.6866099834442139,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4350,8 +4350,8 @@
           }
         }
       },
-      "task_duration": 0.5405938739422709,
-      "total_duration": 0.5415294170379639,
+      "task_duration": 0.5257031529909,
+      "total_duration": 0.5263392925262451,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4386,8 +4386,8 @@
           }
         }
       },
-      "task_duration": 1.5188968090806156,
-      "total_duration": 1.5199918746948242,
+      "task_duration": 1.644354441901669,
+      "total_duration": 1.6449525356292725,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4422,8 +4422,8 @@
           }
         }
       },
-      "task_duration": 1.3852732529630885,
-      "total_duration": 1.3925108909606934,
+      "task_duration": 0.6925021919887513,
+      "total_duration": 0.6930439472198486,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4458,8 +4458,8 @@
           }
         }
       },
-      "task_duration": 0.696620742091909,
-      "total_duration": 0.6975247859954834,
+      "task_duration": 1.3115390950115398,
+      "total_duration": 1.3121147155761719,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4494,8 +4494,8 @@
           }
         }
       },
-      "task_duration": 1.9369387660408393,
-      "total_duration": 1.9378931522369385,
+      "task_duration": 0.6646171890897676,
+      "total_duration": 0.6653010845184326,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4530,8 +4530,8 @@
           }
         }
       },
-      "task_duration": 0.5606592070544139,
-      "total_duration": 0.5615580081939697,
+      "task_duration": 0.5380352680804208,
+      "total_duration": 0.5386574268341064,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4566,8 +4566,8 @@
           }
         }
       },
-      "task_duration": 0.5167813220759854,
-      "total_duration": 0.5176076889038086,
+      "task_duration": 0.5228536700597033,
+      "total_duration": 0.5234413146972656,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4602,8 +4602,8 @@
           }
         }
       },
-      "task_duration": 0.5430867539253086,
-      "total_duration": 0.5440256595611572,
+      "task_duration": 0.5480830040760338,
+      "total_duration": 0.5486886501312256,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4638,8 +4638,8 @@
           }
         }
       },
-      "task_duration": 0.86296834400855,
-      "total_duration": 0.8637573719024658,
+      "task_duration": 0.585192225058563,
+      "total_duration": 0.5857691764831543,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4674,8 +4674,8 @@
           }
         }
       },
-      "task_duration": 0.49460439605172724,
-      "total_duration": 0.49564337730407715,
+      "task_duration": 0.51401630602777,
+      "total_duration": 0.514636754989624,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4710,8 +4710,8 @@
           }
         }
       },
-      "task_duration": 1.350168826058507,
-      "total_duration": 1.3508939743041992,
+      "task_duration": 1.1768552210414782,
+      "total_duration": 1.1774461269378662,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4746,8 +4746,8 @@
           }
         }
       },
-      "task_duration": 0.5230995370075107,
-      "total_duration": 0.5241076946258545,
+      "task_duration": 0.5177290529245511,
+      "total_duration": 0.518280029296875,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4782,8 +4782,8 @@
           }
         }
       },
-      "task_duration": 7.68668681406416,
-      "total_duration": 7.687654733657837,
+      "task_duration": 2.981983294012025,
+      "total_duration": 2.9829742908477783,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4818,8 +4818,8 @@
           }
         }
       },
-      "task_duration": 0.5283169460017234,
-      "total_duration": 0.5292398929595947,
+      "task_duration": 0.5311798809561878,
+      "total_duration": 0.5317478179931641,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4854,8 +4854,8 @@
           }
         }
       },
-      "task_duration": 0.7905046689556912,
-      "total_duration": 0.7912681102752686,
+      "task_duration": 0.7616375338984653,
+      "total_duration": 0.7623496055603027,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4890,8 +4890,8 @@
           }
         }
       },
-      "task_duration": 1.8461477569071576,
-      "total_duration": 1.8470518589019775,
+      "task_duration": 0.6533860400086269,
+      "total_duration": 0.6539580821990967,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4926,8 +4926,8 @@
           }
         }
       },
-      "task_duration": 0.7146621840074658,
-      "total_duration": 0.7153983116149902,
+      "task_duration": 0.6630058910232037,
+      "total_duration": 0.6637959480285645,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4962,8 +4962,8 @@
           }
         }
       },
-      "task_duration": 1.776566014974378,
-      "total_duration": 1.7774784564971924,
+      "task_duration": 0.7964046680135652,
+      "total_duration": 0.7969539165496826,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -4998,8 +4998,8 @@
           }
         }
       },
-      "task_duration": 0.5319835799746215,
-      "total_duration": 0.5329229831695557,
+      "task_duration": 6.173983935965225,
+      "total_duration": 6.174689531326294,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5034,8 +5034,8 @@
           }
         }
       },
-      "task_duration": 0.615204141009599,
-      "total_duration": 0.6161544322967529,
+      "task_duration": 0.5236027940409258,
+      "total_duration": 0.5244064331054688,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5070,8 +5070,8 @@
           }
         }
       },
-      "task_duration": 2.0984321219148114,
-      "total_duration": 2.0994255542755127,
+      "task_duration": 0.7327436259947717,
+      "total_duration": 0.7336492538452148,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5106,8 +5106,8 @@
           }
         }
       },
-      "task_duration": 0.5262921929825097,
-      "total_duration": 0.5272486209869385,
+      "task_duration": 0.5406510550528765,
+      "total_duration": 0.5415048599243164,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5142,8 +5142,8 @@
           }
         }
       },
-      "task_duration": 0.8152841631090268,
-      "total_duration": 0.8163316249847412,
+      "task_duration": 1.1767822740366682,
+      "total_duration": 1.1775603294372559,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5178,8 +5178,8 @@
           }
         }
       },
-      "task_duration": 0.8290810940088704,
-      "total_duration": 0.8299820423126221,
+      "task_duration": 0.664021996082738,
+      "total_duration": 0.665006160736084,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5214,8 +5214,8 @@
           }
         }
       },
-      "task_duration": 0.5122013899963349,
-      "total_duration": 0.5130729675292969,
+      "task_duration": 0.5037734680809081,
+      "total_duration": 0.504420280456543,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5250,8 +5250,8 @@
           }
         }
       },
-      "task_duration": 1.4824414839968085,
-      "total_duration": 1.4835340976715088,
+      "task_duration": 1.2412230250192806,
+      "total_duration": 1.2422285079956055,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5286,8 +5286,8 @@
           }
         }
       },
-      "task_duration": 0.8457078400533646,
-      "total_duration": 0.8465020656585693,
+      "task_duration": 0.6552423560060561,
+      "total_duration": 0.6561713218688965,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5322,8 +5322,8 @@
           }
         }
       },
-      "task_duration": 0.507485987036489,
-      "total_duration": 0.5085022449493408,
+      "task_duration": 0.5229923030128703,
+      "total_duration": 0.5234673023223877,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5358,8 +5358,8 @@
           }
         }
       },
-      "task_duration": 1.0612000469118357,
-      "total_duration": 1.0620756149291992,
+      "task_duration": 0.6910183089785278,
+      "total_duration": 0.6919119358062744,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5394,8 +5394,8 @@
           }
         }
       },
-      "task_duration": 0.8568372299196199,
-      "total_duration": 0.8577520847320557,
+      "task_duration": 0.6588932320009917,
+      "total_duration": 0.6595094203948975,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5430,8 +5430,8 @@
           }
         }
       },
-      "task_duration": 0.9807710440363735,
-      "total_duration": 0.982086181640625,
+      "task_duration": 0.6766394979786128,
+      "total_duration": 0.6770195960998535,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",
@@ -5466,8 +5466,8 @@
           }
         }
       },
-      "task_duration": 0.7063308149809018,
-      "total_duration": 0.707256555557251,
+      "task_duration": 0.6596464139875025,
+      "total_duration": 0.6601288318634033,
       "source_case_name": null,
       "trace_id": "00000000000000000000000000000000",
       "span_id": "0000000000000000",

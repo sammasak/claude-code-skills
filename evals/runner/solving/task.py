@@ -11,7 +11,9 @@ from pydantic_ai import Agent
 from runner.solving.dataset import SolvingInput, SolvingOutput
 
 SKILLS_ROOT = Path(__file__).parent.parent.parent.parent / "skills"
-SOLVE_MODEL = "anthropic:claude-haiku-4-5-20251001"
+from runner.anthropic_model import anthropic_model
+
+SOLVE_MODEL = anthropic_model()
 
 
 def _load_skill_body(skill: str) -> str:
