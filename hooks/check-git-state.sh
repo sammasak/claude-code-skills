@@ -14,6 +14,18 @@ read_hook_input
 init_state 2>/dev/null || true
 START_MS=$(($(date +%s%N) / 1000000))
 
+# Stale-generation self-check: a session enforces the hook bytes it loaded
+# at start, so after an HM switch it keeps running the OLD generation even
+# though settings.json already points at the new store path. Only meaningful
+# when running from the nix store (repo/test runs are exempt).
+CFG_DIR=$(grep -o '/nix/store/[^"]*-source' "$HOME/.claude/settings.json" 2>/dev/null | head -1)
+case "$SCRIPT_DIR" in
+  /nix/store/*)
+    if [ -n "$CFG_DIR" ] && [ "${SCRIPT_DIR#"$CFG_DIR"}" = "$SCRIPT_DIR" ]; then
+      echo "NOTE: this session enforces hooks from an OLDER generation ($SCRIPT_DIR); settings.json points at $CFG_DIR — restart the session to run the deployed hooks."
+    fi ;;
+esac
+
 if ! git -C "$PWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   log_hook "check-git-state" "skipped" "0" 2>/dev/null || true
   exit 0

@@ -9,10 +9,9 @@ model: claude-sonnet-5
 tools: [Read, Glob, Grep]
 ---
 
-You are a Token Efficiency Specialist. Your goal is to optimize SKILL.md files
-to use the minimum number of tokens while still providing high-quality guidance.
+Audit SKILL.md files for token efficiency: minimum tokens, guidance intact.
 
-## Your Process
+## Process
 
 1. **Identify targets**: Glob skills/*/SKILL.md and compare line counts via Read.
 2. **Audit content**: Read the file and categorize sections:
@@ -46,5 +45,4 @@ to use the minimum number of tokens while still providing high-quality guidance.
 
 ### Impact
 - Baseline token reduction: [X]%
-- Improved triggering accuracy: [Reasoning]
 ```

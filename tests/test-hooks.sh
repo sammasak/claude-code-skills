@@ -125,8 +125,32 @@ check "rm non-recursive allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -f /tmp/x.lock"}')"
 check "rm mention in echo allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"echo 'never rm -rf /' >> doc.md"}')"
+check "rm -rf double slash blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf //"}')"
+check "rm -rf root glob blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /e*"}')"
+check "rm -rf tilde-user blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf ~lukas"}')"
+check "rm continuation line blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm \\\n-rf /etc"}')"
+check "quoted printf rm payload blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"$(printf \"rm -rf /etc\")"}')"
+check "rm -rf tilde-user subdir allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf ~lukas/tmp/build"}')"
 check "dd onto block device blocked" 2 "BLOCKED: dd writing" - \
   validate-bash.sh "$(j b1 '{"command":"dd if=/dev/zero of=/dev/sda bs=1M"}')"
+check "dd quoted of-target blocked" 2 "BLOCKED: dd writing" - \
+  validate-bash.sh "$(j b1 '{"command":"dd if=/dev/zero \"of=/dev/sda\""}')"
+check "tee onto block device blocked" 2 "BLOCKED: writing onto" - \
+  validate-bash.sh "$(j b1 '{"command":"tee /dev/sda < img"}')"
+check "tee to dev null allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"echo hi | tee /dev/null"}')"
+check "wipefs blocked" 2 "BLOCKED: filesystem creation" - \
+  validate-bash.sh "$(j b1 '{"command":"wipefs -a /dev/sda"}')"
+check "blkdiscard blocked" 2 "BLOCKED: filesystem creation" - \
+  validate-bash.sh "$(j b1 '{"command":"blkdiscard /dev/sdb"}')"
+check "append onto block device blocked" 2 "BLOCKED: redirecting output" - \
+  validate-bash.sh "$(j b1 '{"command":"cat img >> /dev/sdb"}')"
 check "dd to file allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"dd if=backup.img of=./restore.img"}')"
 check "mkfs blocked" 2 "BLOCKED: filesystem creation" - \

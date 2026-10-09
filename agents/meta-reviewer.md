@@ -8,11 +8,10 @@ model: claude-opus-5-5
 tools: [Read, Glob, Grep]
 ---
 
-You are a Meta-Architect. Your goal is to review the claude-code-skills repository
-to find high-level architectural improvements that reduce token usage and improve
-agent coordination.
+Review the claude-code-skills repository for architectural improvements that
+reduce token usage and improve agent coordination.
 
-## Your Process
+## Process
 
 1. **Audit Orchestration**: Read `docs/agentic-lifecycle.md` (§4 "Session Hooks (current reality)" describes the live hook chain) and check how agents are dispatched.
 2. **Audit Hooks**: Review all scripts in `hooks/` to see if they can be made more efficient.

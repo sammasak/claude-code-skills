@@ -10,6 +10,8 @@ How this repository's skills, dispatcher, agents, hooks, and evaluators fit toge
 2. [Our System: claude-code-skills Architecture](#2-our-system-claude-code-skills-architecture)
 3. [Evaluator Chain Detail](#3-evaluator-chain-detail)
 4. [Session Hooks (current reality)](#4-session-hooks-current-reality)
+5. [Anthropic Workflow Patterns Reference](#anthropic-workflow-patterns-reference)
+6. [Citations](#citations)
 
 ## 1. Overview
 
@@ -52,11 +54,11 @@ graph TD
     end
 
     subgraph "Agent Pool"
-        A1["k8s-debugger\n(haiku)\ntools: bash, read, grep, glob\nK8s cluster diagnosis"]
-        A2["nix-explorer\n(haiku)\ntools: Read, Glob, Grep\nNixOS config exploration"]
-        A3["validate-k8s\n(haiku)\ntools: bash, read\nManifest security validation"]
-        A4["verify-deployment\n(haiku)\ntools: bash\nPod + HTTP health check"]
-        A5["code-reviewer\n(sonnet)\ntools: Read, Glob, Grep\nStructured code review"]
+        A1["k8s-debugger\n(claude-sonnet-5)\ntools: Bash, Read, Grep, Glob\nK8s cluster diagnosis"]
+        A2["nix-explorer\n(claude-sonnet-5)\ntools: Read, Glob, Grep\nNixOS config exploration"]
+        A3["validate-k8s\n(claude-haiku-4-5)\ntools: Bash, Read\nManifest security validation"]
+        A4["verify-deployment\n(claude-haiku-4-5)\ntools: Bash\nPod + HTTP health check"]
+        A5["code-reviewer\n(claude-opus-5-5)\ntools: Read, Glob, Grep\nStructured code review\n(5 of 7 agents shown; also\nmeta-reviewer opus, skill-optimizer sonnet)"]
         DISP -->|"route"| A1
         DISP -->|"route"| A2
         DISP -->|"route"| A3
@@ -65,9 +67,9 @@ graph TD
     end
 
     subgraph "Hook System"
-        H1["PreToolUse / Bash\nvalidate-bash.sh\nBlocks: force-push incl. plus-refspec,\ndestructive kubectl deletes, SOPS from /tmp,\nrm/dd/mkfs against roots"]
-        H2["PostToolUse / Write+Edit\nvalidate-manifest.sh\nWarns: YAML syntax errors\nmissing security context fields"]
-        H3["Stop Hook\ncheck-git-state.sh\nreports dirty/unpushed state\nnever blocks"]
+        H1["PreToolUse / Bash\nvalidate-bash.sh + check-loop.sh\nBlocks: force-push incl. plus-refspec,\ndestructive kubectl deletes, SOPS from /tmp,\nrm/dd/tee/mkfs against roots and devices;\nloop advisory at 5 repeats, block at 12"]
+        H2["PostToolUse / Write+Edit\nvalidate-nix.sh, validate-shell.sh,\nvalidate-rust.sh, validate-manifest.sh\nexit 2 feeds the error to the model"]
+        H3["Stop Hook\ncheck-git-state.sh\nreports dirty/unpushed state and\nstale hook generations; never blocks"]
     end
 
     subgraph "Evaluator Chain"

@@ -39,15 +39,17 @@ PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|co
 GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
 KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?([a-z,-]+,)?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns)([[:space:],/]|\$)"
 
-# Escaped quotes are removed first so nested shell -c payloads cannot hide a
-# quote boundary from the unwrapper.
-SCAN=$(echo "$CMD" | sed 's/\\["'"${SQ}"']//g')
+# Backslash-newline continuations are joined first (a command split across
+# lines is one command), then escaped quotes are removed so nested shell -c
+# payloads cannot hide a quote boundary from the unwrapper.
+SCAN=$(echo "$CMD" | sed -z 's/\\\n/ /g' | sed 's/\\["'"${SQ}"']//g')
 for _ in 1 2 3; do
   BEFORE=$(echo "$SCAN" | wc -l)
   PAYLOADS=$( { echo "$SCAN" | grep -oE "${PFX}(bash|sh|zsh|fish)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-c[[:space:]]+(${SQ}[^${SQ}]*${SQ}|\"[^\"]*\")" 2>/dev/null \
     | sed -E "s/^.*-c[[:space:]]+[${SQ}\"]//; s/[${SQ}\"]\$//"; \
     echo "$SCAN" | grep -oE '\$\([[:space:]]*(echo|printf)[[:space:]]+[^)]*\)' 2>/dev/null \
-    | sed -E 's/^\$\([[:space:]]*(echo|printf)[[:space:]]+//; s/\)$//'; } | sort -u)
+    | sed -E 's/^\$\([[:space:]]*(echo|printf)[[:space:]]+//; s/\)$//' \
+    | sed "s/^[\"${SQ}]//; s/[\"${SQ}]\$//"; } | sort -u)
   [ -z "$PAYLOADS" ] && break
   SCAN=$(printf '%s\n%s' "$SCAN" "$PAYLOADS" | sort -u)
   [ "$(echo "$SCAN" | wc -l)" -eq "$BEFORE" ] && break
@@ -76,7 +78,7 @@ fi
 # that residual risk is accepted and documented, not silently covered.
 # Targets quoted at the call site are still matched (quotes allowed around
 # the path token), so quoting is not an evasion.
-FSROOT="(^|[[:space:]])[\"${SQ}]?(/|/\\*|~|~/\\*?|\\\$HOME/?\\*?|/(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?/?\\*?)[\"${SQ}]?([[:space:]]|\$)"
+FSROOT="(^|[[:space:]])[\"${SQ}]?(/+|/+[A-Za-z0-9._@-]*\\*|~[A-Za-z0-9._-]*/?\\*?|\\\$HOME/?\\*?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?/?\\*?)[\"${SQ}]?([[:space:]]|\$)"
 while IFS= read -r seg; do
   [ -z "$seg" ] && continue
   flags=$(printf '%s' "$seg" | sed "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
@@ -86,8 +88,15 @@ while IFS= read -r seg; do
     block "recursive force rm of a filesystem root or whole home is not allowed."
   fi
 done < <(echo "$SCAN" | grep -oE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|rm)[[:space:]]+[^|&;]*" 2>/dev/null)
-if echo "$STRIPPED" | grep -qE "${PFX}dd[[:space:]][^|&;]*of=[\"${SQ}]?/dev/"; then
+# dd/tee/cp run on SCAN (not STRIPPED) so a fully-quoted "of=/dev/sda" or
+# "/dev/sda" argument cannot delete itself before matching — the same
+# quoting-is-not-an-evasion rule the rm path implements. Mentions stay
+# immune because the invocation must sit at command position.
+if echo "$SCAN" | grep -qE "${PFX}dd[[:space:]][^|&;]*[\"${SQ}]?of=[\"${SQ}]?/dev/"; then
   block "dd writing to a block device is not allowed from an agent session."
+fi
+if echo "$SCAN" | grep -qE "${PFX}(tee|cp)[[:space:]][^|&;]*[\"${SQ}]?/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop)"; then
+  block "writing onto a block device via tee/cp is not allowed."
 fi
 if echo "$STRIPPED" | grep -qE "${PFX}(mkfs(\\.[A-Za-z0-9]+)?|wipefs|blkdiscard)([[:space:]]|\$)"; then
   block "filesystem creation / block-device wipe tools are not allowed from an agent session."
