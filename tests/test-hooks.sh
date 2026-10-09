@@ -53,6 +53,12 @@ check "commit message literal not misblocked" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"git commit -m \"disallow git push -f in hooks\""}')"
 check "grep pattern literal not misblocked" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"grep -rn \"git push -f\" docs/"}')"
+check "branch suffix -f not misblocked" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git push origin wip-f"}')"
+check "multiline quoted literal not misblocked" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git status\ngrep 'git push --force' docs/a.md"}')"
+check "multiline real force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"cd /tmp\ngit push --force origin main"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 

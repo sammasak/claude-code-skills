@@ -1,0 +1,19 @@
+skill: orchestrated-review
+
+# Queries that should activate orchestrated-review
+positives:
+  - "Review this implementation now that the task is complete"
+  - "Run the category-driven review with parallel specialists"
+  - "I need an independent review verdict for the sdlc review stage"
+  - "Assess which review categories apply to this artifact and dispatch reviewers"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "Drive the sdlc stages until done is green"                      # → sdlc-pipeline
+  - "Which model should each reviewer subagent run on?"              # → assigning-subagent-models
+  - "Review this module for comment noise"                           # → lean-code
+
+# Queries that should activate no skill
+true_negatives:
+  - "Write a performance review for my teammate"
+  - "Review this restaurant for my blog"

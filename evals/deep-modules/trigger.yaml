@@ -1,0 +1,21 @@
+skill: deep-modules
+
+# Queries that should activate deep-modules
+positives:
+  - "Design the public API surface for this new crate"
+  - "Should this be a trait or a concrete struct?"
+  - "I want to make this layer unit-testable without real network calls"
+  - "Is this wrapper function earning its keep or just a pass-through?"
+  - "How many types should a caller need to touch for the common case?"
+  - "Where should the seam go between the client and the transport?"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "Trim the comments and dead config options in this module"       # → lean-code
+  - "How do I model a state machine using Rust's type system?"       # → rust-engineering
+  - "Dispatch three reviewers in parallel over this diff"            # → orchestrated-review / agent-orchestration
+
+# Queries that should activate no skill
+true_negatives:
+  - "Book a dentist appointment reminder for Tuesday"
+  - "What is the capital of Australia?"

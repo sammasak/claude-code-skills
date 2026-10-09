@@ -1,0 +1,21 @@
+skill: lean-code
+
+# Queries that should activate lean-code
+positives:
+  - "Review this module for unnecessary comments and dead options"
+  - "Should I add a doc comment to every enum variant?"
+  - "How many error variants should this parser expose?"
+  - "This PR adds a config flag nobody sets yet, keep or drop?"
+  - "The module doc and the function doc both explain the grammar, which one stays?"
+  - "Can I delete the old unit tests now that interface tests cover this?"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "Design the public API surface for this new crate"              # → deep-modules
+  - "What clippy lints enforce comment discipline?"                 # → rust-engineering
+  - "Review the implementation against the task spec"               # → orchestrated-review
+
+# Queries that should activate no skill
+true_negatives:
+  - "What is the weather like in Stockholm today?"
+  - "Summarize this meeting transcript"

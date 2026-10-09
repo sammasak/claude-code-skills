@@ -1,0 +1,20 @@
+skill: sdlc-pipeline
+
+# Queries that should activate sdlc-pipeline
+positives:
+  - "Drive the sdlc stages in this repo until done is green"
+  - "Run the pipeline: the review stage needs a verdict"
+  - "sdlc:done fails saying stage review requires an agent review verdict"
+  - "Walk the stage machine and dispatch the agent for the first failing stage"
+  - "What does the stamp mean in the sdlc status output?"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "Review this implementation across quality categories"           # → orchestrated-review
+  - "Set up devenv and git hooks in this new Rust repo"              # → nix-flake-development / adopt workflow
+  - "Run the tests and fix the failures"                             # → rust-engineering
+
+# Queries that should activate no skill
+true_negatives:
+  - "What are the SDLC phases in classical waterfall?"
+  - "Explain CI/CD to a junior engineer"
