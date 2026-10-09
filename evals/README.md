@@ -127,8 +127,11 @@ Reports include per-case inputs, outputs, evaluator scores, and reasons. Use `--
 
 ## Current baselines (2026-10-09)
 
-- Trigger dispatch: 135/152 (89±1% plateau across reruns; GEPA is the
-  credential-gated lever).
+- Trigger dispatch: 135/152 (89±1% plateau across reruns). A real GEPA run
+  (4 rollouts, local qwen2.5-coder-7b reflection via ollama) adopted zero
+  changes: seed 89.5% vs best candidate 88.8% — the plateau is optimized,
+  not unexplored. A stronger reflection LM (needs an API credential) is the
+  only untried lever.
 - Solving (haiku solver, strict = all assertions): **8/15 strict, 9/15
   BashGrader, 8/15 rubric** — this is the measured task-solving pass rate.
   "0 failures" in any run output means evaluator infrastructure health,
