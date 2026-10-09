@@ -95,6 +95,8 @@ check "var-indirect force push blocked" 2 "BLOCKED: force push" - \
   validate-bash.sh "$(j b1 '{"command":"GIT=git; $GIT push --force origin main"}')"
 check "bundled short flag blocked" 2 "BLOCKED: force push" - \
   validate-bash.sh "$(j b1 '{"command":"git push -fu origin main"}')"
+check "echo-substitution payload blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"$(echo git push --force origin main)"}')"
 check "kubectl delete persistentvolume blocked" 2 "BLOCKED: destructive kubectl" - \
   validate-bash.sh "$(j b1 '{"command":"kubectl -n x delete persistentvolume pv-7"}')"
 check "kubectl get pvc allowed" 0 - - \

@@ -29,6 +29,10 @@ block() {
 # is stripped (multi-line aware, sed -z) before matching, and a real push
 # that QUOTES a leading-dash argument is refused as flag smuggling. The same
 # skeleton guards destructive kubectl deletes (stateful-volume safety).
+# Statically unknowable spellings (eval "$X", git $SUB, kubectl delete -f)
+# are owned by the semantic layers: the pre-push ancestry guard and the
+# fail-closed kyverno admission policy — this hook is fast feedback, not
+# the guarantee.
 SQ="'"
 PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
 GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
@@ -39,8 +43,10 @@ KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]
 SCAN=$(echo "$CMD" | sed 's/\\["'"${SQ}"']//g')
 for _ in 1 2 3; do
   BEFORE=$(echo "$SCAN" | wc -l)
-  PAYLOADS=$(echo "$SCAN" | grep -oE "${PFX}(bash|sh|zsh|fish)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-c[[:space:]]+(${SQ}[^${SQ}]*${SQ}|\"[^\"]*\")" 2>/dev/null \
-    | sed -E "s/^.*-c[[:space:]]+[${SQ}\"]//; s/[${SQ}\"]\$//" | sort -u)
+  PAYLOADS=$( { echo "$SCAN" | grep -oE "${PFX}(bash|sh|zsh|fish)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-c[[:space:]]+(${SQ}[^${SQ}]*${SQ}|\"[^\"]*\")" 2>/dev/null \
+    | sed -E "s/^.*-c[[:space:]]+[${SQ}\"]//; s/[${SQ}\"]\$//"; \
+    echo "$SCAN" | grep -oE '\$\([[:space:]]*(echo|printf)[[:space:]]+[^)]*\)' 2>/dev/null \
+    | sed -E 's/^\$\([[:space:]]*(echo|printf)[[:space:]]+//; s/\)$//'; } | sort -u)
   [ -z "$PAYLOADS" ] && break
   SCAN=$(printf '%s\n%s' "$SCAN" "$PAYLOADS" | sort -u)
   [ "$(echo "$SCAN" | wc -l)" -eq "$BEFORE" ] && break

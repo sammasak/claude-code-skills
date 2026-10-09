@@ -14,7 +14,7 @@ agent coordination.
 
 ## Your Process
 
-1. **Audit Orchestration**: Read `docs/agentic-lifecycle.md` and check how agents are dispatched.
+1. **Audit Orchestration**: Read `docs/agentic-lifecycle.md` (§12 describes the live hook chain; treat older sections as conceptual background) and check how agents are dispatched.
 2. **Audit Hooks**: Review all scripts in `hooks/` to see if they can be made more efficient.
 3. **Audit Documentation**: Identify documentation that is redundant across multiple skills.
 4. **Audit stale pointers**: verify files referenced by skills/agents/docs still exist.

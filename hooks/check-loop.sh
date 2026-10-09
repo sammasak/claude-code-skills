@@ -23,8 +23,8 @@ NORMALIZED=$(echo "$CMD" | \
   xargs)
 [ -z "$NORMALIZED" ] && exit 0
 
-LOOP_FILE="${XDG_RUNTIME_DIR:-/tmp}/claude-loop-${CLAUDE_SESSION_ID}.log"
-find "${XDG_RUNTIME_DIR:-/tmp}" -maxdepth 1 -name 'claude-loop-*.log' -mtime +2 -delete 2>/dev/null || true
+LOOP_FILE="${XDG_RUNTIME_DIR:-$HOME/.cache}/claude-loop-${CLAUDE_SESSION_ID}.log"
+find "${XDG_RUNTIME_DIR:-$HOME/.cache}" -maxdepth 1 -name 'claude-loop-*.log' -mtime +2 -delete 2>/dev/null || true
 
 # Two granularities: fuzzy (normalized) drives advisories, exact (raw hash)
 # drives the hard block — same tool on different files must not hard-block.

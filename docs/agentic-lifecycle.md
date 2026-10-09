@@ -310,7 +310,7 @@ graph TD
 
 **Working memory — context window:** Everything the model can "see" at inference time. In Claude, this is up to 200k tokens. It holds the current conversation, tool call history, system prompt (including injected skill body), and any documents appended via Read calls. It is lost completely when the session ends.
 
-**Episodic memory — vector database:** Structured summaries of past agent runs — what goal was attempted, what actions were taken, what the outcome was, and what score the Judge assigned. Retrieved via embedding similarity search at the start of new goals. In our claude-worker system, `goals.json` serves as a flat episodic log for the current session; a full vector store would extend this across sessions.
+**Episodic memory — vector database:** Structured summaries of past agent runs — what goal was attempted, what actions were taken, what the outcome was, and what score the Judge assigned. Retrieved via embedding similarity search at the start of new goals. (The claude-worker episodic log was retired with the VM fleet.)
 
 **Semantic memory — RAG knowledge store:** Domain-specific facts: API documentation, runbooks, architectural diagrams. Retrieved by embedding search when the agent needs background knowledge that exceeds what fits in the context window. Not currently implemented in this repository, but the skill bodies (injected as system prompt) serve a similar role for focused domains.
 
@@ -565,69 +565,13 @@ The CSRJudge uses `claude-sonnet-4-6` rather than Haiku because multi-constraint
 
 ---
 
-## 12. Goal Loop (Stop Hook)
+## 12. Session Hooks (current reality)
 
-The Stop hook is the mechanism that converts a single Claude invocation into a persistent goal-processing loop. Without the Stop hook, Claude would process one task and exit. With it, Claude blocks its own exit until all goals in the queue are complete and reviewed.
-
-```mermaid
-flowchart TD
-    START([Claude session ending\nStop hook fires]) --> CHECK_PROGRESS
-
-    CHECK_PROGRESS{"Phase 1:\nin_progress\ngoal exists?"}
-    CHECK_PROGRESS -->|"yes"| BLOCK_PROGRESS["Block exit\nreason: Resume goal id=X\ngoal still in_progress"]
-    CHECK_PROGRESS -->|"no"| CHECK_PENDING
-
-    BLOCK_PROGRESS --> CLAUDE_WORKS["Claude continues\nworking on in_progress goal\nUpdates status when complete"]
-    CLAUDE_WORKS --> START
-
-    CHECK_PENDING{"Phase 2:\npending goals\nexist?"}
-    CHECK_PENDING -->|"yes"| BLOCK_PENDING["Block exit\nreason: N pending goals\nNext: id=Y goal=..."]
-    CHECK_PENDING -->|"no"| CHECK_REVIEW
-
-    BLOCK_PENDING --> CLAUDE_STARTS["Claude marks goal\nin_progress, begins work\nCompletes and marks done"]
-    CLAUDE_STARTS --> START
-
-    CHECK_REVIEW{"Phase 3:\nunreviewed done\ngoals exist?"}
-    CHECK_REVIEW -->|"yes"| BLOCK_REVIEW["Block exit\nInstruct Claude to review\nall done goals inline\n(no subprocess — uses Bash tool)"]
-    CHECK_REVIEW -->|"no"| APPROVE
-
-    BLOCK_REVIEW --> CLAUDE_REVIEWS["Claude reads goals.json\nScores each 0-10\nWrites reviewed_at timestamp\nAppends fix goals if score < 9"]
-    CLAUDE_REVIEWS --> START
-
-    APPROVE["Phase 4:\nAll goals done and reviewed\nEmit session_end event\nAllow exit (exit 0)"]
-    APPROVE --> END([Session terminates cleanly])
-```
-
-*The four-phase Stop hook goal loop. The hook outputs a JSON block decision to block exit or allows it by returning exit code 0. Claude processes goals iteratively within a single session, looping until the queue is empty and all outputs are reviewed.*
-
-**Why inline review instead of a subprocess?**
-
-Phase 3 of the Stop hook deliberately avoids spawning a new Claude process to handle reviews. A subprocess approach would: (a) require its own authentication, (b) consume additional memory on the VM, and (c) be unable to access the current session's working context. Instead, the Stop hook emits a `CONTINUE` block reason that instructs the *current* Claude instance to perform the review using its Bash tool. This means the reviewing agent has access to the same working memory and tool permissions as the executing agent.
-
-**The review scoring rubric:**
-
-| Score | Meaning |
-|---|---|
-| 10 | Fully complete, verified working, production-ready |
-| 9 | Complete with trivial/cosmetic issues only |
-| < 9 | Incomplete, unverified, or incorrect — a fix goal is automatically appended |
-
-A score below 9 does not fail the session — it appends a new `pending` goal describing the specific fix needed. On the next Stop hook invocation, Phase 2 picks up the new fix goal and queues it for the next iteration. This creates a self-correcting loop: poor-quality outputs automatically generate corrective work rather than silently completing.
-
-**State machine:**
-
-The goals in `goals.json` form a finite state machine with these transitions:
-
-```
-pending -> in_progress  (when Claude marks goal started)
-in_progress -> done     (when Claude marks goal complete)
-done -> [reviewed]      (when Stop hook Phase 3 sets reviewed_at)
-done -> pending         (if review score < 9: fix goal appended)
-```
-
-The Stop hook reads this state machine at every invocation, ensuring that even if the Claude process is killed and restarted, it will resume from the correct phase rather than duplicating or skipping work.
-
----
+The claude-worker goal loop described in earlier revisions was retired with
+the VM fleet. Today's Stop chain is a single git-state reporter
+(hooks/check-git-state.sh); per-edit validators and the loop detector are
+the PreToolUse/PostToolUse chain, all wired in nixos-config's mcp.nix and
+tested by tests/test-hooks.sh.
 
 ## Anthropic Workflow Patterns Reference
 
