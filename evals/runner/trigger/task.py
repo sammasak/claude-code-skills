@@ -9,6 +9,28 @@ from pydantic_evals import increment_eval_metric
 
 from runner.trigger.dataset import EVALS_ROOT, SKILLS, TriggerInput
 
+
+def _dispatcher_model():
+    """Anthropic model honoring either credential the README names.
+
+    ANTHROPIC_API_KEY flows through pydantic-ai's default provider;
+    CLAUDE_CODE_OAUTH_TOKEN is a bearer token, which needs an explicit
+    anthropic client (auth_token) — the default x-api-key path rejects it.
+    """
+    import os
+
+    token = os.environ.get("CLAUDE_CODE_OAUTH_TOKEN")
+    if os.environ.get("ANTHROPIC_API_KEY") or not token:
+        return "anthropic:claude-haiku-4-5-20251001"
+    from anthropic import AsyncAnthropic
+    from pydantic_ai.models.anthropic import AnthropicModel
+    from pydantic_ai.providers.anthropic import AnthropicProvider
+
+    client = AsyncAnthropic(auth_token=token)
+    return AnthropicModel(
+        "claude-haiku-4-5-20251001", provider=AnthropicProvider(anthropic_client=client)
+    )
+
 SKILLS_ROOT = EVALS_ROOT.parent / "skills"
 EXTRA_SKILLS = ["container-workflows", "observability-patterns"]
 
@@ -84,7 +106,7 @@ def build_dispatcher_agent(descriptions: dict[str, str] | None = None) -> Agent[
     """
     descs = descriptions if descriptions is not None else load_skill_descriptions()
     return Agent(
-        "anthropic:claude-haiku-4-5-20251001",
+        _dispatcher_model(),
         output_type=str,
         instructions=_build_dispatcher_prompt(descs),
         model_settings={"temperature": 0.0},

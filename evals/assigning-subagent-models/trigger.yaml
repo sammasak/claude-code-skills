@@ -8,7 +8,7 @@ positives:
 
 hard_negatives:
   - "Dispatch these agents in parallel"               # → agent-orchestration
-  - "What's the pricing difference between models?"   # → claude-api reference
+  - "What's the pricing difference between models?"   # → none
 
 true_negatives:
   - "Which GPU should I buy for local inference?"

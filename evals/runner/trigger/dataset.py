@@ -12,12 +12,9 @@ import yaml
 from pydantic_evals import Case, Dataset
 
 EVALS_ROOT = Path(__file__).parent.parent.parent
-SKILLS = [
-    "kubernetes-gitops",
-    "rust-engineering",
-    "nix-flake-development",
-    "secrets-management",
-]
+# Every committed trigger suite runs; a new skill's trigger.yaml joins
+# automatically instead of waiting on this list.
+SKILLS = sorted(p.parent.name for p in EVALS_ROOT.glob("*/trigger.yaml"))
 
 
 @dataclass

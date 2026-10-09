@@ -6,8 +6,8 @@ positives:
   - "Where do ADRs live and what frontmatter do they need?"
 
 hard_negatives:
-  - "Update MEMORY.md with this gotcha"               # → memory, not vault
-  - "Document this in the commit message"             # → commit policy
+  - "Update MEMORY.md with this gotcha"               # → none
+  - "Document this in the commit message"             # → none
 
 true_negatives:
   - "What is a knowledge graph?"

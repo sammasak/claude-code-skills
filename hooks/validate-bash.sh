@@ -30,11 +30,13 @@ block() {
 # that QUOTES a leading-dash argument is refused as flag smuggling. The same
 # skeleton guards destructive kubectl deletes (stateful-volume safety).
 SQ="'"
-PFX='(^|[|&;]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice)[[:space:]]+)*\\?'
+PFX='(^|[|&;]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
 GP="${PFX}git([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
 KD="${PFX}kubectl[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?(pvc|persistentvolumeclaims?|namespaces?|ns)([[:space:]/]|\$)"
 
-SCAN="$CMD"
+# Escaped quotes are removed first so nested shell -c payloads cannot hide a
+# quote boundary from the unwrapper.
+SCAN=$(echo "$CMD" | sed 's/\\["'"${SQ}"']//g')
 for _ in 1 2 3; do
   BEFORE=$(echo "$SCAN" | wc -l)
   PAYLOADS=$(echo "$SCAN" | grep -oE "${PFX}(bash|sh|zsh|fish)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-c[[:space:]]+(${SQ}[^${SQ}]*${SQ}|\"[^\"]*\")" 2>/dev/null \
@@ -53,6 +55,10 @@ if echo "$SCAN" | grep -qE "${GP}[^|&;]*[\"${SQ}][[:space:]]*-"; then
 fi
 if echo "$STRIPPED" | grep -qE "$KD"; then
   block "destructive kubectl delete (pvc/namespace) needs the human; see the stateful-volume safety policy."
+fi
+if echo "$SCAN" | grep -qE '\|[[:space:]]*(ba|z|fi)?sh([[:space:]]|$)' \
+  && echo "$SCAN" | grep -qE 'git[[:space:]]+push[^|&;]*(--force|[[:space:]]-f([[:space:]]|$)|[[:space:]][+][^[:space:]])'; then
+  block "piping text containing a force push into a shell is not allowed."
 fi
 if echo "$STRIPPED" | grep -qE "sops[^|&;]*(-e|encrypt)[^|&;]*/tmp/"; then
   block "SOPS encrypt from /tmp is unsafe; write plaintext to the repo path, then sops -e --in-place."

@@ -1,6 +1,6 @@
 ---
 name: lean-code
-description: Use when writing or reviewing code — before adding a comment, doc block, error variant, config option, helper, or test beyond what the change strictly needs.
+description: Use when about to add a comment, doc block, error variant, config option, helper, or test beyond what the change strictly needs — in any code writing or review.
 ---
 
 # Lean Code
