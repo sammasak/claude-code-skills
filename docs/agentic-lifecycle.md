@@ -583,7 +583,7 @@ The five patterns from Anthropic's agent documentation map to the topologies and
 | Routing | DAG — conditional | Goal intake + routing | Dispatcher selects skill; Stop hook routes to correct phase |
 | Parallelization — Sectioning | Fan-out / Fan-in | Inter-agent delegation | Multiple evals run concurrently per `--max-concurrency` |
 | Parallelization — Voting | Fan-out + consensus | Output evaluation | `--repeat N` + pass@k estimation across N independent runs |
-| Orchestrator-Workers | Hierarchical | Full lifecycle | Orchestrator assigns sub-tasks to k8s-debugger, verify-deployment |
+| Orchestrator-Workers | Hierarchical | Full lifecycle | (conceptual — no orchestrator ships here; nearest real example is the sdlc walker dispatching stage agents) |
 | Evaluator-Optimizer | Recursive / Cyclical | Evaluation + optimization | GEPA optimizer loops over dispatcher accuracy until stop condition |
 
 ---

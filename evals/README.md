@@ -124,3 +124,12 @@ JSON reports are saved to:
 - `results/solving-TIMESTAMP.json`
 
 Reports include per-case inputs, outputs, evaluator scores, and reasons. Use `--no-save` on either runner to skip writing the report.
+
+## Current baselines (2026-10-09)
+
+- Trigger dispatch: 135/152 (89±1% plateau across reruns; GEPA is the
+  credential-gated lever).
+- Solving (haiku solver, strict = all assertions): **8/15 strict, 9/15
+  BashGrader, 8/15 rubric** — this is the measured task-solving pass rate.
+  "0 failures" in any run output means evaluator infrastructure health,
+  never the pass rate; quote the strict number.

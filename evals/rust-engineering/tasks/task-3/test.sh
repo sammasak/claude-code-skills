@@ -30,7 +30,7 @@ if ! grep -q "pedantic" "$OUTPUT"; then
 fi
 
 # Must NOT enable entire nursery group
-if grep -q '"nursery".*=.*\{' "$OUTPUT" && ! grep -q "nursery.*warn\|nursery.*deny" "$OUTPUT"; then
+if grep -qE '"nursery".*=.*\{' "$OUTPUT" && ! grep -q "nursery.*warn\|nursery.*deny" "$OUTPUT"; then
     : # nursery mentioned but not as a group enable — OK
 elif grep -qE 'nursery\s*=\s*\{[^}]*level[^}]*=.*"warn"' "$OUTPUT"; then
     echo "FAIL: must NOT enable entire nursery group"
