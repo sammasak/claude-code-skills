@@ -268,7 +268,7 @@ Each phase deserves explicit description:
 
 **Phase 3 — Tool execution:** Each Specialist runs its own ReAct loop against real tools. This is the only phase where actions with side effects occur. Hook interception happens here.
 
-**Phase 4 — Inter-agent delegation:** The Orchestrator may dispatch additional agents based on the results of earlier phases. In our system, `verify-deployment` is always called after a deployment sub-task completes.
+**Phase 4 — Inter-agent delegation:** an orchestrator may dispatch additional agents based on earlier phases. Here that is convention, not mechanism: the verify-service skill instructs calling `verify-deployment` after deploys, and nothing enforces it.
 
 **Phase 5 — Output evaluation:** A Judge reviews the collected outputs against a rubric or constraint list. This is the key quality gate before results are accepted.
 
@@ -487,9 +487,7 @@ graph TD
     subgraph "Evaluator Chain"
         E1["BashGrader\nFunctional correctness\nbash test.sh exit code"]
         E2["StructuredRubricJudge\nProse quality\nquality.md rubric scoring"]
-        E3["SpecificityDeltaEvaluator\nSkill impact\nlexical delta vs baseline"]
-        E4["CSRJudge\nConstraint satisfaction\nextracted SKILL.md rules"]
-        E1 --> E2 --> E3 --> E4
+        E1 --> E2
     end
 
     A1 & A2 & A3 & A4 & A5 --> H1
@@ -511,7 +509,7 @@ The hook system operates at the tool call boundary, not at the agent level. Ever
 
 ## 11. Evaluator Chain Detail
 
-The four-tier evaluator chain measures complementary properties of agent output. No single evaluator is sufficient: BashGrader catches structural failures that rubric scoring misses; CSRJudge catches rule violations that bash tests do not check; SpecificityDelta measures whether the skill is adding signal at all.
+The shipped evaluator chain is two-tier: BashGrader catches structural failures that rubric scoring misses; StructuredRubricJudge scores prose quality. (SpecificityDelta and CSRJudge remain unbuilt designs — see the design-note below.)
 
 ```mermaid
 flowchart TD
@@ -550,7 +548,7 @@ flowchart TD
     REPORT["Evaluation Report\nJSON: assertions + scores\nSaved to results/"]
 ```
 
-*The four-tier evaluator chain with decision branches. All four evaluators run independently — a pass at one tier does not skip subsequent tiers. SpecificityDelta and CSRJudge require explicit flags because each costs an additional API call.*
+*The shipped two-tier chain with decision branches; the SpecificityDelta/CSRJudge boxes below the fold are UNBUILT designs kept for reference, not running code.*
 
 **Why four tiers instead of one?**
 
@@ -558,7 +556,7 @@ A single LLM judge would conflate functional correctness with prose quality, mis
 
 - BashGrader is model-free and deterministic — it does not drift.
 - StructuredRubricJudge measures quality against a human-authored rubric, catching outputs that are structurally correct but technically wrong or shallow.
-- SpecificityDeltaEvaluator measures the skill's impact, not the output's quality. A skill that produces high-quality output indistinguishable from a no-skill baseline is not adding value.
+- (Design note, unbuilt) SpecificityDeltaEvaluator would measure the skill impact vs a no-skill baseline; CSRJudge would check extracted SKILL.md constraints. Neither exists in runner/ today.
 - CSRJudge measures rule adherence, catching outputs that pass bash tests and rubric scoring while silently violating documented constraints (e.g., using `kubectl delete` where `flux suspend` is required).
 
 The CSRJudge uses `claude-sonnet-4-6` rather than Haiku because multi-constraint literal checking at scale is unreliable with smaller models. The constraint list is extracted by a regex-based parser (`constraint_extractor.py`) that recognizes specific markdown patterns: `**CRITICAL**`, `**IMPORTANT**`, `- **Never**`, `- **Always**`, and bullet points containing `must`, `never`, `always`, or `require`.
