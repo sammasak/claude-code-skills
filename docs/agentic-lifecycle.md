@@ -579,7 +579,7 @@ The five patterns from Anthropic's agent documentation map to the topologies and
 | Pattern | Topology | Lifecycle phase | Example in this system |
 |---|---|---|---|
 | Prompt Chaining | Pipeline / Sequential | Planning + Tool execution | Skill body injected before user message; dispatcher runs before agent |
-| Routing | DAG — conditional | Goal intake + routing | Dispatcher selects skill; Stop hook routes to correct phase |
+| Routing | DAG — conditional | Goal intake + routing | Dispatcher selects skill (the phase-routing Stop hook is retired — see §12) |
 | Parallelization — Sectioning | Fan-out / Fan-in | Inter-agent delegation | Multiple evals run concurrently per `--max-concurrency` |
 | Parallelization — Voting | Fan-out + consensus | Output evaluation | `--repeat N` + pass@k estimation across N independent runs |
 | Orchestrator-Workers | Hierarchical | Full lifecycle | (conceptual — no orchestrator ships here; nearest real example is the sdlc walker dispatching stage agents) |
