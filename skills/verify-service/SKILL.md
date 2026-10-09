@@ -1,6 +1,6 @@
 ---
 name: verify-service
-description: "Use after deploying or changing a homelab service, before reporting it done."
+description: "Use when a homelab service was just deployed or changed, before reporting it done or live."
 allowed-tools: Bash, mcp__plugin_hm_playwright__browser_navigate, mcp__plugin_hm_playwright__browser_snapshot, mcp__plugin_hm_playwright__browser_take_screenshot, mcp__plugin_hm_playwright__browser_wait_for
 ---
 

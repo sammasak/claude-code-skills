@@ -1,0 +1,13 @@
+skill: knowledge-vault
+
+positives:
+  - "Who is this recruiter, check the vault"
+  - "Write a runbook for the datastore restore to the vault"
+  - "Where do ADRs live and what frontmatter do they need?"
+
+hard_negatives:
+  - "Update MEMORY.md with this gotcha"               # → memory, not vault
+  - "Document this in the commit message"             # → commit policy
+
+true_negatives:
+  - "What is a knowledge graph?"

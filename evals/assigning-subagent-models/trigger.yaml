@@ -1,0 +1,14 @@
+skill: assigning-subagent-models
+
+positives:
+  - "Which model should each agent in this workflow run on?"
+  - "Is haiku enough for the verification step?"
+  - "Writing a Workflow script with agent() calls, pick the models"
+  - "The .claude/agents frontmatter needs a model line"
+
+hard_negatives:
+  - "Dispatch these agents in parallel"               # → agent-orchestration
+  - "What's the pricing difference between models?"   # → claude-api reference
+
+true_negatives:
+  - "Which GPU should I buy for local inference?"

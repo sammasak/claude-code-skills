@@ -1,0 +1,13 @@
+skill: ntfy-notifications
+
+positives:
+  - "Send a notification when the loop finishes"
+  - "The cron job should page me on failure via ntfy"
+  - "Why did my ntfy POST silently do nothing?"
+
+hard_negatives:
+  - "Set up Alertmanager routing"                     # → kubernetes-gitops
+  - "Email me the report"                             # → none
+
+true_negatives:
+  - "How do iOS push notifications work?"

@@ -1,0 +1,13 @@
+skill: e2e-testing
+
+positives:
+  - "Verify the signup flow works in the running app"
+  - "Use the browser to click through checkout and collect screenshots"
+  - "Playwright says the selector is not found on the login page"
+
+hard_negatives:
+  - "Is the service healthy after deploy?"            # → verify-service
+  - "Write unit tests for this component"             # → rust-engineering / tdd
+
+true_negatives:
+  - "What is end-to-end encryption?"

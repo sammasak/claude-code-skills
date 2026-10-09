@@ -1,0 +1,14 @@
+skill: agent-orchestration
+
+positives:
+  - "Dispatch three subagents in parallel to research these libraries"
+  - "Should this run as a fork or a fresh agent?"
+  - "Define a reusable reviewer subagent for this repo"
+  - "Run this task on acer instead of locally"
+
+hard_negatives:
+  - "Which model should each subagent run on?"        # → assigning-subagent-models
+  - "Drive the sdlc stages until green"               # → sdlc-pipeline
+
+true_negatives:
+  - "What is a Kubernetes operator?"

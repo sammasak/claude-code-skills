@@ -10,7 +10,7 @@ Plain GFM markdown in a git repo, organised as rooms (`INDEX.md` for discovery +
 Search discipline and the write gate are owned by the global CLAUDE.md (subagent-only search; durable reference only, commit-first). This skill owns the writing mechanics:
 
 - Links: relative markdown paths from the current file, e.g. `[age keys](../nix/sops-nixos.md#age-keys)`; check with `test -f "$(dirname <file>)/<relpath>"`. Standard GFM only: no `[[...]]` links, embeds, or callout syntax.
-- Placement: ADRs at `<room>/decisions/ADR-NNN-slug.md`, RFCs at `<room>/decisions/RFC-YYYY-MM-slug.md`, binary sources in a co-located `sources/`. Name files after their subject (never `notes.md` or `misc/`), one topic per file.
+- Placement: ADRs at `<room>/decisions/ADR-NNN-slug.md`, RFCs at `<room>/decisions/RFC-YYYY-MM-slug.md`, binary sources in a co-located `sources/`.
 - ADR frontmatter: `status` (proposed | accepted | deprecated | superseded), `date`, `supersedes`, `related`; sections Context, Decision (one sentence), Options Considered (table), Consequences, Links.
 - After adding or renaming files, update the room's `INDEX.md` to match.
-- Sync: `cd ~/knowledge && git pull && git add <files> && git commit && git push`.
+  (Naming and the commit+push flow are owned by the global CLAUDE.md.)

@@ -1,0 +1,13 @@
+skill: verify-service
+
+positives:
+  - "The deploy finished, confirm the service is live before we call it done"
+  - "Is herman actually healthy behind Authentik?"
+  - "Check pod status and the public URL for the new release"
+
+hard_negatives:
+  - "Click through the signup flow in the browser"    # → e2e-testing
+  - "Why is the pod CrashLooping?"                    # → k8s-debugger agent
+
+true_negatives:
+  - "What does five nines availability mean?"

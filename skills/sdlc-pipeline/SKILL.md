@@ -1,6 +1,6 @@
 ---
 name: sdlc-pipeline
-description: "Use to drive the sdlc:* stage machine in a repo whose devenv defines platform.sdlc (rust preset stages: sketch -> model -> test -> review -> perf -> security; sdlc:done is the aggregate task)."
+description: "Use when driving the sdlc:* stage machine in a repo whose devenv defines platform.sdlc (rust preset stages: sketch -> model -> test -> review -> perf -> security; sdlc:done is the aggregate task)."
 allowed-tools: Bash, Read, Edit, Write, Agent
 ---
 

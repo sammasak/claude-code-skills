@@ -1,0 +1,12 @@
+# Manual-dispatch backstop for the client-side gates (Actions-frugality
+# policy: no per-push CI; run this to replay the hook suite server-side,
+# e.g. before a release or after a --no-verify incident).
+name: hook-gate
+on: workflow_dispatch
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v27
+      - run: nix shell nixpkgs#shellcheck nixpkgs#yq-go --command bash tests/test-hooks.sh

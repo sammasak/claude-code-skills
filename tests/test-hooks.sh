@@ -59,6 +59,14 @@ check "multiline quoted literal not misblocked" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"git status\ngrep 'git push --force' docs/a.md"}')"
 check "multiline real force blocked" 2 "BLOCKED: force push" - \
   validate-bash.sh "$(j b1 '{"command":"cd /tmp\ngit push --force origin main"}')"
+check "quoted flag smuggling blocked" 2 "BLOCKED: quoted flags" - \
+  validate-bash.sh "$(j b1 '{"command":"git push origin main \"--force\""}')"
+check "quoted short flag smuggling blocked" 2 "BLOCKED: quoted flags" - \
+  validate-bash.sh "$(j b1 '{"command":"git push '\''-f'\'' origin main"}')"
+check "multiline commit message literal not misblocked" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git commit -m \"subject line\n\nnever git push --force here\n\""}')"
+check "env-prefixed force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"env git push --force origin main"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 

@@ -1,6 +1,6 @@
 ---
 name: credentials
-description: "Use when running build, push, or deploy commands that need credentials (registry auth, API keys, tokens). Guides how to load credentials from the correct sources in this homelab."
+description: "Use when running build, push, or deploy commands that need credentials (registry auth, API keys, tokens) in this homelab."
 allowed-tools: Bash, Read
 ---
 
@@ -13,7 +13,7 @@ Before running any command that requires credentials, load them from the correct
 | Source | Location | Use for |
 |---|---|---|
 | Environment vars | Already set in shell | Highest priority — use if present |
-| `~/.env` | `~/.env` | API keys, OAuth tokens, misc secrets |
+| `~/.env` | `~/.env` | API keys, OAuth tokens, misc secrets (list non-exhaustive — read the file) |
 | Container registry auth | `~/.config/containers/auth.json` | `skopeo`, `podman`, `buildah`, registry pushes |
 | SOPS secrets | `~/homelab-gitops/` or `~/nixos-config/secrets/` | Kubernetes secrets, NixOS service secrets |
 
