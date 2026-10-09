@@ -1,8 +1,7 @@
 ---
 name: sdlc-pipeline
-description: "Use to drive the sdlc:* stage machine in a repo whose devenv defines platform.sdlc (rust preset stages: sketch -> model -> test -> review -> perf -> security; sdlc:done is the aggregate task). Walks the pipeline by running devenv tasks run sdlc:done, dispatching the agent for the first failing stage, and looping until green."
+description: "Use to drive the sdlc:* stage machine in a repo whose devenv defines platform.sdlc (rust preset stages: sketch -> model -> test -> review -> perf -> security; sdlc:done is the aggregate task)."
 allowed-tools: Bash, Read, Edit, Write, Task
-injectable: true
 ---
 
 # SDLC Pipeline Walker

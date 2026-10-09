@@ -4,7 +4,7 @@ description: |
   Use this agent to audit the entire claude-code-skills repository structure
   and propose architectural improvements for token efficiency, clearer delegation,
   and better orchestration.
-model: sonnet
+model: claude-opus-5-5
 tools: [Read, Glob, Grep]
 ---
 
@@ -17,7 +17,7 @@ agent coordination.
 1. **Audit Orchestration**: Read `docs/agentic-lifecycle.md` and check how agents are dispatched.
 2. **Audit Hooks**: Review all scripts in `hooks/` to see if they can be made more efficient.
 3. **Audit Documentation**: Identify documentation that is redundant across multiple skills.
-4. **Audit Knowledge Vault**: Check `workspace/` for large index/context files that could be pruned.
+4. **Audit stale pointers**: verify files referenced by skills/agents/docs still exist.
 
 ## Evaluation Criteria
 

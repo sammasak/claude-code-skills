@@ -2,7 +2,6 @@
 name: agent-orchestration
 description: "Use when dispatching work to background or parallel subagents, defining custom subagents, or choosing between local agent dispatch and running Claude on another machine (herdr)."
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob
-injectable: true
 ---
 
 # agent-orchestration

@@ -1,7 +1,6 @@
 ---
 name: assigning-subagent-models
 description: "Use when writing or editing a Workflow script (agent()/pipeline()/parallel()), dispatching a subagent with the Agent tool, or writing a .claude/agents/*.md definition."
-injectable: true
 ---
 
 # assigning-subagent-models
@@ -27,7 +26,7 @@ Pick the tier by the **cost of being wrong** and the **kind of thinking** requir
 
 | Tier | Pinned ID | Alias | Use for |
 |------|-----------|-------|---------|
-| **Author / plan** | `claude-fable-5-1` or `claude-opus-5-5` | `fable` / `opus` | Designing, creating, or editing the workflow itself; top-tier reasoning and architecture. This is the model *you* run as while authoring. |
+| **Author / plan** | `claude-fable-5` or `claude-opus-5-5` | `fable` / `opus` | Designing, creating, or editing the workflow itself; top-tier reasoning and architecture. This is the model *you* run as while authoring. |
 | **Hard** | `claude-opus-5-5` | `opus` | Fact-checking, implementation, adversarial verification, synthesis, judging, decisions — anything where a wrong answer is costly. |
 | **Light** | `claude-sonnet-5` | `sonnet` | Research, information gathering, search fan-out, summarization, first-pass drafting. |
 | **Trivial** | `claude-haiku-4-5-20251001` | `haiku` | Mechanical work: lint/format, simple greps, boilerplate transforms, rote extraction. |

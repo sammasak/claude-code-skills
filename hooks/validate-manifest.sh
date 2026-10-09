@@ -1,75 +1,46 @@
 #!/usr/bin/env bash
-# PostToolUse Write/Edit hook — Kubernetes manifest validator
-# Checks YAML syntax for any .yaml file written by Claude.
-# Outputs warnings to stdout (informational, does not block).
+# PostToolUse Write|Edit hook — Kubernetes manifest validator.
+# YAML syntax via yq plus the cluster security baseline (same policy as
+# agents/validate-k8s.md: CPU limits are optional, memory limits are not).
+# Never blocks (PostToolUse cannot block).
+
+set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/input.sh"
+source "$SCRIPT_DIR/lib/state.sh" 2>/dev/null || true
 source "$SCRIPT_DIR/lib/log.sh" 2>/dev/null || true
+read_hook_input
+init_state 2>/dev/null || true
 START_MS=$(($(date +%s%N) / 1000000))
 RESULT="ok"
 
-FILE=$(echo "$CLAUDE_TOOL_INPUT" | jq -r '.file_path // ""' 2>/dev/null || echo "")
+FILE=$(hook_file_path)
 
-emit_event() {
-  local json="$1"
-  curl -sf -X POST "${CLAUDE_WORKER_API:-http://localhost:4200}/events" \
-    -H "Content-Type: application/json" \
-    -d "$json" \
-    --max-time 1 -o /dev/null 2>/dev/null || true
+finish() {
+  log_hook "validate-manifest" "$1" "$(( ($(date +%s%N) / 1000000) - START_MS ))" 2>/dev/null || true
+  exit 0
 }
 
-if [ -z "$FILE" ]; then
-  ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-  log_hook "validate-manifest" "skipped" "$ELAPSED" '{"reason":"no-file"}' 2>/dev/null || true
-  exit 0
+case "$FILE" in
+  *.yaml | *.yml) ;;
+  *) finish "skipped" ;;
+esac
+[ -f "$FILE" ] || finish "skipped"
+command -v yq >/dev/null 2>&1 || finish "skipped"
+
+if ! yq eval '.' "$FILE" >/dev/null 2>&1; then
+  echo "Invalid YAML syntax in $FILE — check indentation before applying." >&2
+  finish "warned"
 fi
 
-# Only validate .yaml files
-if ! echo "$FILE" | grep -qE '\.ya?ml$'; then
-  ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-  log_hook "validate-manifest" "skipped" "$ELAPSED" "{\"file\":\"$(basename "$FILE")\",\"reason\":\"not-yaml\"}" 2>/dev/null || true
-  exit 0
+if yq eval '.kind' "$FILE" 2>/dev/null | grep -qiE "^(Deployment|StatefulSet|DaemonSet)$"; then
+  for probe in seccompProfile allowPrivilegeEscalation "resources:"; do
+    if ! grep -q "$probe" "$FILE"; then
+      echo "Workload manifest $FILE is missing $probe (cluster baseline: runAsNonRoot, drop ALL caps, requests + memory limit; CPU limit optional)." >&2
+      RESULT="warned"
+    fi
+  done
 fi
 
-if [ ! -f "$FILE" ]; then
-  ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-  log_hook "validate-manifest" "skipped" "$ELAPSED" "{\"file\":\"$(basename "$FILE")\",\"reason\":\"not-found\"}" 2>/dev/null || true
-  exit 0
-fi
-
-emit_event "{\"type\":\"file_op\",\"op\":\"${CLAUDE_TOOL_NAME:-Write}\",\"path\":$(echo "$FILE" | jq -Rs .)}"
-
-# Check YAML syntax with yq
-if yq eval '.' "$FILE" > /dev/null 2>&1; then
-  echo "✓ YAML valid: $FILE"
-else
-  echo "WARNING: Invalid YAML syntax in $FILE — check indentation and syntax before applying."
-  RESULT="warned"
-fi
-
-# Warn if it looks like a Kubernetes manifest missing security context
-if yq eval '.kind' "$FILE" 2>/dev/null | grep -qiE "^Deployment$|^StatefulSet$|^DaemonSet$"; then
-  if ! grep -q "seccompProfile" "$FILE"; then
-    echo "WARNING: $FILE is a workload manifest missing seccompProfile in securityContext. Add: seccompProfile: {type: RuntimeDefault}"
-    RESULT="warned"
-  fi
-  if ! grep -q "allowPrivilegeEscalation" "$FILE"; then
-    echo "WARNING: $FILE is missing allowPrivilegeEscalation: false in container securityContext."
-    RESULT="warned"
-  fi
-  if ! grep -q "resources:" "$FILE"; then
-    echo "WARNING: $FILE is missing resource requests/limits."
-    RESULT="warned"
-  fi
-  if [ "$RESULT" = "warned" ]; then
-    echo "WARNING: Missing securityContext. Add to the container spec:" >&2
-    echo "  securityContext:" >&2
-    echo "    runAsNonRoot: true" >&2
-    echo "    readOnlyRootFilesystem: true" >&2
-    echo "    allowPrivilegeEscalation: false" >&2
-  fi
-fi
-
-ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))
-log_hook "validate-manifest" "$RESULT" "$ELAPSED" "{\"file\":\"$(basename "$FILE")\"}" 2>/dev/null || true
-exit 0
+finish "$RESULT"

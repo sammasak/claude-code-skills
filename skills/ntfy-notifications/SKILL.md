@@ -2,7 +2,6 @@
 name: ntfy-notifications
 description: "Use when sending a notification to ntfy from a homelab service, loop, script, or agent."
 allowed-tools: Bash
-injectable: true
 ---
 
 # ntfy Notifications

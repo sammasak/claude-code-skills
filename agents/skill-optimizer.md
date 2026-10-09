@@ -5,7 +5,7 @@ description: |
   It identifies large files, redundant information, and documentation that
   could be moved to separate files to reduce the baseline token usage
   of active skills.
-model: sonnet
+model: claude-sonnet-5
 tools: [Read, Glob, Grep]
 ---
 
@@ -14,9 +14,9 @@ to use the minimum number of tokens while still providing high-quality guidance.
 
 ## Your Process
 
-1. **Identify targets**: Use Glob and `du` (via Bash if available, otherwise just Glob + Read) to find large SKILL.md files.
+1. **Identify targets**: Glob skills/*/SKILL.md and compare line counts via Read.
 2. **Audit content**: Read the file and categorize sections:
-   - **Critical**: Triggers (<when_to_use>), core principles, mandatory lints.
+   - **Critical**: Triggers (the frontmatter description), core principles, mandatory lints.
    - **Contextual**: Examples, "Patterns We Use", deep-dive explanations.
 3. **Propose refactoring**:
    - Keep **Critical** sections in the SKILL.md.
@@ -42,7 +42,7 @@ to use the minimum number of tokens while still providing high-quality guidance.
 
 1. **Move to external docs**: [Section names] -> [target file]
 2. **Distillation**: [Section names] -> [Proposed concise version]
-3. **Trigger refinement**: [Proposed new description/when_to_use]
+3. **Trigger refinement**: [Proposed new description]
 
 ### Impact
 - Baseline token reduction: [X]%

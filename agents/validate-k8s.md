@@ -5,7 +5,7 @@ description: |
   cluster security standards. Checks security context, resource limits,
   and namespace PSS labels. Reports any missing required fields.
 model: claude-haiku-4-5-20251001
-tools: [bash, read]
+tools: [Bash, Read]
 ---
 
 You are a Kubernetes manifest validator. For each YAML file provided, check all of the following and report findings:

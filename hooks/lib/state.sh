@@ -4,10 +4,13 @@
 #
 # Schema v2: adds schema_version field; upgrade_state() migrates v1 files.
 
-STATE_FILE="/tmp/claude-hook-state-${CLAUDE_SESSION_ID:-$$}.json"
 STATE_SCHEMA_VERSION=2
 
 init_state() {
+  # Resolved here, not at source time: hooks learn the session id from stdin
+  # (read_hook_input) after sourcing this file.
+  STATE_FILE="/tmp/claude-hook-state-${CLAUDE_SESSION_ID:-$$}.json"
+  find /tmp -maxdepth 1 -name 'claude-hook-state-*.json' -mtime +2 -delete 2>/dev/null || true
   if [ -f "$STATE_FILE" ]; then
     upgrade_state
     return

@@ -9,7 +9,7 @@ description: |
   The agent reads the changed files and evaluates them against the deep-modules and lean-code skills
   and language-specific standards. It returns a structured review with CRITICAL/IMPORTANT/SUGGESTION
   severity tiers. It does NOT make changes — it only reads and reports.
-model: sonnet
+model: claude-opus-5-5
 tools: [Read, Glob, Grep]
 ---
 

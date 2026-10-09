@@ -7,12 +7,14 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/input.sh"
 source "$SCRIPT_DIR/lib/state.sh" 2>/dev/null || true
 source "$SCRIPT_DIR/lib/log.sh" 2>/dev/null || true
+read_hook_input
 init_state 2>/dev/null || true
 START_MS=$(($(date +%s%N) / 1000000))
 
-FILE=$(echo "${CLAUDE_TOOL_INPUT:-{\}}" | jq -r '.file_path // ""' 2>/dev/null || echo "")
+FILE=$(hook_file_path)
 
 case "$FILE" in
   *.nix) ;;

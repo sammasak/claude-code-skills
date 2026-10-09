@@ -1,23 +1,21 @@
 #!/usr/bin/env bash
-# PreToolUse/Bash hook — detect command loops and failure-retry patterns.
-#
-# Tracks normalized commands per session. Warns at escalating thresholds.
-# Uses fuzzy matching: strips paths and flag values before comparing.
+# PreToolUse Bash hook — detect command loops.
+# Tracks normalized commands per session; warns at escalating thresholds.
+# Fuzzy matching: strips paths and flag values before comparing.
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "$SCRIPT_DIR/lib/input.sh"
 source "$SCRIPT_DIR/lib/state.sh" 2>/dev/null || true
 source "$SCRIPT_DIR/lib/log.sh" 2>/dev/null || true
+read_hook_input
 
 START_MS=$(($(date +%s%N) / 1000000))
 
-# Read hook JSON from stdin
-INPUT=$(cat)
-CMD=$(echo "$INPUT" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
+CMD=$(hook_command)
 [ -z "$CMD" ] && exit 0
 
-# Normalize command for fuzzy matching
 NORMALIZED=$(echo "$CMD" | \
   sed 's|/[^ ]*||g' | \
   sed 's/--[a-z-]*=[^ ]*//g' | \
@@ -25,61 +23,30 @@ NORMALIZED=$(echo "$CMD" | \
   xargs)
 [ -z "$NORMALIZED" ] && exit 0
 
-# Per-session tracking files
-LOOP_FILE="/tmp/claude-loop-${CLAUDE_SESSION_ID:-$$}.log"
-FAIL_FILE="/tmp/claude-fails-${CLAUDE_SESSION_ID:-$$}.log"
+LOOP_FILE="/tmp/claude-loop-${CLAUDE_SESSION_ID}.log"
+find /tmp -maxdepth 1 -name 'claude-loop-*.log' -mtime +2 -delete 2>/dev/null || true
 
-# Append normalized command
 echo "$NORMALIZED" >> "$LOOP_FILE"
 
-# Count consecutive identical commands from the tail
-COUNT=0
-if [ -f "$LOOP_FILE" ]; then
-  COUNT=$(tac "$LOOP_FILE" | while IFS= read -r line; do
-    [ "$line" = "$NORMALIZED" ] && echo "match" || break
-  done | wc -l)
-fi
+COUNT=$(tac "$LOOP_FILE" | while IFS= read -r line; do
+  [ "$line" = "$NORMALIZED" ] && echo "match" || break
+done | wc -l)
 
-# --- Failure-retry detection ---
-# Check if the last command's exit code was non-zero (tracked by PostToolUse or previous run)
-# Read consecutive failure count for this normalized command
-FAIL_COUNT=0
-if [ -f "$FAIL_FILE" ]; then
-  FAIL_COUNT=$(tac "$FAIL_FILE" | while IFS= read -r line; do
-    [ "$line" = "FAIL:$NORMALIZED" ] && echo "match" || break
-  done | wc -l)
-fi
-
-# Update shared state
 init_state 2>/dev/null || true
 update_state ".loop_count = $COUNT" 2>/dev/null || true
 
 RESULT="ok"
-
-# Failure-retry escalation (3+ consecutive failures of same command)
-if [ "$FAIL_COUNT" -ge 3 ]; then
-  RESULT="failure-retry"
-  echo "⚠ Same command has failed $FAIL_COUNT consecutive times. Try a different approach." >&2
-  inc_state 'errors_seen' 2>/dev/null || true
-fi
-
-# Repetition escalation thresholds
 if [ "$COUNT" -ge 12 ]; then
   RESULT="loop-critical"
-  cat >&2 << 'WARN'
-
-⚠ Loop detected (12+ repetitions of the same command pattern).
-Consider using /systematic-debugging to find the root cause instead of retrying.
-
-WARN
+  echo "Loop detected ($COUNT repetitions of the same command pattern). Use systematic debugging to find the root cause instead of retrying." >&2
   inc_state 'errors_seen' 2>/dev/null || true
 elif [ "$COUNT" -ge 8 ]; then
   RESULT="loop-warning"
-  echo "⚠ Possible loop ($COUNT repetitions of similar command). Consider a different approach." >&2
+  echo "Possible loop ($COUNT repetitions of similar command). Consider a different approach." >&2
   inc_state 'errors_seen' 2>/dev/null || true
 elif [ "$COUNT" -ge 5 ]; then
   RESULT="loop-notice"
-  echo "⚠ Same command pattern repeated $COUNT times." >&2
+  echo "Same command pattern repeated $COUNT times." >&2
 fi
 
 ELAPSED=$(( ($(date +%s%N) / 1000000) - START_MS ))

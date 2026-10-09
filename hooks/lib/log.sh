@@ -7,17 +7,17 @@
 #                 '{"file":"foo.txt","count":3}'
 #   All fields (hook, session, duration_ms, result, ts) are always present.
 
-HOOK_LOG_DIR="${HOME}/workspace/.hook-log"
+HOOK_LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/claude-hooks"
 
 log_hook() {
   local hook="$1" result="$2" duration_ms="$3"
   local extras="${4:-}"
 
-  [ -d "${HOME}/workspace" ] || return 0
-  mkdir -p "$HOOK_LOG_DIR"
+  mkdir -p "$HOOK_LOG_DIR" 2>/dev/null || return 0
+  find "$HOOK_LOG_DIR" -name '*.jsonl' -mtime +30 -delete 2>/dev/null || true
 
   # Build base entry; merge extras JSON object if provided
-  local log_line
+  local log_line=""
   if [ -n "$extras" ]; then
     log_line=$(jq -cn \
       --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \

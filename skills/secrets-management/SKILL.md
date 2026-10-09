@@ -2,7 +2,6 @@
 name: secrets-management
 description: "Use when creating, encrypting, editing, or rotating a SOPS secret in homelab-gitops or nixos-config, changing age recipients, or wiring secret delivery (Flux decryption, sops-nix). Not for application code that reads env vars or tokens at runtime."
 allowed-tools: Bash, Read, Grep, Glob
-injectable: true
 ---
 
 # Secrets Management (homelab)

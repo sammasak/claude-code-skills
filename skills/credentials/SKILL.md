@@ -2,7 +2,6 @@
 name: credentials
 description: "Use when running build, push, or deploy commands that need credentials (registry auth, API keys, tokens). Guides how to load credentials from the correct sources in this homelab."
 allowed-tools: Bash, Read
-injectable: true
 ---
 
 # Credentials
