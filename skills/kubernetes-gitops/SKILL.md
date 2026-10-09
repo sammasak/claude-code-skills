@@ -43,3 +43,14 @@ just unhealthy        # in ~/homelab-gitops
 ```
 
 For deeper diagnosis dispatch the `k8s-debugger` agent.
+
+## Destructive deletes (kyverno-enforced)
+
+Deleting a PVC, PV, or Namespace is admission-denied for humans until the
+object carries the break-glass annotation — annotate, re-read the denial you
+are overriding, then delete:
+
+```bash
+kubectl -n <ns> annotate pvc <name> sammasak.dev/allow-delete=true
+kubectl -n <ns> delete pvc <name>
+```

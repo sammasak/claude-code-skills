@@ -37,7 +37,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."  # or CLAUDE_CODE_OAUTH_TOKEN
 ## Running trigger evals
 
 ```bash
-uv run python -m runner.trigger                              # all 67 cases
+uv run python -m runner.trigger                              # all committed trigger cases (see evals/results for the current count)
 uv run python -m runner.trigger --skill kubernetes-gitops   # one skill
 uv run python -m runner.trigger --repeat 3                  # 3x for variance measurement
 uv run python -m runner.trigger --no-save                   # skip JSON report save

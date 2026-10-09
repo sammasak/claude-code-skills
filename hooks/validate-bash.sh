@@ -30,9 +30,9 @@ block() {
 # that QUOTES a leading-dash argument is refused as flag smuggling. The same
 # skeleton guards destructive kubectl deletes (stateful-volume safety).
 SQ="'"
-PFX='(^|[|&;]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
-GP="${PFX}git([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
-KD="${PFX}kubectl[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns)([[:space:]/]|\$)"
+PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
+GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
+KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?([a-z,-]+,)?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns)([[:space:],/]|\$)"
 
 # Escaped quotes are removed first so nested shell -c payloads cannot hide a
 # quote boundary from the unwrapper.
@@ -47,7 +47,7 @@ for _ in 1 2 3; do
 done
 STRIPPED=$(echo "$SCAN" | sed -z "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
 
-if echo "$STRIPPED" | grep -qE "${GP}[^|&;]*([[:space:]]--force([^-]|\$)|[[:space:]]-f([[:space:]]|\$)|[[:space:]][+][^[:space:]])"; then
+if echo "$STRIPPED" | grep -qE "${GP}[^|&;]*([[:space:]]--force([^-]|\$)|[[:space:]]-[A-Za-z]*f[A-Za-z]*([[:space:]]|\$)|[[:space:]][+][^[:space:]])"; then
   block "force push (including plus-refspec) is not allowed; revert with a new commit or push a branch."
 fi
 if echo "$SCAN" | grep -qE "${GP}[^|&;]*[\"${SQ}][[:space:]]*-"; then

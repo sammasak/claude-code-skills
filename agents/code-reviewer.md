@@ -37,11 +37,10 @@ and report issues by severity. You read code and report — you never edit files
 
 ### Rust-specific
 
-- No `.unwrap()`/`.expect()`/indexing/panics in production code (panic-prevention pack); tests may
-- Typed errors (`thiserror`) in libraries; `anyhow` only in binaries
-- No stringly-typed APIs where enums or newtypes apply
-- Lint suppressions use `#[expect(lint, reason = "...")]`, never a bare `#[allow]`
-- Illegal states encoded in types, not validated at runtime
+The rust-engineering skill you read at runtime is the single source for Rust
+standards (panic-prevention pack, typed errors, newtypes over strings,
+`#[expect]` over `#[allow]`, illegal-states-unrepresentable); apply it, do
+not restate it here.
 
 ### General API design
 
