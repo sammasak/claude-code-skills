@@ -41,6 +41,10 @@ check "sops from /tmp blocked" 2 "BLOCKED: SOPS" - \
   validate-bash.sh "$(j b1 '{"command":"sops -e /tmp/secret.yaml"}')"
 check "normal command allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"cargo test"}')"
+check "short -f flag blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"git push -f origin main"}')"
+check "compound rm -f not misblocked" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git push origin main && rm -f /tmp/x"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 

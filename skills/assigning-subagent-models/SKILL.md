@@ -29,7 +29,7 @@ Pick the tier by the **cost of being wrong** and the **kind of thinking** requir
 | **Author / plan** | `claude-fable-5` or `claude-opus-5-5` | `fable` / `opus` | Designing, creating, or editing the workflow itself; top-tier reasoning and architecture. This is the model *you* run as while authoring. |
 | **Hard** | `claude-opus-5-5` | `opus` | Fact-checking, implementation, adversarial verification, synthesis, judging, decisions — anything where a wrong answer is costly. |
 | **Light** | `claude-sonnet-5` | `sonnet` | Research, information gathering, search fan-out, summarization, first-pass drafting. |
-| **Trivial** | `claude-haiku-4-5-20251001` | `haiku` | Mechanical work: lint/format, simple greps, boilerplate transforms, rote extraction. |
+| **Trivial** | `claude-haiku-4-5` | `haiku` | Mechanical work: lint/format, simple greps, boilerplate transforms, rote extraction. |
 
 **Heuristic:** *research / gather → Sonnet. verify / implement / decide → Opus. design the whole thing → Fable or Opus. pure mechanical → Haiku.*
 
@@ -63,7 +63,7 @@ const impl = await agent('Implement the chosen integration.',
   { model: 'opus', label: 'implement', schema: IMPL })                 // claude-opus-5-5 — costly if wrong
 
 const lint = await agent('Run the formatter and report warnings.',
-  { model: 'haiku', label: 'lint' })                                   // claude-haiku-4-5-20251001 — mechanical
+  { model: 'haiku', label: 'lint' })                                   // claude-haiku-4-5 — mechanical
 ```
 
 ## Example — an Agent-tool dispatch and an agent definition

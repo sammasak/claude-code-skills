@@ -22,7 +22,9 @@ block() {
   exit 2
 }
 
-if echo "$CMD" | grep -qE "git push.*(--force([^-]|$)|-f\b)"; then
+# [^|&;]* keeps the match inside the push invocation itself, so a later
+# `rm -f` in a compound command does not false-positive.
+if echo "$CMD" | grep -qE "git push[^|&;]*(--force([^-]|$)|-f\b)"; then
   block "force push is not allowed; revert with a new commit or push a branch."
 fi
 

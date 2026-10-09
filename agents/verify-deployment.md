@@ -3,7 +3,7 @@ name: verify-deployment
 description: |
   Use this agent after deploying a service to verify it is live and healthy.
   Checks pod status and curls the public URL. Reports exact pass/fail output.
-model: claude-haiku-4-5-20251001
+model: claude-haiku-4-5
 tools: [Bash]
 ---
 
