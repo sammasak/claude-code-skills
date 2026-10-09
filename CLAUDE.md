@@ -2,6 +2,15 @@
 
 > **Snapshot warning:** The knowledge vault is manually maintained with no automatic syncs. Treat all entries as "probably right as of the last commit." When vault content conflicts with what you observe in code or git, trust what you observe.
 
+## Environment Facts
+
+- Phone client: Termius on Android over SSH (mosh + zellij via herdr). Not iOS, not Blink.
+- `~/nixos-config` is the single source of truth for dotfiles and tooling (nvim, Claude Code config, packages). Derive from it; create no standalone config repos.
+- Hosts are memory-constrained: run heavy verification (e2e suites, coverage, cargo builds) sequentially, never in parallel.
+- sudo cannot prompt in-session (no TTY). Hand the exact command to the user for a real terminal and continue with what doesn't need root.
+- Move work between machines by commit + push to a private GitHub repo, never rsync.
+- A deploy is "live" only after an end-to-end check as a user would hit it — for Authentik-protected sites, through the auth flow, not pod status.
+
 ## Knowledge Vault
 
 Personal knowledge base at `~/knowledge`. Organised as rooms — directories with `INDEX.md` (what's in this room) and `CONTEXT.md` (how to operate in it). Read `~/knowledge/CLAUDE.md` for the full routing map of what lives where.
