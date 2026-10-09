@@ -105,6 +105,34 @@ check "kubectl delete pod allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"kubectl delete pod crashed-xyz -n app"}')"
 check "kubectl mention in echo allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"echo 'kubectl delete pvc x' >> runbook.md"}')"
+check "rm -rf slash blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /"}')"
+check "rm -fr whole home blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -fr /home/lukas"}')"
+check "rm -rf HOME var blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf $HOME"}')"
+check "rm -rf quoted home blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf \"/home/lukas\""}')"
+check "rm -rf tilde blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf ~"}')"
+check "rm -rf etc after chain blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"cd /x && rm -rf /etc"}')"
+check "rm -rf project dir allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf ./target"}')"
+check "rm -rf deep path allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas/tmp/build"}')"
+check "rm non-recursive allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -f /tmp/x.lock"}')"
+check "rm mention in echo allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"echo 'never rm -rf /' >> doc.md"}')"
+check "dd onto block device blocked" 2 "BLOCKED: dd writing" - \
+  validate-bash.sh "$(j b1 '{"command":"dd if=/dev/zero of=/dev/sda bs=1M"}')"
+check "dd to file allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"dd if=backup.img of=./restore.img"}')"
+check "mkfs blocked" 2 "BLOCKED: filesystem creation" - \
+  validate-bash.sh "$(j b1 '{"command":"mkfs.ext4 /dev/sdb1"}')"
+check "redirect to block device blocked" 2 "BLOCKED: redirecting output" - \
+  validate-bash.sh "$(j b1 '{"command":"cat img > /dev/sda"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 

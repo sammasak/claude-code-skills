@@ -4,10 +4,15 @@
 # silently skipping (the suite skips tools it cannot find).
 # Enable once per clone: git config core.hooksPath .githooks
 set -euo pipefail
-# no-force-guard v3: refuse non-fast-forward pushes on git's own stdin.
+# no-force-guard v4: refuse non-fast-forward pushes and deletion of
+# refs/heads/main|master, on git's own stdin
+# (<local ref> <local sha> <remote ref> <remote sha> per line).
+# Single source of truth for this block — manual .githooks copies in
+# nixos-config/claude-code-skills/homelab-gitops/knowledge must stay
+# byte-identical. Bump the version marker on ANY behavioral change.
 stdin=$(cat)
 zeros=0000000000000000000000000000000000000000
-printf "%s\n" "$stdin" | {
+printf '%s\n' "$stdin" | {
   while read -r _ lsha rref rsha; do
     [ -z "$rsha" ] && continue
     [ "$rsha" = "$zeros" ] && continue
@@ -18,7 +23,7 @@ printf "%s\n" "$stdin" | {
       continue
     fi
     if ! git merge-base --is-ancestor "$rsha" "$lsha" 2>/dev/null; then
-      echo "pre-push: non-fast-forward to $rref refused (force push, or stale view of the remote - fetch first)." >&2
+      echo "pre-push: non-fast-forward to $rref refused (force push, or your view of the remote is stale — fetch first); revert with a new commit or push a branch." >&2
       exit 1
     fi
   done

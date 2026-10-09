@@ -133,6 +133,8 @@ Reports include per-case inputs, outputs, evaluator scores, and reasons. Use `--
   An earlier uncommitted run landed in the same band (89.5 seed, 88.8 best). A stronger reflection LM (needs an API credential) is the
   only untried lever.
 - Solving (haiku solver, strict = all assertions): **8/15 strict, 9/15
-  BashGrader** — this is the measured task-solving pass rate.
+  BashGrader** — this is the measured task-solving pass rate. The weak
+  skill is kubernetes-gitops at **1/5 strict (2/5 BashGrader)** per the
+  same committed artifact; the other suites carry the aggregate.
   "0 failures" in any run output means evaluator infrastructure health,
   never the pass rate; quote the strict number.

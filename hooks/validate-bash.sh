@@ -29,10 +29,11 @@ block() {
 # is stripped (multi-line aware, sed -z) before matching, and a real push
 # that QUOTES a leading-dash argument is refused as flag smuggling. The same
 # skeleton guards destructive kubectl deletes (stateful-volume safety).
-# Statically unknowable spellings (eval "$X", git $SUB, kubectl delete -f)
-# are owned by the semantic layers: the pre-push ancestry guard and the
-# fail-closed kyverno admission policy — this hook is fast feedback, not
-# the guarantee.
+# Statically unknowable spellings (eval "$X", git $SUB, kubectl delete -f,
+# rm -rf "$DIR") are owned by the semantic layers where one exists: the
+# pre-push ancestry guard and the fail-closed kyverno admission policy.
+# Filesystem ops have NO deeper layer — the fs tier below covers literal
+# spellings and the variable-target residual is accepted, not hidden.
 SQ="'"
 PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
 GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
@@ -68,6 +69,31 @@ if echo "$SCAN" | grep -qE '\|[[:space:]]*(ba|z|fi)?sh([[:space:]]|$)' \
 fi
 if echo "$STRIPPED" | grep -qE "sops[^|&;]*(-e|encrypt)[^|&;]*/tmp/"; then
   block "SOPS encrypt from /tmp is unsafe; write plaintext to the repo path, then sops -e --in-place."
+fi
+
+# Destructive filesystem tier. Literal spellings only: a variable target
+# (rm -rf "$DIR") is statically unknowable and no deeper layer owns files —
+# that residual risk is accepted and documented, not silently covered.
+# Targets quoted at the call site are still matched (quotes allowed around
+# the path token), so quoting is not an evasion.
+FSROOT="(^|[[:space:]])[\"${SQ}]?(/|/\\*|~|~/\\*?|\\\$HOME/?\\*?|/(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?/?\\*?)[\"${SQ}]?([[:space:]]|\$)"
+while IFS= read -r seg; do
+  [ -z "$seg" ] && continue
+  flags=$(printf '%s' "$seg" | sed "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
+  printf '%s' "$flags" | grep -qE -- '(^|[[:space:]])(-[A-Za-z]*[rR][A-Za-z]*|--recursive)([[:space:]]|$)' || continue
+  printf '%s' "$flags" | grep -qE -- '(^|[[:space:]])(-[A-Za-z]*f[A-Za-z]*|--force)([[:space:]]|$)' || continue
+  if printf '%s' "$seg" | grep -qE "$FSROOT"; then
+    block "recursive force rm of a filesystem root or whole home is not allowed."
+  fi
+done < <(echo "$SCAN" | grep -oE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|rm)[[:space:]]+[^|&;]*" 2>/dev/null)
+if echo "$STRIPPED" | grep -qE "${PFX}dd[[:space:]][^|&;]*of=[\"${SQ}]?/dev/"; then
+  block "dd writing to a block device is not allowed from an agent session."
+fi
+if echo "$STRIPPED" | grep -qE "${PFX}(mkfs(\\.[A-Za-z0-9]+)?|wipefs|blkdiscard)([[:space:]]|\$)"; then
+  block "filesystem creation / block-device wipe tools are not allowed from an agent session."
+fi
+if echo "$STRIPPED" | grep -qE '>[[:space:]]*/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop)'; then
+  block "redirecting output onto a block device is not allowed."
 fi
 
 log_hook "validate-bash" "allowed" "$(( ($(date +%s%N) / 1000000) - START_MS ))" 2>/dev/null || true
