@@ -10,8 +10,8 @@ STATE_SCHEMA_VERSION=3
 init_state() {
   # Resolved here, not at source time: hooks learn the session id from stdin
   # (read_hook_input) after sourcing this file.
-  STATE_FILE="/tmp/claude-hook-state-${CLAUDE_SESSION_ID:-$$}.json"
-  find /tmp -maxdepth 1 -name 'claude-hook-state-*.json' -mtime +2 -delete 2>/dev/null || true
+  STATE_FILE="${XDG_RUNTIME_DIR:-/tmp}/claude-hook-state-${CLAUDE_SESSION_ID:-$$}.json"
+  find "${XDG_RUNTIME_DIR:-/tmp}" -maxdepth 1 -name 'claude-hook-state-*.json' -mtime +2 -delete 2>/dev/null || true
   if [ -f "$STATE_FILE" ]; then
     upgrade_state
     return

@@ -7,7 +7,7 @@ set -uo pipefail
 
 HOOKS="$(cd "$(dirname "$0")/../hooks" && pwd)"
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"; rm -f /tmp/claude-hook-state-hooktest-*.json /tmp/claude-loop-hooktest-*.log' EXIT
+trap 'rm -rf "$TMP"; rm -f "${XDG_RUNTIME_DIR:-/tmp}"/claude-hook-state-hooktest-*.json "${XDG_RUNTIME_DIR:-/tmp}"/claude-loop-hooktest-*.log' EXIT
 
 PASS=0
 FAIL=0
@@ -149,7 +149,7 @@ check "stop report exits zero" 0 - - check-git-state.sh "$(j g1 'null')"
 
 # ── session keying ──
 printf '%s' "$(j key '{"command":"true"}')" | "$HOOKS/check-loop.sh" >/dev/null 2>&1
-if [ -f /tmp/claude-loop-hooktest-key.log ]; then PASS=$((PASS + 1)); else
+if [ -f "${XDG_RUNTIME_DIR:-/tmp}/claude-loop-hooktest-key.log" ]; then PASS=$((PASS + 1)); else
   FAIL=$((FAIL + 1)); echo "FAIL: loop state not keyed by session_id"
 fi
 
