@@ -32,7 +32,7 @@ block() {
 SQ="'"
 PFX='(^|[|&;]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
 GP="${PFX}git([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
-KD="${PFX}kubectl[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?(pvc|persistentvolumeclaims?|namespaces?|ns)([[:space:]/]|\$)"
+KD="${PFX}kubectl[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns)([[:space:]/]|\$)"
 
 # Escaped quotes are removed first so nested shell -c payloads cannot hide a
 # quote boundary from the unwrapper.

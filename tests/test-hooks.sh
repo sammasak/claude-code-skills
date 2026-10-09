@@ -83,6 +83,10 @@ check "kubectl delete pvc blocked" 2 "BLOCKED: destructive kubectl" - \
   validate-bash.sh "$(j b1 '{"command":"kubectl -n herman delete pvc data-0"}')"
 check "kubectl delete namespace blocked" 2 "BLOCKED: destructive kubectl" - \
   validate-bash.sh "$(j b1 '{"command":"kubectl delete namespace staging"}')"
+check "kubectl delete pv blocked" 2 "BLOCKED: destructive kubectl" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl delete pv data-volume-7"}')"
+check "kubectl delete persistentvolume blocked" 2 "BLOCKED: destructive kubectl" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl -n x delete persistentvolume pv-7"}')"
 check "kubectl get pvc allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"kubectl get pvc -A"}')"
 check "kubectl delete pod allowed" 0 - - \
