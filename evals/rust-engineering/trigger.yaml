@@ -9,19 +9,19 @@ positives:
   - "I want to add a newtype wrapper to avoid passing raw strings across API boundaries"
   - "My Rust binary is too large, how do I optimize the release profile?"
   - "How do I cross-compile a Rust binary to musl for a minimal container?"
-  - "What's the difference between thiserror and anyhow for error handling?"
-  - "How do I model a state machine using Rust's type system?"
+  - "Should this workspace use thiserror or anyhow for its library errors?"
+  - "Model this feature as a type-state machine under our strict clippy lints"
 
 # Queries that look similar but should activate a different skill
 hard_negatives:
-  - "How do I build a minimal Docker image for my Rust service?"      # → none/rust-engineering (container-workflows archived)
+  - "How do I build a minimal Docker image for my Rust service?"      # → rust-engineering (container-workflows archived)
   - "My Flux deployment of the Rust API keeps failing"                # → kubernetes-gitops
-  - "How do I add Prometheus metrics to my Axum service?"             # → none (observability-patterns archived)
+  - "How do I add Prometheus metrics to my Axum service?"             # → rust-engineering
   - "I need to encrypt a config file containing my Rust service API key"  # → secrets-management
   - "How do I write a Nix flake devShell for Rust development?"       # → nix-flake-development
 
 # Queries that should activate no skill
 true_negatives:
-  - "How do I write a Flux GitOps kustomization?"
+  - "What does the Rust borrow checker actually prevent?"
   - "What is the best Python library for HTTP requests?"
   - "Help me understand how TCP handshakes work"

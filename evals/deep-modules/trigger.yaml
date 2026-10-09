@@ -12,7 +12,7 @@ positives:
 # Queries that look similar but should activate a different skill
 hard_negatives:
   - "Trim the comments and dead config options in this module"       # → lean-code
-  - "How do I model a state machine using Rust's type system?"       # → rust-engineering
+  - "How do I model a state machine using Rust's type system?"       # → none (generic Rust, excluded by rust-engineering)
   - "Dispatch three reviewers in parallel over this diff"            # → agent-orchestration
 
 # Queries that should activate no skill

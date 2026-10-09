@@ -12,7 +12,7 @@ positives:
 hard_negatives:
   - "Review this implementation across quality categories"           # → orchestrated-review
   - "Set up devenv and git hooks in this new Rust repo"              # → nix-flake-development / adopt workflow
-  - "Run the tests and fix the failures"                             # → rust-engineering
+  - "Run the tests and fix the failures"                             # → none (no project context)
 
 # Queries that should activate no skill
 true_negatives:

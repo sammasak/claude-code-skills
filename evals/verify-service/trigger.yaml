@@ -7,7 +7,7 @@ positives:
 
 hard_negatives:
   - "Click through the signup flow in the browser"    # → e2e-testing
-  - "Why is the pod CrashLooping?"                    # → k8s-debugger agent
+  - "Why is the pod CrashLooping?"                    # → kubernetes-gitops
 
 true_negatives:
   - "What does five nines availability mean?"

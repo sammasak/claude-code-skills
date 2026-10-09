@@ -1,6 +1,6 @@
 ---
 name: verify-service
-description: "Use when a homelab service was just deployed or changed, before reporting it done or live. Not for diagnosing WHY a deploy or cluster is broken — route that to kubernetes-gitops."
+description: "Use when a homelab service was just deployed or changed, before reporting it done or live, including named apps behind Authentik. Not for diagnosing WHY a deploy or cluster is broken — route that to kubernetes-gitops."
 allowed-tools: Bash, mcp__plugin_hm_playwright__browser_navigate, mcp__plugin_hm_playwright__browser_snapshot, mcp__plugin_hm_playwright__browser_take_screenshot, mcp__plugin_hm_playwright__browser_wait_for
 ---
 

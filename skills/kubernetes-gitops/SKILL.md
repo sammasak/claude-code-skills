@@ -1,6 +1,6 @@
 ---
 name: kubernetes-gitops
-description: "Use when changing or debugging anything in the homelab k3s cluster: manifests, Flux Kustomizations, HelmReleases, ingress, scaling, or node problems. Not for SOPS encryption; route that to secrets-management."
+description: "Use when changing or debugging anything in the homelab k3s cluster: manifests, Flux Kustomizations, HelmReleases, ingress, scaling, or node problems. Not for SOPS encryption (secrets-management) or confirming a finished deploy is live (verify-service)."
 allowed-tools: Bash, Read, Grep, Glob
 ---
 

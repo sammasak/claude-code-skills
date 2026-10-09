@@ -1,6 +1,6 @@
 ---
 name: knowledge-vault
-description: Use when the user mentions a person, company, situation, or prior decision you don't recognise, when you need context from ~/knowledge, or when explicitly asked to write a runbook, ADR, or other durable reference to the vault.
+description: Use when the user mentions a person, company, situation, or prior decision you don't recognise, when you need context from ~/knowledge, or when explicitly asked to write a runbook, ADR, or other durable reference to the vault (not ~/.claude MEMORY.md).
 ---
 
 # Knowledge Vault (`~/knowledge`)

@@ -15,7 +15,7 @@ positives:
 hard_negatives:
   - "My Flux HelmRelease can't find the Kubernetes secret for its values"  # → kubernetes-gitops
   - "How do I write a Nix module to provision secret files on boot?"        # → nix-flake-development
-  - "How do I store secret environment variables in a Docker build?"        # → none/rust-engineering (container-workflows archived)
+  - "How do I store secret environment variables in a Docker build?"        # → none
   - "My Rust service needs to read a token from an environment variable"    # → rust-engineering
 
 # Queries that should activate no skill
