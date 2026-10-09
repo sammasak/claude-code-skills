@@ -32,8 +32,14 @@ block() {
 # Statically unknowable spellings (eval "$X", git $SUB, kubectl delete -f,
 # rm -rf "$DIR") are owned by the semantic layers where one exists: the
 # pre-push ancestry guard and the fail-closed kyverno admission policy.
-# Filesystem ops have NO deeper layer — the fs tier below covers literal
-# spellings and the variable-target residual is accepted, not hidden.
+# Filesystem ops have NO deeper layer. The fs tier below covers literal
+# spellings of a NAMED tool set (rm, dd, tee/cp, mkfs-family, partitioners,
+# rsync --delete, find -delete). The accepted residual is wider than
+# variable targets alone: interpreter payloads (python -c shutil.rmtree),
+# file indirection (Write a script, then bash script.sh — the hook sees
+# only the command string), and destructive tools outside the named set.
+# That residual is documented here precisely so it is never mistaken for
+# coverage; the only full fix is the permission layer, not this hook.
 SQ="'"
 PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
 GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
@@ -47,6 +53,8 @@ for _ in 1 2 3; do
   BEFORE=$(echo "$SCAN" | wc -l)
   PAYLOADS=$( { echo "$SCAN" | grep -oE "${PFX}(bash|sh|zsh|fish)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-c[[:space:]]+(${SQ}[^${SQ}]*${SQ}|\"[^\"]*\")" 2>/dev/null \
     | sed -E "s/^.*-c[[:space:]]+[${SQ}\"]//; s/[${SQ}\"]\$//"; \
+    echo "$SCAN" | grep -oE "${PFX}(bash|sh|zsh|fish)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-c[[:space:]]+[^|&;]+" 2>/dev/null \
+    | sed -E 's/^.*-c[[:space:]]+//' | sed "s/[\"${SQ}]//g"; \
     echo "$SCAN" | grep -oE '\$\([[:space:]]*(echo|printf)[[:space:]]+[^)]*\)' 2>/dev/null \
     | sed -E 's/^\$\([[:space:]]*(echo|printf)[[:space:]]+//; s/\)$//' \
     | sed "s/^[\"${SQ}]//; s/[\"${SQ}]\$//"; } | sort -u)
@@ -78,7 +86,11 @@ fi
 # that residual risk is accepted and documented, not silently covered.
 # Targets quoted at the call site are still matched (quotes allowed around
 # the path token), so quoting is not an evasion.
-FSROOT="(^|[[:space:]])[\"${SQ}]?(/+|/+[A-Za-z0-9._@-]*\\*|~[A-Za-z0-9._-]*/?\\*?|\\\$HOME/?\\*?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?/?\\*?)[\"${SQ}]?([[:space:]]|\$)"
+# Root/home target: bare slashes, any root-level glob (* ? [), ~ or ~user,
+# $HOME braced or not, and top-level system dirs down to one segment.
+FSROOT="(^|[[:space:]])[\"${SQ}]?(/+|/+[^/[:space:]]*[*?][^/[:space:]]*|~[A-Za-z0-9._-]*/?\\*?|\\\$\\{?HOME\\}?/?\\*?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?/?\\*?)[\"${SQ}]?([[:space:]]|\$)"
+# Tools invoked by absolute path still sit at command position.
+ABS="(/[A-Za-z0-9._/-]*/)?"
 while IFS= read -r seg; do
   [ -z "$seg" ] && continue
   flags=$(printf '%s' "$seg" | sed "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
@@ -87,19 +99,36 @@ while IFS= read -r seg; do
   if printf '%s' "$seg" | grep -qE "$FSROOT"; then
     block "recursive force rm of a filesystem root or whole home is not allowed."
   fi
-done < <(echo "$SCAN" | grep -oE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|rm)[[:space:]]+[^|&;]*" 2>/dev/null)
+done < <(echo "$SCAN" | grep -oE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|${ABS}rm)[[:space:]]+[^|&;]*" 2>/dev/null)
+# rsync --delete and find -delete/-exec rm with a root/home target are the
+# same destruction through sibling tools.
+if echo "$SCAN" | grep -oE "${PFX}${ABS}rsync[[:space:]][^|&;]*" 2>/dev/null \
+  | grep -E -- '--delete' | grep -qE "$FSROOT"; then
+  block "rsync --delete targeting a filesystem root or whole home is not allowed."
+fi
+FINDROOT="(^|[[:space:]])[\"${SQ}]?/+((home|etc|nix|var|usr|boot|opt|srv|root)/?)?[\"${SQ}]?([[:space:]]|\$)"
+if echo "$SCAN" | grep -oE "${PFX}${ABS}find[[:space:]][^|&;]*" 2>/dev/null \
+  | grep -E -- '(-delete|-exec[[:space:]][^|&;]*rm)' | grep -qE "$FINDROOT"; then
+  block "find -delete sweeping a filesystem root is not allowed."
+fi
 # dd/tee/cp run on SCAN (not STRIPPED) so a fully-quoted "of=/dev/sda" or
 # "/dev/sda" argument cannot delete itself before matching — the same
 # quoting-is-not-an-evasion rule the rm path implements. Mentions stay
 # immune because the invocation must sit at command position.
-if echo "$SCAN" | grep -qE "${PFX}dd[[:space:]][^|&;]*[\"${SQ}]?of=[\"${SQ}]?/dev/"; then
+if echo "$SCAN" | grep -qE "${PFX}${ABS}dd[[:space:]][^|&;]*[\"${SQ}]?of=[\"${SQ}]?/dev/"; then
   block "dd writing to a block device is not allowed from an agent session."
 fi
-if echo "$SCAN" | grep -qE "${PFX}(tee|cp)[[:space:]][^|&;]*[\"${SQ}]?/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop)"; then
+if echo "$SCAN" | grep -qE "${PFX}${ABS}(tee|cp)[[:space:]][^|&;]*[\"${SQ}]?/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop)"; then
   block "writing onto a block device via tee/cp is not allowed."
 fi
-if echo "$STRIPPED" | grep -qE "${PFX}(mkfs(\\.[A-Za-z0-9]+)?|wipefs|blkdiscard)([[:space:]]|\$)"; then
+if echo "$STRIPPED" | grep -qE "${PFX}${ABS}(mkfs(\\.[A-Za-z0-9]+)?|wipefs|blkdiscard)([[:space:]]|\$)"; then
   block "filesystem creation / block-device wipe tools are not allowed from an agent session."
+fi
+if echo "$SCAN" | grep -qE "${PFX}${ABS}(shred|sgdisk|sfdisk|fdisk|parted|badblocks)[[:space:]][^|&;]*[\"${SQ}]?/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop)"; then
+  block "partitioning or wiping a block device is not allowed from an agent session."
+fi
+if echo "$STRIPPED" | grep -qE '(--force|[[:space:]]-f([[:space:]]|$)|[[:space:]][+][^[:space:]])[^|&;]*\|[[:space:]]*xargs[[:space:]]+[^|&;]*git[[:space:]]+push'; then
+  block "piping force arguments into xargs git push is not allowed."
 fi
 if echo "$STRIPPED" | grep -qE '>[[:space:]]*/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop)'; then
   block "redirecting output onto a block device is not allowed."

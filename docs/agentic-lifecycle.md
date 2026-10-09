@@ -10,25 +10,17 @@ How this repository's skills, dispatcher, agents, hooks, and evaluators fit toge
 2. [Our System: claude-code-skills Architecture](#2-our-system-claude-code-skills-architecture)
 3. [Evaluator Chain Detail](#3-evaluator-chain-detail)
 4. [Session Hooks (current reality)](#4-session-hooks-current-reality)
-5. [Anthropic Workflow Patterns Reference](#anthropic-workflow-patterns-reference)
-6. [Citations](#citations)
+5. [Anthropic Workflow Patterns Reference](#5-anthropic-workflow-patterns-reference)
+6. [Citations](#6-citations)
 
 ## 1. Overview
 
-An **agentic system** is one where a language model does not produce a single response and halt — it instead drives a loop of reasoning, action, and observation until some termination condition is met. The word "agentic" describes systems where the model has agency over a sequence of tool calls, sub-task delegations, and state mutations whose downstream effects may be difficult or impossible to reverse.
-
-Understanding the agentic lifecycle matters for three reasons:
-
-**Correctness.** Without a clear mental model of how goals decompose into tasks, how tasks get routed to specialist agents, and how outputs get evaluated before being accepted, subtle failures compound silently across pipeline stages.
-
-**Safety.** Agents that write to filesystems, push to git repositories, modify Kubernetes clusters, or make API calls carry real risk. Trust boundaries, hook-based safety guards, and human-in-the-loop checkpoints exist to intercept errors before they propagate.
-
-**Observability.** A long-running agent session that writes dozens of files, spawns sub-agents, and loops through a goal queue must emit structured events at each phase transition so operators can monitor progress without relying on log scraping.
-
-This document records THIS repository's architecture only. The generic
-multi-agent background it once carried (ReAct loops, workflow topologies,
-swimlanes, memory architectures) was cut 2026-10-09: it is public
-literature, not a property of this system -- see Citations for the
+This document records THIS repository's architecture only: skills as
+routing-keyed system prompts, a measured dispatcher, stateless agents,
+hooks at the tool-call boundary, and the evaluator chain behind them.
+The generic multi-agent background it once carried (ReAct loops, workflow
+topologies, swimlanes, memory architectures) was cut 2026-10-09: it is
+public literature, not a property of this system -- see Citations for the
 primary sources.
 
 ---
@@ -160,7 +152,7 @@ the VM fleet. Today's Stop chain is a single git-state reporter
 the PreToolUse/PostToolUse chain, all wired in nixos-config's mcp.nix and
 tested by tests/test-hooks.sh.
 
-## Anthropic Workflow Patterns Reference
+## 5. Anthropic Workflow Patterns Reference
 
 The five patterns from Anthropic's agent documentation, mapped to this system:
 
@@ -175,7 +167,7 @@ The five patterns from Anthropic's agent documentation, mapped to this system:
 
 ---
 
-## Citations
+## 6. Citations
 
 - Yao, S., et al. "ReAct: Synergizing Reasoning and Acting in Language Models." arXiv:2210.03629 (2022). — ReAct loop (background reading; the generic ReAct section was cut).
 - Chen, M., et al. "Evaluating Large Language Models Trained on Code." arXiv:2107.03374 (2021). — pass@k unbiased estimator (Section 3, eval framework).

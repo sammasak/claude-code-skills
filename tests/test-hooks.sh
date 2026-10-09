@@ -137,6 +137,26 @@ check "quoted printf rm payload blocked" 2 "BLOCKED: recursive force rm" - \
   validate-bash.sh "$(j b1 '{"command":"$(printf \"rm -rf /etc\")"}')"
 check "rm -rf tilde-user subdir allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf ~lukas/tmp/build"}')"
+check "rm -rf braced HOME blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf ${HOME}"}')"
+check "rm -rf question glob blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /?*"}')"
+check "rm -rf charclass glob blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /[a-z]*"}')"
+check "abs-path rm blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"/bin/rm -rf /etc"}')"
+check "quote-concat sh payload blocked" 2 "BLOCKED: recursive force rm" - \
+  validate-bash.sh "$(j b1 '{"command":"sh -c \"rm -rf \"/"}')"
+check "rsync delete to root blocked" 2 "BLOCKED: rsync --delete" - \
+  validate-bash.sh "$(j b1 '{"command":"rsync -a --delete /tmp/empty/ /"}')"
+check "rsync without delete allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rsync -a src/ dest/"}')"
+check "find root delete blocked" 2 "BLOCKED: find -delete" - \
+  validate-bash.sh "$(j b1 '{"command":"find / -xdev -delete"}')"
+check "find project delete allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"find ./build -name *.o -delete"}')"
+check "find home-subdir delete allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"find /home/lukas/proj/target -name *.tmp -delete"}')"
 check "dd onto block device blocked" 2 "BLOCKED: dd writing" - \
   validate-bash.sh "$(j b1 '{"command":"dd if=/dev/zero of=/dev/sda bs=1M"}')"
 check "dd quoted of-target blocked" 2 "BLOCKED: dd writing" - \
@@ -151,6 +171,20 @@ check "blkdiscard blocked" 2 "BLOCKED: filesystem creation" - \
   validate-bash.sh "$(j b1 '{"command":"blkdiscard /dev/sdb"}')"
 check "append onto block device blocked" 2 "BLOCKED: redirecting output" - \
   validate-bash.sh "$(j b1 '{"command":"cat img >> /dev/sdb"}')"
+check "abs-path mkfs blocked" 2 "BLOCKED: filesystem creation" - \
+  validate-bash.sh "$(j b1 '{"command":"/sbin/mkfs.ext4 /dev/sdb1"}')"
+check "shred block device blocked" 2 "BLOCKED: partitioning or wiping" - \
+  validate-bash.sh "$(j b1 '{"command":"shred /dev/sda"}')"
+check "shred plain file allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"shred -u ./secret.txt"}')"
+check "sgdisk zap blocked" 2 "BLOCKED: partitioning or wiping" - \
+  validate-bash.sh "$(j b1 '{"command":"sgdisk --zap-all /dev/sda"}')"
+check "parted mklabel blocked" 2 "BLOCKED: partitioning or wiping" - \
+  validate-bash.sh "$(j b1 '{"command":"parted /dev/sda mklabel gpt"}')"
+check "xargs force push pipe blocked" 2 "BLOCKED: piping force arguments" - \
+  validate-bash.sh "$(j b1 '{"command":"echo --force | xargs git push origin main"}')"
+check "xargs branch cleanup allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git branch --merged | xargs git branch -d"}')"
 check "dd to file allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"dd if=backup.img of=./restore.img"}')"
 check "mkfs blocked" 2 "BLOCKED: filesystem creation" - \

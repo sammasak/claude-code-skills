@@ -136,5 +136,11 @@ Reports include per-case inputs, outputs, evaluator scores, and reasons. Use `--
   BashGrader** — this is the measured task-solving pass rate. The weak
   skill is kubernetes-gitops at **1/5 strict (2/5 BashGrader)** per the
   same committed artifact; the other suites carry the aggregate.
+  Believed cause (from the graders' FAIL reasons: "kind must be
+  HelmRelease", "root cause must identify ..."): the skill teaches
+  patterns but does not pin the output shapes the BashGrader demands —
+  the lever is output contracts in the task prompts or skill body, not
+  more cluster knowledge (the content itself verified against the live
+  cluster).
   "0 failures" in any run output means evaluator infrastructure health,
   never the pass rate; quote the strict number.
