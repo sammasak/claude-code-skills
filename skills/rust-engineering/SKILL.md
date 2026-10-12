@@ -25,6 +25,14 @@ Repos with `platform.sdlc` are driven by the `sdlc-pipeline` skill. Toolchain is
 
 `[workspace.lints.clippy]` denies `all` + `pedantic` + `nursery` plus the panic-prevention pack (`unwrap_used`, `expect_used`, `indexing_slicing`, `arithmetic_side_effects`, `panic`, `exit`, `as_conversions`, `string_slice`, ...) and `allow_attributes_without_reason`. `clippy.toml` allows unwrap/expect/panic/indexing in tests. Suppress with `#[expect(lint, reason = "...")]`. A `[profile.clippy]` is required (separate artifact dir, avoids the cold-clippy rebuild cliff).
 
+## Anti-bloat (debloat/deslop)
+
+The platform `clippy.toml` sets the thresholds that make the deny bite: `excessive-nesting-threshold = 5` (this lint is inert at clippy's default 0, so the threshold is what turns it on), `too-many-lines-threshold = 80`, `too-many-arguments-threshold = 5`. These are the mechanical backstop for the `lean-code` and `deep-modules` skills — nesting depth, function length, and argument count are the bloat signals clippy *can* measure.
+
+Unused dependencies are owned by `rust:shear` (cargo-shear) in strict CI — a superset of cargo-machete; `rust:deps` only checks staleness. Dead in-crate code is rustc's `dead_code`/`unused` (warn-by-default).
+
+What clippy cannot measure stays review-owned: whether a comment restates the code, whether an abstraction has one user — that is `lean-code`/`deep-modules` at review time (no reliable Rust tool mechanizes "useless comment", and a doc-comment density cap would fight `missing_docs`). For a project-specific structural anti-pattern that recurs (2+ real hits, never pre-emptively), `ast-grep` is the lightweight escape hatch — a YAML structural rule, no nightly/dylint toolchain tax.
+
 ## Preferred crates (ADR-027 type + test pillars)
 
 - Types: private fields + `bon` fallible builder, `secrecy::SecretString` for secrets, `strum` for enum `ALL`/`COUNT`, tagged serde enums, sqlx `query!`.
