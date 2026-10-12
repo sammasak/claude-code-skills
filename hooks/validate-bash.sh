@@ -5,9 +5,10 @@
 # real boundaries own all of that:
 #   - git history: the pre-push ancestry guard runs INSIDE git's pre-push hook
 #     and refuses every force / non-fast-forward / branch-deletion once it runs,
-#     so this check is just early feedback. The one way past it is to skip the
-#     hook entirely (`git push --no-verify`), which the permission deny list
-#     refuses for the agent (git run by hand by the human is the escape hatch).
+#     so this check is just early feedback. To skip it you skip the hook
+#     entirely (`git push --no-verify`, or `-c core.hooksPath=`): the common
+#     `--no-verify` spelling is denied at the permission layer (prefix-only);
+#     other hook-skips stay the human's escape hatch, run by hand.
 #   - cluster state: the fail-closed Kyverno policy denies PVC/PV/Namespace
 #     (and the pruning Flux kinds) deletion; the operator is deliberately
 #     cluster-admin, so impersonation / policy deletion are an accepted trade.
