@@ -46,7 +46,7 @@ block() {
 SQ="'"
 PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|busybox|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
 GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
-KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?([a-z,-]+,)?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns)([[:space:],/.]|\$)"
+KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?([a-z,-]+,)?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns|kustomizations?|ks|helmreleases?|hr)([[:space:],/.]|\$)"
 
 # Backslash-newline continuations are joined first (a command split across
 # lines is one command), then escaped quotes are removed so nested shell -c
@@ -75,20 +75,35 @@ fi
 if echo "$SCAN" | grep -qE "${GP}[^|&;]*[\"${SQ}][[:space:]]*-"; then
   block "quoted flags to git push are not allowed."
 fi
-# A git push that disables the pre-push guard this hook delegates the hard
-# cases to: --no-verify skips all hooks; -c core.hooksPath / GIT_CONFIG_PARAMETERS
-# repoint or null the hook dir; -c alias. hides `push --force` behind a name GP
-# cannot see. No legitimate agent push needs any of these.
-if echo "$SCAN" | grep -qE "${GP}[^|&;]*[[:space:]]--no-verify([[:space:]]|\$)"; then
+# A git invocation that disables the pre-push guard this hook delegates the
+# hard cases to: --no-verify skips all hooks; -c/--config-env core.hooksPath or
+# GIT_CONFIG_* repoint/null the hook dir; -c alias. hides `push --force` behind
+# a name; `git config` writes the same keys persistently. Matched on a
+# dequoted, case-folded view (git config keys are case-insensitive) with the
+# override anchored to git's leading global-flag region, so a quoted mention in
+# a commit message or an echo is not command-position and does not trip it.
+GITSCAN=$(printf '%s' "$SCAN" | sed 's/\\\(.\)/\1/g' | sed "s/[\"${SQ}]//g" | tr 'A-Z' 'a-z')
+GBYP="core\\.hookspath|alias\\."
+if echo "$GITSCAN" | grep -qE "${GP}[^|&;]*[[:space:]]--no-verify([[:space:]]|\$)"; then
   block "git push --no-verify disables the pre-push guard and is not allowed."
 fi
-if echo "$SCAN" | grep -qE "git([[:space:]]+-c[[:space:]]+core\\.hooksPath=|[[:space:]]+-c[[:space:]]+alias\\.)" \
-  || echo "$SCAN" | grep -qE "GIT_CONFIG_PARAMETERS=[^[:space:]]*(core\\.hooksPath|alias\\.)" \
-  || echo "$SCAN" | grep -qE "GIT_CONFIG_(COUNT|KEY_[0-9])="; then
-  block "overriding git hooks/aliases via -c or GIT_CONFIG_PARAMETERS around a push is not allowed."
+if echo "$GITSCAN" | grep -qE "${PFX}git([[:space:]]+(-[a-z][[:space:]]*[^[:space:]]+|--[a-z-]+(=[^[:space:]]+)?))*[[:space:]]+(-c[[:space:]]*[^[:space:]]*(${GBYP})|--config-env[= ][^[:space:]]*(${GBYP}))"; then
+  block "overriding git hooks/aliases via -c/--config-env around a git command is not allowed."
+fi
+if echo "$GITSCAN" | grep -qE "(^|[|&;\`]|\\\$\\()[[:space:]]*git_config_(parameters=[^[:space:]]*(${GBYP})|key_[0-9]+=(${GBYP})|count=[0-9])"; then
+  block "overriding git hooks/aliases via GIT_CONFIG_* env is not allowed."
+fi
+if echo "$GITSCAN" | grep -qE "${PFX}git[[:space:]]+config[[:space:]][^|&;]*(${GBYP})" \
+  && ! echo "$GITSCAN" | grep -qE "${PFX}git[[:space:]]+config[[:space:]][^|&;]*(--get|--list|[[:space:]]-l([[:space:]]|\$))"; then
+  block "persistently setting core.hooksPath/alias via git config is not allowed."
 fi
 if echo "$STRIPPED" | grep -qiE "$KD"; then
-  block "destructive kubectl delete (pvc/namespace) needs the human; see the stateful-volume safety policy."
+  block "destructive kubectl delete (pvc/namespace/Flux object) needs the human; see the stateful-volume safety policy."
+fi
+# `flux delete <kustomization|helmrelease|source>` prunes the same stateful
+# objects via the flux-system SA, which Kyverno exempts — so the gate is here.
+if echo "$STRIPPED" | grep -qiE "${PFX}flux[[:space:]]+delete[[:space:]]+(kustomization|helmrelease|source|ks|hr)"; then
+  block "flux delete of a reconciled object can prune PVCs/namespaces; needs the human."
 fi
 if echo "$SCAN" | grep -qE '\|[[:space:]]*(ba|z|fi)?sh([[:space:]]|$)' \
   && echo "$SCAN" | grep -qE 'git[[:space:]]+push[^|&;]*(--force|[[:space:]]-f([[:space:]]|$)|[[:space:]][+][^[:space:]])'; then
@@ -114,23 +129,34 @@ fi
 # before matching so //home//lukas is /home/lukas.
 FSROOT="(^|[[:space:]])(/+|/+[^/[:space:]]*[*?[{][^/[:space:]]*(/[]A-Za-z0-9._@*?[{}-]+)?|~[A-Za-z0-9._-]*(/\\.?\\*|/)?|\\\$\\{?HOME\\}?(/\\.?\\*|/)?|(\\.\\./)+(home|etc|nix|var|usr|boot|opt|srv|root)(/[]A-Za-z0-9._@*?[{}-]+)?/?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[]A-Za-z0-9._@*?[{}-]+)?(/\\.?\\*|/)?)([[:space:]]|\$)"
 # The fs tier scans a NORMALISED copy so a destructive command cannot hide
-# behind shell cosmetics. In order: drop quote characters (so "rm"/'rm'/rm''
-# and "/home/luka"s are the bare token — quoting is not an evasion); resolve
-# $(which <tool>) to the tool; rewrite command-substitution delimiters ($( and
-# backtick) to ';' (a command-position char) and ')', '<', '>' to spaces (so a
-# redirect terminates the target); strip transparent multi-token wrapper
-# prefixes (time/exec/env and the nix/devenv/direnv shells) to ';' so the inner
-# command sits at command position; and collapse '/./' and repeated slashes so
-# /home/./lukas and //home//lukas read as /home/lukas. [ and { are treated as
-# glob chars by FSROOT above.
+# behind shell cosmetics. In order: unquote backslash escapes (r\m, /ho\me);
+# drop quote characters (so "rm"/'rm'/rm'' and "/home/luka"s are the bare token);
+# resolve $(which <tool>) to the tool; rewrite command-substitution and subshell
+# delimiters ($( ` ( { ) to ';' (a command-position char), and ) } > < to spaces
+# (so a redirect or group-close terminates the target); strip transparent
+# MULTI-token wrapper prefixes (the nix/devenv/direnv shells, long and short
+# forms) FIRST, then single-token transparent prefixes (time/exec/env and the
+# compound keywords then/do/else) to ';' so the inner command sits at command
+# position; collapse '/./', 'x/../' and repeated slashes so /home/./lukas,
+# /home/a/../lukas and //home//lukas read as /home/lukas. [ { ] are glob chars.
 SCAN=$(printf '%s' "$SCAN" \
+  | sed 's/\\\(.\)/\1/g' \
   | sed "s/[\"${SQ}]//g" \
   | sed -E 's/\$\(which[[:space:]]+([A-Za-z0-9_.-]+)[[:space:]]*\)/\1/g' \
-  | sed 's/\$(/;/g; s/`/;/g; s/)/ /g; s/</ /g; s/>/ /g' \
-  | sed -E 's#(^|[;|&[:space:]])(time|exec|/usr/bin/env|/bin/env)[[:space:]]+#\1;#g' \
-  | sed -E 's#(^|[;|&[:space:]])(nix[[:space:]]+(shell|develop)[^;|&]*-c|nix-shell[^;|&]*--run|devenv[[:space:]]+shell[[:space:]]+--|direnv[[:space:]]+exec[[:space:]]+[^[:space:]]+)[[:space:]]+#\1;#g' \
+  | sed 's/\$(/\x01/g' \
+  | sed 's/`/;/g; s/(/;/g; s/)/ /g; s/</ /g; s/>/ /g' \
+  | sed -E 's/(^|[;|&[:space:]])\{[[:space:]]/\1; /g' \
+  | sed -E 's/[[:space:]]\}([[:space:]]|;|&|\||$)/ \1/g' \
+  | sed 's/\x01/;/g' \
+  | sed -E 's#(^|[;|&[:space:]])(nix[[:space:]]+(shell|develop)[^;|&]*(-c|--command|--run)|nix-shell[^;|&]*(--run|--command|-c)|devenv[[:space:]]+shell([[:space:]]+--)?|direnv[[:space:]]+exec[[:space:]]+[^[:space:]]+)[[:space:]]+#\1;#g' \
+  | sed -E 's#(^|[;|&[:space:]])(time|exec|/usr/bin/env|/bin/env|then|do|else|elif)[[:space:]]+#\1;#g' \
   | sed ':a; s#/\./#/#g; ta' \
   | sed ':b; s#[A-Za-z0-9_@-][A-Za-z0-9._@-]*/\.\./##g; tb' | tr -s '/')
+# A glob segment directly under a root/home (/home/u/?*, /etc/*, ~/.[!.]*,
+# $HOME/{*,.*}) expands to that dir's contents — the same wipe as the literal
+# root. The glob metachar must be in the segment IMMEDIATELY under the root, so
+# a scoped /home/u/proj/*.log (glob deeper down) is untouched.
+GLOBUNDERROOT="(^|[[:space:]])(/+(home/[^/[:space:]]+|home|etc|nix|var|usr|boot|opt|srv|root)|~[A-Za-z0-9._-]*|\\\$\\{?HOME\\}?)/[^/[:space:]]*[*?[{][^/[:space:]]*"
 # Tools invoked by absolute path still sit at command position.
 ABS="(/[A-Za-z0-9._/-]*/)?"
 # No force-flag requirement: with non-tty stdin (an agent's reality) GNU rm
@@ -140,26 +166,27 @@ while IFS= read -r seg; do
   [ -z "$seg" ] && continue
   flags=$(printf '%s' "$seg" | sed "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
   printf '%s' "$flags" | grep -qE -- '(^|[[:space:]])(-[A-Za-z]*[rR][A-Za-z]*|--recursive)([[:space:]]|$)' || continue
-  if printf '%s' "$seg" | tr -s '/' | grep -qE "$FSROOT"; then
+  if printf '%s' "$seg" | tr -s '/' | grep -qE "$FSROOT|$GLOBUNDERROOT"; then
     block "recursive rm of a filesystem root or whole home is not allowed."
   fi
 done < <(echo "$SCAN" | grep -oE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|${ABS}rm)[[:space:]]+[^|&;]*" 2>/dev/null)
-# cwd is statically known (unlike $DIR): a bare-glob recursive rm (rm -rf *,
-# rm -rf .* *, rm -rf ./*) run FROM a root/home dir wipes it. Block when the
-# session cwd is a root or a home root and the command has no cd of its own.
+# cwd is statically known (unlike $DIR): a recursive rm of a bare glob, a
+# dotfile glob, or a parent/sibling escape (rm -rf *, .[!.]*, ../x, ./*) run
+# FROM a root/home dir wipes or escapes it. Block when the session cwd is a
+# root or home root and the command has no cd of its own.
 if [ -n "$CWD" ] \
   && printf '%s' "$CWD" | tr -s '/' | grep -qE '^(/|/(home/[^/]+|home|etc|nix|var|usr|boot|opt|srv|root))/?$' \
   && ! echo "$SCAN" | grep -qE "${PFX}cd[[:space:]]"; then
-  if echo "$SCAN" | grep -qE "${PFX}${ABS}rm[[:space:]][^|&;]*-[A-Za-z]*[rR][A-Za-z]*[^|&;]*[[:space:]](\\./)?[.]?\\*([[:space:]]|\$)"; then
-    block "recursive rm of a bare glob from a root/home working directory is not allowed."
+  if echo "$SCAN" | grep -qE "${PFX}${ABS}rm[[:space:]][^|&;]*-[A-Za-z]*[rR][A-Za-z]*[^|&;]*[[:space:]](\\./)?(\\.?\\[?[!^]?\\.?\\]?\\*|\\.\\.?)([[:space:]/]|\$)"; then
+    block "recursive rm of a bare glob or escape from a root/home working directory is not allowed."
   fi
 fi
-# cd into a root/home followed by a glob-target recursive rm is the same
-# wipe spelled relatively.
-CDROOT="${PFX}cd[[:space:]]+[\"${SQ}]?(/+|~[A-Za-z0-9._-]*|\\\$\\{?HOME\\}?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?)/?[\"${SQ}]?([[:space:]]|\$)"
+# cd into a root/home (terminated by space, ;, |, &, or EOL) followed by a
+# glob/dotglob recursive rm is the same wipe spelled relatively.
+CDROOT="${PFX}cd[[:space:]]+(/+|~[A-Za-z0-9._-]*|\\\$\\{?HOME\\}?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?)/?([[:space:];|&]|\$)"
 if echo "$SCAN" | tr -s '/' | grep -qE "$CDROOT" \
-  && echo "$SCAN" | grep -qE "${PFX}${ABS}rm[[:space:]][^|&;]*-[A-Za-z]*[rR][A-Za-z]*[^|&;]*[[:space:]](\\./)?\\.?\\*[\"${SQ}]?([[:space:]]|\$)"; then
-  block "cd into a root/home followed by recursive rm of * is not allowed."
+  && echo "$SCAN" | grep -qE "${PFX}${ABS}rm[[:space:]][^|&;]*-[A-Za-z]*[rR][A-Za-z]*[^|&;]*[[:space:]](\\./)?\\.?\\[?[!^]?\\.?\\]?\\*([[:space:]]|\$)"; then
+  block "cd into a root/home followed by recursive rm of a glob is not allowed."
 fi
 if echo "$SCAN" | grep -qE '\|[[:space:]]*xargs[[:space:]]+[^|&;]*rm[[:space:]]+[^|&;]*-[A-Za-z]*[rR]' \
   && echo "$SCAN" | tr -s '/' | grep -qE "$FSROOT"; then
@@ -173,31 +200,31 @@ if echo "$SCAN" | grep -oE "${PFX}${ABS}rsync[[:space:]][^|&;]*" 2>/dev/null \
 fi
 # A home ROOT (/home/<user>) counts for find — "not user subdirs" means
 # /home/<user>/<dir>, never the whole home itself.
-FINDROOT="(^|[[:space:]])[\"${SQ}]?/+(home(/[A-Za-z0-9._@-]+)?/?|(etc|nix|var|usr|boot|opt|srv|root)/?)?[\"${SQ}]?([[:space:]]|\$)"
+FINDROOT="(^|[[:space:]])(~[A-Za-z0-9._-]*|\\\$\\{?HOME\\}?|/+(home(/[A-Za-z0-9._@-]+)?/?|(etc|nix|var|usr|boot|opt|srv|root)/?)?)([[:space:]]|\$)"
 if echo "$SCAN" | grep -oE "${PFX}${ABS}find[[:space:]][^|&;]*" 2>/dev/null \
   | grep -E -- '(-delete|-exec(dir)?[[:space:]][^|&;]*rm)' | tr -s '/' | grep -qE "$FINDROOT"; then
   block "find -delete sweeping a filesystem root is not allowed."
 fi
-# dd/tee/cp run on SCAN (not STRIPPED) so a fully-quoted "of=/dev/sda" or
-# "/dev/sda" argument cannot delete itself before matching — the same
-# quoting-is-not-an-evasion rule the rm path implements. Mentions stay
-# immune because the invocation must sit at command position.
-if echo "$SCAN" | grep -qE "${PFX}${ABS}dd[[:space:]][^|&;]*[\"${SQ}]?of=[\"${SQ}]?/dev/"; then
+# Block-device path, covering the stable aliases (/dev/disk/by-id, /dev/mapper)
+# and the kernel names. /dev/null, /dev/stdout, /dev/zero etc. are NOT devices
+# to protect — dd/tee/cp to them is routine, so only real block devices match.
+DEV='/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop|disk/|mapper/)'
+# dd/tee/cp run on SCAN (not STRIPPED) so a fully-quoted "of=/dev/sda" argument
+# cannot delete itself before matching. Mentions stay immune (command position).
+if echo "$SCAN" | grep -qE "${PFX}${ABS}dd[[:space:]][^|&;]*of=${DEV}"; then
   block "dd writing to a block device is not allowed from an agent session."
 fi
-# Block-device path, covering the stable aliases (/dev/disk/by-id, /dev/mapper)
-# as well as the kernel names — writing or partitioning any of them is destructive.
-DEV='/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop|disk/|mapper/)'
 if echo "$SCAN" | grep -qE "${PFX}${ABS}(tee|cp)[[:space:]][^|&;]*${DEV}"; then
   block "writing onto a block device via tee/cp is not allowed."
 fi
-if echo "$STRIPPED" | grep -qE "${PFX}${ABS}(mkfs(\\.[A-Za-z0-9]+)?|mkswap|wipefs|blkdiscard)([[:space:]]|\$)"; then
+if echo "$STRIPPED" | grep -qE "${PFX}${ABS}(mkfs(\\.[A-Za-z0-9]+)?|mke2fs|mkdosfs|mkntfs|mkswap|wipefs|blkdiscard)([[:space:]]|\$)" \
+  || echo "$SCAN" | grep -qE "${PFX}${ABS}nvme[[:space:]]+format[[:space:]]"; then
   block "filesystem creation / block-device wipe tools are not allowed from an agent session."
 fi
 if echo "$SCAN" | grep -qE "${PFX}${ABS}(shred|sgdisk|sfdisk|fdisk|parted|badblocks)[[:space:]][^|&;]*${DEV}"; then
   block "partitioning or wiping a block device is not allowed from an agent session."
 fi
-if echo "$SCAN" | grep -qE "${PFX}${ABS}cryptsetup[[:space:]][^|&;]*(luksFormat|reencrypt|erase)"; then
+if echo "$SCAN" | grep -qiE "${PFX}${ABS}cryptsetup[[:space:]][^|&;]*(luksformat|reencrypt|lukserase|erase)"; then
   block "cryptsetup format/erase of a device is not allowed from an agent session."
 fi
 if echo "$STRIPPED" | grep -qE '(--force|[[:space:]]-f([[:space:]]|$)|[[:space:]][+][^[:space:]])[^|&;]*\|[[:space:]]*xargs[[:space:]]+[^|&;]*git[[:space:]]+push'; then

@@ -276,6 +276,74 @@ check "mkfs blocked" 2 "BLOCKED: filesystem creation" - \
   validate-bash.sh "$(j b1 '{"command":"mkfs.ext4 /dev/sdb1"}')"
 check "redirect to block device blocked" 2 "BLOCKED: redirecting output" - \
   validate-bash.sh "$(j b1 '{"command":"cat img > /dev/sda"}')"
+# ── round-29: git-guard-bypass tier ──
+check "git -c lowercase hookspath blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"git -c core.hookspath=/dev/null push origin main"}')"
+check "git -c mixedcase hooksPath blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"git -c Core.HooksPath=/dev/null push origin main"}')"
+check "git -c quoted hooksPath blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"git -c \"core.hooksPath=/dev/null\" push origin main"}')"
+check "git -c quoted alias-with-space blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"git -c '\''alias.p=push --force'\'' p origin main"}')"
+check "git --config-env hooksPath blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"git --config-env=core.hooksPath=VAR push origin main"}')"
+check "GIT_CONFIG_PARAMETERS lowercase blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"GIT_CONFIG_PARAMETERS='\''core.hookspath=/dev/null'\'' git push"}')"
+check "git config write hooksPath blocked" 2 "BLOCKED: persistently setting" - \
+  validate-bash.sh "$(j b1 '{"command":"git config core.hooksPath /dev/null && git push origin main"}')"
+check "git config write alias blocked" 2 "BLOCKED: persistently setting" - \
+  validate-bash.sh "$(j b1 '{"command":"git config alias.p \"push --force\""}')"
+check "git push --no-verify blocked (r29)" 2 "BLOCKED: git push --no-verify" - \
+  validate-bash.sh "$(j b1 '{"command":"git push --no-verify origin main"}')"
+check "git -c user.email commit allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git -c user.email=x@y.z commit -m msg"}')"
+check "git config --get hooksPath allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git config --get core.hooksPath"}')"
+check "commit message mentioning hooksPath allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git commit -m \"block git -c core.hooksPath push\""}')"
+check "echo GIT_CONFIG_COUNT allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"echo GIT_CONFIG_COUNT=1"}')"
+# ── round-29: fs wrapper / path / glob / subshell ──
+check "direnv exec rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"direnv exec . rm -rf /home/lukas"}')"
+check "nix shell --command rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"nix shell nixpkgs#coreutils --command rm -rf /home/lukas"}')"
+check "devenv shell no-dashdash rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"devenv shell rm -rf /home/lukas"}')"
+check "backslash-escaped rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"r\\m -rf /home/lukas"}')"
+check "backslash-in-path rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /ho\\me/lukas"}')"
+check "subshell rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"(rm -rf /home/lukas)"}')"
+check "brace-group rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"{ rm -rf /home/lukas; }"}')"
+check "if-then rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"if true; then rm -rf /home/lukas; fi"}')"
+check "home dotfile glob blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas/.[!.]*"}')"
+check "home question-star glob blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas/?*"}')"
+check "home brace glob blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas/{*,.*}"}')"
+check "home scoped deep glob allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas/proj/*.log"}')"
+check "cd root semicolon glob blocked" 2 "BLOCKED: cd into a root" - \
+  validate-bash.sh "$(j b1 '{"command":"cd /home/lukas; rm -rf *"}')"
+check "find HOME delete blocked" 2 "BLOCKED: find -delete" - \
+  validate-bash.sh "$(j b1 '{"command":"find $HOME -delete"}')"
+check "dd to dev null allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"dd if=/dev/zero of=/dev/null bs=1M count=100"}')"
+check "mke2fs on device blocked" 2 "BLOCKED: filesystem creation" - \
+  validate-bash.sh "$(j b1 '{"command":"mke2fs /dev/sdb1"}')"
+check "nvme format blocked" 2 "BLOCKED: filesystem creation" - \
+  validate-bash.sh "$(j b1 '{"command":"nvme format /dev/nvme0n1"}')"
+check "cryptsetup luksErase blocked" 2 "BLOCKED: cryptsetup" - \
+  validate-bash.sh "$(j b1 '{"command":"cryptsetup luksErase /dev/sda"}')"
+check "kubectl delete kustomization blocked" 2 "BLOCKED: destructive kubectl" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl delete kustomization apps -n flux-system"}')"
+check "flux delete kustomization blocked" 2 "BLOCKED: flux delete" - \
+  validate-bash.sh "$(j b1 '{"command":"flux delete kustomization apps --silent"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 
@@ -354,6 +422,29 @@ check "different command unaffected" 0 - - \
 
 # ── check-git-state (Stop: human-facing stdout, always exit 0) ──
 check "stop report exits zero" 0 - - check-git-state.sh "$(j g1 'null')"
+
+# ── eval-contamination guard (mechanical; prevents the round-27 failure) ──
+# The solving runner injects each SKILL.md body as the solver's system prompt,
+# so a grader-distinctive token from a task's test.sh appearing in a skill body
+# is answer-injection. Fail loudly if any does.
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if [ -d "$REPO_ROOT/evals" ]; then
+  CONTAM=""
+  # Tokens pulled from evals/*/tasks/*/test.sh that are BOTH grader-distinctive
+  # AND absent from the legitimate de-contaminated skills (so a real infra name
+  # like sops-age or cert-manager, which a skill rightly documents, is excluded
+  # to avoid false positives — only genuine answer-injection trips this).
+  for tok in jetstack WORKSTATION_NAMESPACE installCRDs driftDetection; do
+    if grep -rqwF "$tok" "$REPO_ROOT"/skills/*/SKILL.md 2>/dev/null; then
+      CONTAM="$CONTAM $tok"
+    fi
+  done
+  if [ -n "$CONTAM" ]; then
+    FAIL=$((FAIL + 1)); echo "FAIL: eval-answer token(s) in a SKILL.md body:$CONTAM"
+  else
+    PASS=$((PASS + 1))
+  fi
+fi
 
 # ── session keying (jq derives the per-session path; skipped without it) ──
 if command -v jq >/dev/null 2>&1; then
