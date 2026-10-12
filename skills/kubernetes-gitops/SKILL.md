@@ -44,6 +44,55 @@ just unhealthy        # in ~/homelab-gitops
 
 For deeper diagnosis dispatch the `k8s-debugger` agent.
 
+## Reference shapes
+
+A Flux HelmRelease (apiVersion is always `helm.toolkit.fluxcd.io/v2`; set
+remediation retries and, for stateless charts, drift detection):
+
+```yaml
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata: {name: cert-manager, namespace: cert-manager}
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: cert-manager
+      version: "1.16.x"            # semver range
+      sourceRef: {kind: HelmRepository, name: jetstack, namespace: flux-system}
+  install: {crds: Create, remediation: {retries: 3}}
+  upgrade: {crds: CreateReplace, remediation: {retries: 3}}
+  driftDetection: {mode: enabled}
+  values: {installCRDs: true}
+```
+
+A Flux Kustomization (`kustomize.toolkit.fluxcd.io/v1` — NOT the
+`kustomize.config.k8s.io` kind; that one has no `spec.prune`/`decryption`)
+with SOPS decryption and an ordering dependency:
+
+```yaml
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata: {name: monitoring, namespace: flux-system}
+spec:
+  interval: 5m
+  path: ./apps/monitoring
+  prune: true
+  sourceRef: {kind: GitRepository, name: flux-system}
+  dependsOn: [{name: infrastructure}]
+  decryption:
+    provider: sops
+    secretRef: {name: sops-age}
+```
+
+Flux image automation: the scan cadence is `ImageRepository.spec.interval`
+(set `interval: 5m` for a 5-minute scan); force a scan now with
+`flux reconcile image repository <name> -n <ns>`.
+
+When the deliverable is a debug write-up, state the root cause in one line,
+then give the exact `kubectl`/`flux` command that applies the fix (patch or
+set env; never delete the pod — the controller recreates it).
+
 ## Destructive deletes (kyverno-enforced)
 
 Deleting a PVC, PV, or Namespace is admission-denied for humans until the

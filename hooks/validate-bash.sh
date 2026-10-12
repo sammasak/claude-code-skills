@@ -96,6 +96,11 @@ fi
 # top-level system dirs down to one segment. Segments are slash-squeezed
 # before matching so //home//lukas is /home/lukas.
 FSROOT="(^|[[:space:]])[\"${SQ}]?(/+|/+[^/[:space:]]*[*?][^/[:space:]]*(/[A-Za-z0-9._@-]+)?|~[A-Za-z0-9._-]*(/\\.?\\*|/)?|\\\$\\{?HOME\\}?(/\\.?\\*|/)?|(\\.\\./)+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?/?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?(/\\.?\\*|/)?)[\"${SQ}]?([[:space:]]|\$)"
+# The fs tier scans a copy with command-substitution delimiters rewritten to
+# ';' (a command-position char) and ')' to a space, so $(rm -rf /home) and
+# `rm -rf /home` present as a bare, command-position rm with a terminated
+# target — the same way the git-push tier already unwraps $(echo ...).
+SCAN=$(printf '%s' "$SCAN" | sed 's/\$(/;/g; s/`/;/g; s/)/ /g')
 # Tools invoked by absolute path still sit at command position.
 ABS="(/[A-Za-z0-9._/-]*/)?"
 # No force-flag requirement: with non-tty stdin (an agent's reality) GNU rm

@@ -134,13 +134,20 @@ Reports include per-case inputs, outputs, evaluator scores, and reasons. Use `--
   only untried lever.
 - Solving (haiku solver, strict = all assertions): **8/15 strict, 9/15
   BashGrader** — this is the measured task-solving pass rate. The weak
-  skill is kubernetes-gitops at **1/5 strict (2/5 BashGrader)** per the
-  same committed artifact; the other suites carry the aggregate.
-  Believed cause (from the graders' FAIL reasons: "kind must be
-  HelmRelease", "root cause must identify ..."): the skill teaches
-  patterns but does not pin the output shapes the BashGrader demands —
-  the lever is output contracts in the task prompts or skill body, not
-  more cluster knowledge (the content itself verified against the live
-  cluster).
+  skill is kubernetes-gitops at **1–2/5 BashGrader** (run-to-run; see the
+  dedicated `solving-kubernetes-gitops-*.json` artifact).
+  **Diagnosed cause (not merely believed):** the haiku solver's *content*
+  is strong — rubric_mean 0.73 across the five tasks, with task-2/task-4
+  at 0.875–1.0 — but it fails the BashGrader's exact-field/exact-path
+  checks because it wraps YAML in prose or writes to the wrong path, and
+  the per-task n=1 rollout is high-variance (task-1 flips pass/fail across
+  identical runs). So the gap is solver *execution reliability* plus
+  variance, NOT missing cluster knowledge. The 2026-10-12 skill change
+  added the canonical Flux CRD shapes (HelmRelease, the
+  `kustomize.toolkit.fluxcd.io` Kustomization, image-automation interval)
+  the solver was reinventing; this lifted rubric quality but not the
+  mechanical BashGrader pass rate, which is solver-bound. Graders are left
+  strict on purpose — loosening them to raise the number would be the slop
+  this setup exists to prevent.
   "0 failures" in any run output means evaluator infrastructure health,
   never the pass rate; quote the strict number.

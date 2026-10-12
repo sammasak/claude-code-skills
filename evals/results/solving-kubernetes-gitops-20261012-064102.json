@@ -1,0 +1,371 @@
+{
+  "name": "solving-kubernetes-gitops-20261012-064102",
+  "cases": [
+    {
+      "name": "kubernetes-gitops::task-1",
+      "inputs": {
+        "instruction": "# Task: Fix a stuck HelmRelease\n\n## Context\nYou are working in a homelab GitOps repository that uses Flux v2.\n\nThe following HelmRelease has been failing to reconcile for 10 minutes:\n```\nNAME         READY   STATUS                                                    AGE\ngrafana      False   Helm install failed: rendered manifests contain a...      45m\n```\n\nRunning `flux logs --kind=HelmRelease --name=grafana -n monitoring` shows:\n```\nrendered manifests contain a resource that already exists. Unable to continue with install:\nServiceAccount \"grafana\" in namespace \"monitoring\" exists and cannot be imported into\nthe current release: invalid ownership metadata; annotation validation error: ...\n```\n\n## Your Task\n1. Diagnose why the HelmRelease is stuck\n2. Identify the correct Flux remediation approach (do NOT delete the namespace or existing resources)\n3. Write the exact kubectl/flux command(s) needed to unblock it\n4. Explain what flag or annotation prevents this from happening again\n\n## Deliverable\nA markdown file at `/tmp/eval-output/remediation.md` containing:\n- Root cause diagnosis (1-2 sentences)\n- Exact remediation commands (runnable as-is)\n- Prevention recommendation\n",
+        "skill": "kubernetes-gitops",
+        "task_id": "task-1",
+        "output_filename": "remediation.md"
+      },
+      "metadata": {
+        "test_script": "/home/lukas/claude-code-skills/evals/kubernetes-gitops/tasks/task-1/test.sh",
+        "quality_rubric": "# Quality Rubric — Task 1 (HelmRelease ownership conflict)\n\nEvaluate the response on:\n\n1. **Root cause accuracy** (0-3): Does it correctly identify that the ServiceAccount existed\n   before Flux tried to install and Flux cannot adopt it without explicit permission?\n   - 3: Precisely identifies Helm ownership annotation conflict\n   - 2: Identifies \"resource exists\" issue but not the annotation mechanism\n   - 1: Vaguely mentions conflict\n   - 0: Wrong root cause\n\n2. **Remediation correctness** (0-3): Is the recommended approach correct and safe?\n   - 3: Recommends `flux suspend` + fix annotations + `flux resume` OR Helm `--force-adopt` approach\n   - 2: Recommends correct approach but with extra/risky steps\n   - 1: Recommends a workaround that works but has side effects\n   - 0: Recommends deleting the namespace or other destructive action\n\n3. **Prevention specificity** (0-2): Does it explain HOW to prevent this in future deployments?\n   - 2: Mentions `helm.sh/resource-policy: keep` annotation or Flux `createNamespace` flag specifically\n   - 1: Vaguely suggests \"clean up first\"\n   - 0: No prevention recommendation\n\nMinimum acceptable: 6/8\n"
+      },
+      "expected_output": null,
+      "output": {
+        "content": "# Step 1: Annotate the existing ServiceAccount to claim it for the current release\nkubectl -n monitoring annotate serviceaccount grafana \\\n  meta.helm.sh/release-name=grafana \\\n  meta.helm.sh/release-namespace=monitoring \\\n  --overwrite\n\n# Step 2: Trigger a Flux reconciliation to retry the install\nflux reconcile helmrelease grafana -n monitoring",
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false,
+        "tmpdir": "/tmp/eval-kubernetes-gitops-task-1-uajqpoxy",
+        "returncode": 0
+      },
+      "metrics": {},
+      "attributes": {},
+      "scores": {
+        "rubric_score": {
+          "name": "rubric_score",
+          "value": 0.625,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "labels": {
+        "rubric_reasoning": {
+          "name": "rubric_reasoning",
+          "value": "The output correctly identifies the Helm ownership annotation mechanism and recommends the proper remediation approach (adding meta.helm.sh annotations to claim the resource). However, it does not explicitly explain the root cause (that ServiceAccount existed beforehand and Flux couldn't adopt it), earning 2/3 instead of full marks. Most critically, the output completely omits any prevention strategy or explanation of how to avoid this conflict in future deployments, scoring 0/2 on prevention. The response falls short of the 6/8 minimum threshold with a total of 5 points.",
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "assertions": {
+        "BashGrader": {
+          "name": "BashGrader",
+          "value": false,
+          "reason": "FAIL: root cause diagnosis does not address resource ownership conflict",
+          "source": {
+            "name": "BashGrader",
+            "arguments": null
+          }
+        },
+        "rubric_passed": {
+          "name": "rubric_passed",
+          "value": false,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "task_duration": 5.173595907865092,
+      "total_duration": 7.912075519561768,
+      "source_case_name": null,
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "evaluator_failures": []
+    },
+    {
+      "name": "kubernetes-gitops::task-2",
+      "inputs": {
+        "instruction": "# Task: Write a correct HelmRelease manifest\n\n## Context\nYou need to deploy cert-manager v1.16.x using Flux into a Kubernetes cluster.\n\nRequirements:\n- Namespace: cert-manager\n- Helm chart: cert-manager from the jetstack Helm repository\n- Version: any v1.16.x (use semver range)\n- CRDs must be installed (use `installCRDs=true` or equivalent)\n- Remediation: retry on install failure (3 retries)\n- Drift detection: enabled\n\n## Your Task\nWrite a complete, production-ready Flux HelmRelease manifest.\n\n## Deliverable\nWrite the manifest to `/tmp/eval-output/helmrelease.yaml`.\n",
+        "skill": "kubernetes-gitops",
+        "task_id": "task-2",
+        "output_filename": "helmrelease.yaml"
+      },
+      "metadata": {
+        "test_script": "/home/lukas/claude-code-skills/evals/kubernetes-gitops/tasks/task-2/test.sh",
+        "quality_rubric": "# Quality Rubric — Task 2 (HelmRelease manifest)\n\nEvaluate the generated Flux HelmRelease manifest on:\n\n1. **YAML validity** (0-2): Is the file valid YAML that would parse correctly?\n   - 2: Valid YAML, well-structured\n   - 1: Minor formatting issues but parseable\n   - 0: Invalid YAML or not YAML at all\n\n2. **apiVersion and kind correctness** (0-2): Does it use the correct Flux API?\n   - 2: `apiVersion: helm.toolkit.fluxcd.io/v2` and `kind: HelmRelease`\n   - 1: Correct kind but wrong apiVersion version (e.g. v2beta1 instead of v2)\n   - 0: Wrong kind or wrong API group entirely\n\n3. **Remediation configuration** (0-2): Are retries properly configured?\n   - 2: `spec.install.remediation.retries` or `spec.upgrade.remediation.retries` set to a specific integer\n   - 1: Remediation block present but retry count missing or incorrect\n   - 0: No remediation configuration\n\n4. **Drift detection** (0-2): Is drift detection enabled?\n   - 2: `spec.driftDetection.mode: enabled` or `warn`\n   - 1: Drift detection mentioned in comments but not configured\n   - 0: No drift detection configuration\n\nMinimum acceptable: 6/8\n"
+      },
+      "expected_output": null,
+      "output": {
+        "content": "mkdir -p /tmp/eval-output\ncat > /tmp/eval-output/helmrelease.yaml << 'EOF'\napiVersion: helm.toolkit.fluxcd.io/v2\nkind: HelmRelease\nmetadata:\n  name: cert-manager\n  namespace: cert-manager\nspec:\n  interval: 30m\n  chart:\n    spec:\n      chart: cert-manager\n      version: \"1.16.x\"\n      sourceRef:\n        kind: HelmRepository\n        name: jetstack\n        namespace: flux-system\n  install:\n    crds: Create\n    remediation:\n      retries: 3\n  upgrade:\n    crds: CreateReplace\n    remediation:\n      retries: 3\n  driftDetection:\n    mode: enabled\n  values:\n    installCRDs: true\nEOF\ncat /tmp/eval-output/helmrelease.yaml",
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false,
+        "tmpdir": "/tmp/eval-kubernetes-gitops-task-2-jru5_e2a",
+        "returncode": 0
+      },
+      "metrics": {},
+      "attributes": {},
+      "scores": {
+        "rubric_score": {
+          "name": "rubric_score",
+          "value": 1.0,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "labels": {
+        "rubric_reasoning": {
+          "name": "rubric_reasoning",
+          "value": "The output generates a valid, well-structured Flux HelmRelease manifest that meets all rubric criteria. It correctly uses apiVersion v2 and kind HelmRelease, includes remediation retry counts (3) for both install and upgrade phases, and properly enables drift detection with mode: enabled.",
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "assertions": {
+        "BashGrader": {
+          "name": "BashGrader",
+          "value": false,
+          "reason": "FAIL: invalid YAML",
+          "source": {
+            "name": "BashGrader",
+            "arguments": null
+          }
+        },
+        "rubric_passed": {
+          "name": "rubric_passed",
+          "value": true,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "task_duration": 4.988699821988121,
+      "total_duration": 7.505573749542236,
+      "source_case_name": null,
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "evaluator_failures": []
+    },
+    {
+      "name": "kubernetes-gitops::task-3",
+      "inputs": {
+        "instruction": "# Task: Debug a failing pod\n\n## Context\nA pod named `api-6b7f9d-x9kzp` in namespace `workstations` is in CrashLoopBackOff.\n\nThe following information is available:\n```\n$ kubectl get pod api-6b7f9d-x9kzp -n workstations\nNAME                 READY   STATUS             RESTARTS   AGE\napi-6b7f9d-x9kzp    0/1     CrashLoopBackOff   8          15m\n\n$ kubectl describe pod api-6b7f9d-x9kzp -n workstations | grep -A5 \"Last State:\"\n    Last State:     Terminated\n      Reason:       Error\n      Exit Code:    1\n      Started:      Sat, 08 Mar 2026 10:00:00 +0000\n      Finished:     Sat, 08 Mar 2026 10:00:02 +0000\n\n$ kubectl logs api-6b7f9d-x9kzp -n workstations --previous\nError loading config: environment variable WORKSTATION_NAMESPACE is not set\n```\n\n## Your Task\n1. Identify the root cause of the crash\n2. Write the minimal Kubernetes patch or manifest change to fix it\n3. Explain how to apply the fix without deleting the pod\n\n## Deliverable\nWrite your analysis and fix to `/tmp/eval-output/fix.md`.\nThe fix must include the exact `kubectl` command to apply it.\n",
+        "skill": "kubernetes-gitops",
+        "task_id": "task-3",
+        "output_filename": "fix.md"
+      },
+      "metadata": {
+        "test_script": "/home/lukas/claude-code-skills/evals/kubernetes-gitops/tasks/task-3/test.sh",
+        "quality_rubric": "# Quality Rubric — Task 3 (CrashLoopBackOff pod debug)\n\nEvaluate the response on:\n\n1. **Root cause identification** (0-3): Does it correctly identify the missing env var?\n   - 3: Precisely identifies `WORKSTATION_NAMESPACE` env var missing from the Deployment spec\n   - 2: Identifies \"missing environment variable\" but not the specific variable name\n   - 1: Vaguely mentions configuration error\n   - 0: Wrong root cause (e.g. image pull failure, OOMKilled)\n\n2. **Fix targets Deployment, not pod** (0-2): Does the fix address the root cause correctly?\n   - 2: Explicitly patches the Deployment (or owning resource) env section — not just the pod\n   - 1: Fix is correct but unclear whether it targets Deployment vs pod\n   - 0: Fix only mentions deleting the pod or modifying the ephemeral pod directly\n\n3. **Safety** (0-1): Does it avoid destructive recommendations?\n   - 1: No mention of `kubectl delete pod` as the fix; understands pod will restart on its own\n   - 0: Recommends deleting the namespace or pod as the primary fix\n\nMinimum acceptable: 5/6\n"
+      },
+      "expected_output": null,
+      "output": {
+        "content": "kubectl -n workstations patch deployment api -p \\\n  '{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"api\",\"env\":[{\"name\":\"WORKSTATION_NAMESPACE\",\"value\":\"workstations\"}]}]}}}}'",
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false,
+        "tmpdir": "/tmp/eval-kubernetes-gitops-task-3-wsq0k1bo",
+        "returncode": 0
+      },
+      "metrics": {},
+      "attributes": {},
+      "scores": {
+        "rubric_score": {
+          "name": "rubric_score",
+          "value": 1.0,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "labels": {
+        "rubric_reasoning": {
+          "name": "rubric_reasoning",
+          "value": "The output precisely identifies and targets the missing WORKSTATION_NAMESPACE environment variable by directly patching the Deployment's pod spec containers section—exactly the correct approach for fixing a CrashLoopBackOff caused by missing env vars. The command is safe, avoiding any destructive actions and allowing the pod to restart automatically via the Deployment controller.",
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "assertions": {
+        "BashGrader": {
+          "name": "BashGrader",
+          "value": true,
+          "reason": "PASS",
+          "source": {
+            "name": "BashGrader",
+            "arguments": null
+          }
+        },
+        "rubric_passed": {
+          "name": "rubric_passed",
+          "value": true,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "task_duration": 5.046096798963845,
+      "total_duration": 7.196319341659546,
+      "source_case_name": null,
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "evaluator_failures": []
+    },
+    {
+      "name": "kubernetes-gitops::task-4",
+      "inputs": {
+        "instruction": "# Task: Write a Kustomization with SOPS decryption\n\n## Context\nYou need to write a Flux Kustomization manifest that:\n- Watches the `apps/monitoring` path in your GitOps repository\n- Has a 5-minute reconciliation interval\n- Depends on `infrastructure` Kustomization being ready first\n- Decrypts SOPS secrets using an age key stored in a Kubernetes secret named `sops-age` in the `flux-system` namespace\n- Prunes deleted resources\n\n## Your Task\nWrite a complete, correct Flux Kustomization manifest.\n\n## Deliverable\nWrite the manifest to `/tmp/eval-output/kustomization.yaml`.\n",
+        "skill": "kubernetes-gitops",
+        "task_id": "task-4",
+        "output_filename": "kustomization.yaml"
+      },
+      "metadata": {
+        "test_script": "/home/lukas/claude-code-skills/evals/kubernetes-gitops/tasks/task-4/test.sh",
+        "quality_rubric": "# Quality Rubric — Task 4 (Kustomization with SOPS)\n\nEvaluate the generated Flux Kustomization manifest on:\n\n1. **Prune enabled** (0-2): Is resource pruning correctly configured?\n   - 2: `spec.prune: true` explicitly set\n   - 1: Prune mentioned in comments but not in spec\n   - 0: Prune missing or set to false\n\n2. **dependsOn correct** (0-2): Does it correctly depend on the infrastructure Kustomization?\n   - 2: `spec.dependsOn[].name: infrastructure` present\n   - 1: dependsOn block present but referencing wrong name\n   - 0: No dependsOn configured\n\n3. **SOPS decryption configured** (0-2): Is SOPS decryption properly set up?\n   - 2: `spec.decryption.provider: sops` and secret reference to `sops-age` in the correct namespace\n   - 1: SOPS provider set but secret reference missing or incorrect\n   - 0: No decryption configuration\n\n4. **Interval** (0-2): Is the reconciliation interval specified?\n   - 2: `spec.interval: 5m` or equivalent duration format\n   - 1: Interval present but wrong value or format\n   - 0: Interval missing\n\nMinimum acceptable: 6/8\n"
+      },
+      "expected_output": null,
+      "output": {
+        "content": "mkdir -p /tmp/eval-output\ncat > /tmp/eval-output/kustomization.yaml << 'EOF'\napiVersion: kustomize.toolkit.fluxcd.io/v1\nkind: Kustomization\nmetadata:\n  name: monitoring\n  namespace: flux-system\nspec:\n  interval: 5m\n  path: ./apps/monitoring\n  prune: true\n  sourceRef:\n    kind: GitRepository\n    name: flux-system\n  dependsOn:\n    - name: infrastructure\n  decryption:\n    provider: sops\n    secretRef:\n      name: sops-age\nEOF\ncat /tmp/eval-output/kustomization.yaml",
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false,
+        "tmpdir": "/tmp/eval-kubernetes-gitops-task-4-nvwu1o58",
+        "returncode": 0
+      },
+      "metrics": {},
+      "attributes": {},
+      "scores": {
+        "rubric_score": {
+          "name": "rubric_score",
+          "value": 0.875,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "labels": {
+        "rubric_reasoning": {
+          "name": "rubric_reasoning",
+          "value": "The manifest correctly enables prune (2/2), properly configures dependsOn referencing the infrastructure Kustomization (2/2), and specifies the correct 5m interval (2/2). However, the SOPS decryption configuration is incomplete: while the provider is correctly set to sops and the secret name is correct, the secret reference is missing the namespace specification (only `name: sops-age` is present, without `namespace: <namespace>`), resulting in 1/2 for decryption. The output passes the minimum threshold of 6/8.",
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "assertions": {
+        "BashGrader": {
+          "name": "BashGrader",
+          "value": false,
+          "reason": "FAIL: invalid YAML",
+          "source": {
+            "name": "BashGrader",
+            "arguments": null
+          }
+        },
+        "rubric_passed": {
+          "name": "rubric_passed",
+          "value": true,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "task_duration": 3.2511287180241197,
+      "total_duration": 6.047086238861084,
+      "source_case_name": null,
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "evaluator_failures": []
+    },
+    {
+      "name": "kubernetes-gitops::task-5",
+      "inputs": {
+        "instruction": "# Task: Explain and fix Flux image automation\n\n## Context\nYou have image update automation configured for a service called `api`. The ImagePolicy\nis set to semver range `>=1.0.0 <2.0.0`. A new image `registry.example.com/api:1.5.0`\nwas pushed to the registry 30 minutes ago, but Flux has NOT updated the manifest.\n\nRunning `flux get images all -n apps` shows:\n```\nNAME         READY   STATUS                                AGE\napi          True    Latest image tag for 'api' resolved   2h\n```\n\nBut `flux get imagerepositories -n apps` shows:\n```\nNAME    READY   STATUS                    LAST SCAN\napi     True    successful scan, 1 tag    2h ago\n```\n\nThe last scan was 2 hours ago — before the new image was pushed.\n\n## Your Task\n1. Explain why the automation has not picked up the new image\n2. Write the exact command to force a new scan now\n3. Identify the configuration field that controls scan frequency and provide the correct value for a 5-minute scan interval\n\n## Deliverable\nWrite your analysis to `/tmp/eval-output/image-automation.md`.\n",
+        "skill": "kubernetes-gitops",
+        "task_id": "task-5",
+        "output_filename": "image-automation.md"
+      },
+      "metadata": {
+        "test_script": "/home/lukas/claude-code-skills/evals/kubernetes-gitops/tasks/task-5/test.sh",
+        "quality_rubric": "# Quality Rubric — Task 5 (Flux image automation)\n\nEvaluate the response on:\n\n1. **Stale scan diagnosis** (0-3): Does it correctly explain why the image wasn't picked up?\n   - 3: Precisely identifies that the ImageRepository's scan interval is too long (2h default) and the last scan predates the push\n   - 2: Identifies \"scan didn't run\" but not the interval configuration cause\n   - 1: Vaguely mentions timing issue\n   - 0: Wrong diagnosis\n\n2. **Force reconcile command** (0-2): Does it include the correct flux command to force a scan?\n   - 2: Includes `flux reconcile imagerepository api -n apps` or equivalent with correct flags\n   - 1: Includes a flux reconcile command but targeting wrong resource type or namespace\n   - 0: No force reconcile command provided\n\n3. **Interval field knowledge** (0-2): Does it identify the configuration field and correct value?\n   - 2: Identifies `spec.interval` on the ImageRepository and suggests `5m` value\n   - 1: Mentions interval concept but not the specific field path\n   - 0: Does not address interval configuration\n\nMinimum acceptable: 5/7\n"
+      },
+      "expected_output": null,
+      "output": {
+        "content": "flux reconcile image repository api -n apps",
+        "stdout": "",
+        "stderr": "",
+        "timed_out": false,
+        "tmpdir": "/tmp/eval-kubernetes-gitops-task-5-wdeuansh",
+        "returncode": 0
+      },
+      "metrics": {},
+      "attributes": {},
+      "scores": {
+        "rubric_score": {
+          "name": "rubric_score",
+          "value": 0.143,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "labels": {
+        "rubric_reasoning": {
+          "name": "rubric_reasoning",
+          "value": "The output only provides a single command with no explanation or context. While it attempts a flux reconcile command targeting the correct namespace (apps), it uses incorrect syntax (\"flux reconcile image repository\" instead of \"flux reconcile imagerepository\"). The response completely lacks diagnosis of the stale scan issue, explanation of the scan interval problem, or guidance on fixing the interval configuration field.",
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "assertions": {
+        "BashGrader": {
+          "name": "BashGrader",
+          "value": false,
+          "reason": "FAIL: must identify stale scan interval as root cause",
+          "source": {
+            "name": "BashGrader",
+            "arguments": null
+          }
+        },
+        "rubric_passed": {
+          "name": "rubric_passed",
+          "value": false,
+          "reason": null,
+          "source": {
+            "name": "StructuredRubricJudge",
+            "arguments": null
+          }
+        }
+      },
+      "task_duration": 4.291873869951814,
+      "total_duration": 6.6774890422821045,
+      "source_case_name": null,
+      "trace_id": "00000000000000000000000000000000",
+      "span_id": "0000000000000000",
+      "evaluator_failures": []
+    }
+  ],
+  "failures": [],
+  "analyses": [],
+  "report_evaluator_failures": [],
+  "experiment_metadata": null,
+  "trace_id": "00000000000000000000000000000000",
+  "span_id": "0000000000000000"
+}

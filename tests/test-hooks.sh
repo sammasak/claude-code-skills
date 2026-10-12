@@ -159,6 +159,10 @@ check "quoted eval rm blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"eval '\''rm -rf /'\''"}')"
 check "busybox rm blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"busybox rm -rf /"}')"
+check "command-substitution rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"$(rm -rf /home/lukas)"}')"
+check "backtick rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"echo `rm -rf /home/lukas`"}')"
 check "rm -r relative dir allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -r ./build"}')"
 check "rm -rf sibling dir allowed" 0 - - \
