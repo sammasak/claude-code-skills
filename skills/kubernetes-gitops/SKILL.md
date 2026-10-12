@@ -15,6 +15,7 @@ allowed-tools: Bash, Read, Grep, Glob
 | `acer-swift` | the only always-on worker; every app pod runs here, so losing it is a total app outage |
 | `lenovo-21cb001pmx` | control-plane, tainted; hosts ntfy, Tailscale subnet router, AdGuard DNS |
 | `msi-ms7758` | intermittent opt-in worker, taint `sammasak.dev/intermittent=true:NoSchedule`; scheduled power window Mon-Fri ~09:00-21:00 (WoL from lenovo), otherwise off; never WoL it at night |
+| `black-pi` | Raspberry Pi 4 (4GB, arm64) opt-in worker, label `node-pool=arm64`, taint `sammasak.dev/arch=arm64:NoSchedule`; workloads need both plus a `linux/arm64` image. Ethernet `end0` .136, Wi-Fi `wlan0` .137; Cilium `devices` must list both |
 
 Platform: Flux, Cilium (CNI + kube-proxy replacement), MetalLB (pool 192.168.10.202-204), Traefik v3 on .203 (`*.sammasak.dev`), cert-manager (`letsencrypt-prod`, Cloudflare DNS-01), Authentik, KEDA + HTTP add-on, Kyverno, zot. Gone (do not reintroduce without an ADR): ingress-nginx, Harbor, Falco, Tempo, Pushgateway, Cloudflare tunnel, VM workloads.
 
