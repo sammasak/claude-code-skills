@@ -377,6 +377,17 @@ check "cp to device blocked" 2 "BLOCKED: copying onto" - \
   validate-bash.sh "$(j b1 '{"command":"cp /tmp/img /dev/sda"}')"
 check "parted mkpart blocked" 2 "BLOCKED: partitioning" - \
   validate-bash.sh "$(j b1 '{"command":"parted /dev/sda mkpart primary 0% 100%"}')"
+# ── round-31: segment-scoped git config, --no-verbose, auth can-i --as ──
+check "git config read then write hooksPath blocked" 2 "BLOCKED: persistently setting" - \
+  validate-bash.sh "$(j b1 '{"command":"git config --get user.name; git config core.hooksPath /dev/null"}')"
+check "git config get-regexp then alias write blocked" 2 "BLOCKED: persistently setting" - \
+  validate-bash.sh "$(j b1 '{"command":"git config --get-regexp alias; git config alias.p \"push --force\"; git p"}')"
+check "git config --get only allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git config --get core.hooksPath"}')"
+check "git push --no-verbose allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git push --no-verbose origin main"}')"
+check "kubectl auth can-i --as allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl auth can-i --list --as=system:serviceaccount:app:sa"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 
@@ -404,12 +415,10 @@ fi
 check "non-shell skipped" 0 - - \
   validate-shell.sh "$(j s1 "{\"file_path\":\"$TMP/ok.nix\"}")"
 
-# ── validate-rust (PostToolUse): skip paths only — full cargo is too heavy ──
-check "non-rs skipped" 0 - - \
-  validate-rust.sh "$(j r1 "{\"file_path\":\"$TMP/ok.nix\"}")"
-printf 'fn main() {}' > "$TMP/stray.rs"
-check "stray rs outside workspace skipped" 0 - - \
-  validate-rust.sh "$(j r1 "{\"file_path\":\"$TMP/stray.rs\"}")"
+# validate-rust was removed: per-edit `cargo check` re-improvised heavy
+# verification the pre-push rust:ci gate already owns (lean-code), and its
+# 120s cold-build could stall a memory-constrained host. Rust verification
+# now lives only at the owning layer.
 
 # ── validate-manifest (PostToolUse) ──
 if command -v yq >/dev/null 2>&1; then

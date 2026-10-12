@@ -31,9 +31,13 @@ block() {
 #   - git history: the pre-push ANCESTRY GUARD (fires inside git, wrapper- and
 #     quoting-independent) — this hook additionally refuses the known ways to
 #     turn that guard OFF (--no-verify, -c/env core.hooksPath, aliases).
-#   - cluster state: the fail-closed KYVERNO policy on PVC/PV/Namespace
-#     (and now Flux kinds); RBAC owns impersonation and policy deletion, which
-#     this hook also speed-bumps but cannot guarantee.
+#   - cluster state: the fail-closed KYVERNO policy on PVC/PV/Namespace and the
+#     Flux kinds whose prune cascades to them. But the operator kubeconfig is
+#     deliberately cluster-admin (system:masters — a recorded homelab trade), so
+#     NO RBAC layer restricts impersonating the exempt controller or deleting
+#     the policy itself: those are UNOWNED, speed-bumped here only. The real fix
+#     is a scoped agent kubeconfig (ClusterRole minus impersonate and minus
+#     delete on clusterpolicies); until that exists, treat them as residual.
 #   - filesystem: NO deeper layer exists (the permission layer is blanket-allow
 #     with prefix-only denies, a recorded trade), so the fs residual is UNOWNED
 #     and accepted: variable/non-literal targets (rm -rf "$DIR", ${IFS}),
@@ -89,8 +93,9 @@ GITSCAN=$(printf '%s' "$SCAN" | sed 's/\\\(.\)/\1/g' | sed "s/[\"${SQ}]//g" | tr
 # core.hooksPath / any alias / a plus-refspec in remote.<x>.push all let a push
 # force or skip the guard; keys are case-insensitive (GITSCAN is folded).
 GBYP="core\\.hookspath|alias\\.|remote\\.[^=[:space:]]*\\.push"
-# --no-ver[...] is a unique prefix git accepts for --no-verify.
-if echo "$GITSCAN" | grep -qE "${GP}[^|&;]*[[:space:]]--no-ver[a-z]*([[:space:]]|\$)"; then
+# --no-veri[...] is the unique prefix git accepts for --no-verify (--no-verbose
+# is a different, harmless flag, so match from --no-veri on).
+if echo "$GITSCAN" | grep -qE "${GP}[^|&;]*[[:space:]]--no-veri[a-z]*([[:space:]]|\$)"; then
   block "git push --no-verify disables the pre-push guard and is not allowed."
 fi
 if echo "$GITSCAN" | grep -qE "${PFX}git([[:space:]]+(-[a-z][[:space:]]*[^[:space:]]+|--[a-z-]+(=[^[:space:]]+)?))*[[:space:]]+(-c[[:space:]]*[^[:space:]]*(${GBYP})|--config-env[= ][^[:space:]]*(${GBYP}))"; then
@@ -103,14 +108,19 @@ if echo "$GITSCAN" | grep -qE "${PFX}git([[:space:]]|\$)" \
   && echo "$GITSCAN" | grep -qE "git_config_(parameters=[^[:space:]]*(${GBYP})|key_[0-9]+=[[:space:]]*(${GBYP})|count=[0-9])"; then
   block "overriding git hooks/aliases via GIT_CONFIG_* env is not allowed."
 fi
-if echo "$GITSCAN" | grep -qE "${PFX}git[[:space:]]+config[[:space:]][^|&;]*(${GBYP})" \
-  && ! echo "$GITSCAN" | grep -qE "${PFX}git[[:space:]]+config[[:space:]][^|&;]*(--get|--list|[[:space:]]-l([[:space:]]|\$))"; then
+# Per-segment so a read-only `git config --get` in one command cannot license a
+# write in the next (`git config --get x; git config core.hooksPath /dev/null`).
+while IFS= read -r gseg; do
+  printf '%s' "$gseg" | grep -qE "git[[:space:]]+config[[:space:]].*(${GBYP})" || continue
+  printf '%s' "$gseg" | grep -qE "(--get|--list|--get-regexp|[[:space:]]-l([[:space:]]|\$))" && continue
   block "persistently setting core.hooksPath/alias via git config is not allowed."
-fi
+done < <(echo "$GITSCAN" | tr ';|&' '\n')
 # Impersonating the Kyverno-exempt controllers (--as) clears the admission
-# layer; no agent kubectl call has a legitimate --as. Checked before the
-# resource match so the impersonation is named even on `--as ... delete -f`.
-if echo "$STRIPPED" | grep -qiE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]--as[=[:space:]]"; then
+# layer. The one legitimate --as is the read-only `kubectl auth can-i … --as`
+# (RBAC introspection, mutates nothing); everything else is refused, named
+# before the resource match so `--as … delete -f` reports impersonation.
+if echo "$STRIPPED" | grep -qiE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]--as[=[:space:]]" \
+  && ! echo "$STRIPPED" | grep -qiE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[[:space:]]+auth[[:space:]]+can-i[[:space:]]"; then
   block "kubectl --as impersonation bypasses the admission policy and is not allowed."
 fi
 if echo "$STRIPPED" | grep -qiE "$KD"; then

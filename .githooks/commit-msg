@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# commit-msg gate for the manual-.githooks repos — mirrors devenv-platform's
+# commit-conventions (subject <= 72; a body must carry a `Why:` line and stay
+# essay-free). Keeps the fleet's commit convention enforced, not aspirational.
+set -euo pipefail
+msg_file="${1:-$(git rev-parse --git-path COMMIT_EDITMSG)}"
+[ -f "$msg_file" ] || exit 0
+
+subject=$(grep -v '^#' "$msg_file" | sed -n '1p')
+case "$subject" in
+  "" | "Merge "* | "Revert "* | "fixup!"* | "squash!"* | "amend!"*) exit 0 ;;
+esac
+
+if [ "${#subject}" -gt 72 ]; then
+  echo "commit-msg: subject is ${#subject} chars (max 72)." >&2
+  exit 1
+fi
+
+body=$(grep -v '^#' "$msg_file" | tail -n +2)
+has_why=$(grep -cE '^Why: ' <<<"$body" || true)
+prose=$(grep -vE '^$|^(Why|Co-Authored-By|Signed-off-by|Reviewed-by|Increment|Review-Grade|Gates|Carried|Fixes|Refs): ' <<<"$body" || true)
+prose_lines=$(grep -c . <<<"$prose" || true)
+
+if [ "$prose_lines" -gt 0 ] && [ "$has_why" -eq 0 ]; then
+  echo "commit-msg: a body must carry an explicit 'Why: <one line>' (or move the prose there)." >&2
+  exit 1
+fi
+if [ "$prose_lines" -gt 12 ]; then
+  echo "commit-msg: $prose_lines body lines (max 12) -- no essays; durable rationale goes to an ADR." >&2
+  exit 1
+fi
