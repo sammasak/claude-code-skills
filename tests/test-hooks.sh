@@ -258,13 +258,13 @@ check "append onto block device blocked" 2 "BLOCKED: redirecting output" - \
   validate-bash.sh "$(j b1 '{"command":"cat img >> /dev/sdb"}')"
 check "abs-path mkfs blocked" 2 "BLOCKED: filesystem creation" - \
   validate-bash.sh "$(j b1 '{"command":"/sbin/mkfs.ext4 /dev/sdb1"}')"
-check "shred block device blocked" 2 "BLOCKED: partitioning or wiping" - \
+check "shred block device blocked" 2 "BLOCKED: shredding" - \
   validate-bash.sh "$(j b1 '{"command":"shred /dev/sda"}')"
 check "shred plain file allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"shred -u ./secret.txt"}')"
-check "sgdisk zap blocked" 2 "BLOCKED: partitioning or wiping" - \
+check "sgdisk zap blocked" 2 "BLOCKED: partitioning" - \
   validate-bash.sh "$(j b1 '{"command":"sgdisk --zap-all /dev/sda"}')"
-check "parted mklabel blocked" 2 "BLOCKED: partitioning or wiping" - \
+check "parted mklabel blocked" 2 "BLOCKED: partitioning" - \
   validate-bash.sh "$(j b1 '{"command":"parted /dev/sda mklabel gpt"}')"
 check "xargs force push pipe blocked" 2 "BLOCKED: piping force arguments" - \
   validate-bash.sh "$(j b1 '{"command":"echo --force | xargs git push origin main"}')"
@@ -344,6 +344,39 @@ check "kubectl delete kustomization blocked" 2 "BLOCKED: destructive kubectl" - 
   validate-bash.sh "$(j b1 '{"command":"kubectl delete kustomization apps -n flux-system"}')"
 check "flux delete kustomization blocked" 2 "BLOCKED: flux delete" - \
   validate-bash.sh "$(j b1 '{"command":"flux delete kustomization apps --silent"}')"
+# ── round-30: git env forms, plumbing, abbreviations, flux/kubectl ──
+check "env GIT_CONFIG_PARAMETERS push blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"env GIT_CONFIG_PARAMETERS=core.hookspath=/dev/null git push"}')"
+check "GIT_CONFIG_KEY split-env push blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"GIT_CONFIG_VALUE_0=/dev/null GIT_CONFIG_KEY_0=core.hooksPath GIT_CONFIG_COUNT=1 git push"}')"
+check "export then push blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"export GIT_CONFIG_PARAMETERS=core.hooksPath=/dev/null; git push origin main"}')"
+check "git send-pack force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"git send-pack --force origin main"}')"
+check "no-verify abbreviation blocked" 2 "BLOCKED: git push --no-verify" - \
+  validate-bash.sh "$(j b1 '{"command":"git push --no-veri origin main"}')"
+check "remote.push plus-refspec config blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"git -c remote.origin.push=+refs/heads/main:refs/heads/main push origin"}')"
+check "flux global-flag delete blocked" 2 "BLOCKED: flux delete" - \
+  validate-bash.sh "$(j b1 '{"command":"flux -n flux-system delete kustomization apps"}')"
+check "kubectl delete clusterpolicy blocked" 2 "BLOCKED: destructive kubectl" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl delete clusterpolicy deny-destructive-deletes"}')"
+check "kubectl impersonation delete blocked" 2 "BLOCKED: kubectl --as" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl --as=system:serviceaccount:flux-system:kustomize-controller delete -f pvc.yaml"}')"
+check "dollar-single-quote rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf $'\''/home/lukas'\''"}')"
+check "home glob-then-literal allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf ~/proj/*/target"}')"
+check "fdisk -l read allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"fdisk -l /dev/sda"}')"
+check "parted print read allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"parted /dev/sda print"}')"
+check "cp from device allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"cp /dev/sda /tmp/img"}')"
+check "cp to device blocked" 2 "BLOCKED: copying onto" - \
+  validate-bash.sh "$(j b1 '{"command":"cp /tmp/img /dev/sda"}')"
+check "parted mkpart blocked" 2 "BLOCKED: partitioning" - \
+  validate-bash.sh "$(j b1 '{"command":"parted /dev/sda mkpart primary 0% 100%"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 
@@ -429,15 +462,16 @@ check "stop report exits zero" 0 - - check-git-state.sh "$(j g1 'null')"
 # is answer-injection. Fail loudly if any does.
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [ -d "$REPO_ROOT/evals" ]; then
+  # Curated tripwire tokens: grader-distinctive identifiers from
+  # evals/*/tasks/*/test.sh that a generic skill would never need to name, and
+  # that are absent from the legitimate de-contaminated skills (so real infra
+  # names like sops-age / cert-manager, documented legitimately, never trip).
+  # Auto-derivation was tried and rejected — it floods on common words
+  # (API/JSON/HTTP) and on k8s fields skills rightly use (seccompProfile).
+  # REVIEW this list when a solving task's distinctive entities change.
   CONTAM=""
-  # Tokens pulled from evals/*/tasks/*/test.sh that are BOTH grader-distinctive
-  # AND absent from the legitimate de-contaminated skills (so a real infra name
-  # like sops-age or cert-manager, which a skill rightly documents, is excluded
-  # to avoid false positives — only genuine answer-injection trips this).
   for tok in jetstack WORKSTATION_NAMESPACE installCRDs driftDetection; do
-    if grep -rqwF "$tok" "$REPO_ROOT"/skills/*/SKILL.md 2>/dev/null; then
-      CONTAM="$CONTAM $tok"
-    fi
+    grep -rqwF "$tok" "$REPO_ROOT"/skills/*/SKILL.md 2>/dev/null && CONTAM="$CONTAM $tok"
   done
   if [ -n "$CONTAM" ]; then
     FAIL=$((FAIL + 1)); echo "FAIL: eval-answer token(s) in a SKILL.md body:$CONTAM"

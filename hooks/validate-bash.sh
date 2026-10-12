@@ -23,30 +23,33 @@ block() {
   exit 2
 }
 
-# Structural matching, not substring matching. An invocation sits at command
-# position, tolerating VAR= assignments, wrapper commands, an escaped \git,
-# and git's global flags; shell -c payloads are unwrapped and rescanned so a
-# wrapper cannot smuggle the invocation. Mentions stay immune: quoted CONTENT
-# is stripped (multi-line aware, sed -z) before matching, and a real push
-# that QUOTES a leading-dash argument is refused as flag smuggling. The same
-# skeleton guards destructive kubectl deletes (stateful-volume safety).
-# Statically unknowable spellings (eval "$X", git $SUB, kubectl delete -f,
-# rm -rf "$DIR") are owned by the semantic layers where one exists: the
-# pre-push ancestry guard and the fail-closed kyverno admission policy.
-# Filesystem ops have NO deeper layer, and none is pending: the permission
-# layer is blanket-allow with prefix-only denies (a recorded trade), so
-# the fs residual is UNOWNED and accepted, not deferred. The residual:
-# variable and ${IFS}-expanded targets, interpreter payloads (python -c
-# shutil.rmtree), file indirection (Write a script, then bash script.sh —
-# the hook sees only the command string), and destructive tools outside
-# the named set (rm, dd, tee/cp, mkfs-family, partitioners, rsync
-# --delete, find -delete). The coverage SPECIFICATION is the blocked set
-# in tests/test-hooks.sh — a spelling without a test case there is
-# residual by definition, never implied coverage.
+# WHAT THIS IS. A fast-feedback speed bump that structurally blocks the common
+# dangerous spellings — not a security boundary. An adversarial agent with
+# shell access has an unbounded spelling surface (plumbing commands, interpreter
+# payloads, file indirection, novel tools); this regex cannot be complete and
+# does not claim to be. The real boundaries are elsewhere and own the residual:
+#   - git history: the pre-push ANCESTRY GUARD (fires inside git, wrapper- and
+#     quoting-independent) — this hook additionally refuses the known ways to
+#     turn that guard OFF (--no-verify, -c/env core.hooksPath, aliases).
+#   - cluster state: the fail-closed KYVERNO policy on PVC/PV/Namespace
+#     (and now Flux kinds); RBAC owns impersonation and policy deletion, which
+#     this hook also speed-bumps but cannot guarantee.
+#   - filesystem: NO deeper layer exists (the permission layer is blanket-allow
+#     with prefix-only denies, a recorded trade), so the fs residual is UNOWNED
+#     and accepted: variable/non-literal targets (rm -rf "$DIR", ${IFS}),
+#     interpreter payloads (python -c shutil.rmtree), file indirection (Write a
+#     script then bash it), cwd-relative parent escapes, and destructive tools
+#     outside the named set.
+# Structural, not substring: an invocation must sit at command position
+# (VAR=/wrappers/escaped-\git/global-flags tolerated; shell -c and $(...)
+# payloads unwrapped and rescanned); quoted CONTENT is stripped so mentions stay
+# immune. The coverage SPECIFICATION is exactly the blocked set in
+# tests/test-hooks.sh — a spelling without a test case there is residual by
+# definition, never implied coverage. Do not read this list as a guarantee.
 SQ="'"
 PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|busybox|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
-GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
-KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?([a-z,-]+,)?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns|kustomizations?|ks|helmreleases?|hr)([[:space:],/.]|\$)"
+GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+(push|send-pack)"
+KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?([a-z,-]+,)?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns|kustomizations?|ks|helmreleases?|hr|clusterpolic(y|ies)|cpol|policyexceptions?|polex)([[:space:],/.]|\$)"
 
 # Backslash-newline continuations are joined first (a command split across
 # lines is one command), then escaped quotes are removed so nested shell -c
@@ -83,26 +86,40 @@ fi
 # override anchored to git's leading global-flag region, so a quoted mention in
 # a commit message or an echo is not command-position and does not trip it.
 GITSCAN=$(printf '%s' "$SCAN" | sed 's/\\\(.\)/\1/g' | sed "s/[\"${SQ}]//g" | tr 'A-Z' 'a-z')
-GBYP="core\\.hookspath|alias\\."
-if echo "$GITSCAN" | grep -qE "${GP}[^|&;]*[[:space:]]--no-verify([[:space:]]|\$)"; then
+# core.hooksPath / any alias / a plus-refspec in remote.<x>.push all let a push
+# force or skip the guard; keys are case-insensitive (GITSCAN is folded).
+GBYP="core\\.hookspath|alias\\.|remote\\.[^=[:space:]]*\\.push"
+# --no-ver[...] is a unique prefix git accepts for --no-verify.
+if echo "$GITSCAN" | grep -qE "${GP}[^|&;]*[[:space:]]--no-ver[a-z]*([[:space:]]|\$)"; then
   block "git push --no-verify disables the pre-push guard and is not allowed."
 fi
 if echo "$GITSCAN" | grep -qE "${PFX}git([[:space:]]+(-[a-z][[:space:]]*[^[:space:]]+|--[a-z-]+(=[^[:space:]]+)?))*[[:space:]]+(-c[[:space:]]*[^[:space:]]*(${GBYP})|--config-env[= ][^[:space:]]*(${GBYP}))"; then
   block "overriding git hooks/aliases via -c/--config-env around a git command is not allowed."
 fi
-if echo "$GITSCAN" | grep -qE "(^|[|&;\`]|\\\$\\()[[:space:]]*git_config_(parameters=[^[:space:]]*(${GBYP})|key_[0-9]+=(${GBYP})|count=[0-9])"; then
+# GIT_CONFIG_* env form: an env assignment is only dangerous alongside a real
+# git invocation (so `echo GIT_CONFIG_COUNT=1` with no git is not command
+# position and passes). Require a command-position git AND the assignment.
+if echo "$GITSCAN" | grep -qE "${PFX}git([[:space:]]|\$)" \
+  && echo "$GITSCAN" | grep -qE "git_config_(parameters=[^[:space:]]*(${GBYP})|key_[0-9]+=[[:space:]]*(${GBYP})|count=[0-9])"; then
   block "overriding git hooks/aliases via GIT_CONFIG_* env is not allowed."
 fi
 if echo "$GITSCAN" | grep -qE "${PFX}git[[:space:]]+config[[:space:]][^|&;]*(${GBYP})" \
   && ! echo "$GITSCAN" | grep -qE "${PFX}git[[:space:]]+config[[:space:]][^|&;]*(--get|--list|[[:space:]]-l([[:space:]]|\$))"; then
   block "persistently setting core.hooksPath/alias via git config is not allowed."
 fi
+# Impersonating the Kyverno-exempt controllers (--as) clears the admission
+# layer; no agent kubectl call has a legitimate --as. Checked before the
+# resource match so the impersonation is named even on `--as ... delete -f`.
+if echo "$STRIPPED" | grep -qiE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]--as[=[:space:]]"; then
+  block "kubectl --as impersonation bypasses the admission policy and is not allowed."
+fi
 if echo "$STRIPPED" | grep -qiE "$KD"; then
-  block "destructive kubectl delete (pvc/namespace/Flux object) needs the human; see the stateful-volume safety policy."
+  block "destructive kubectl delete (pvc/namespace/Flux object/admission policy) needs the human; see the stateful-volume safety policy."
 fi
 # `flux delete <kustomization|helmrelease|source>` prunes the same stateful
 # objects via the flux-system SA, which Kyverno exempts — so the gate is here.
-if echo "$STRIPPED" | grep -qiE "${PFX}flux[[:space:]]+delete[[:space:]]+(kustomization|helmrelease|source|ks|hr)"; then
+# Global flags (-n, --context) may sit between `flux` and `delete`.
+if echo "$STRIPPED" | grep -qiE "${PFX}flux([[:space:]]+(-[a-z][[:space:]]*[^[:space:]]+|--[a-z-]+(=[^[:space:]]+)?))*[[:space:]]+delete[[:space:]]+(kustomization|helmrelease|source|ks|hr)"; then
   block "flux delete of a reconciled object can prune PVCs/namespaces; needs the human."
 fi
 if echo "$SCAN" | grep -qE '\|[[:space:]]*(ba|z|fi)?sh([[:space:]]|$)' \
@@ -141,6 +158,7 @@ FSROOT="(^|[[:space:]])(/+|/+[^/[:space:]]*[*?[{][^/[:space:]]*(/[]A-Za-z0-9._@*
 # /home/a/../lukas and //home//lukas read as /home/lukas. [ { ] are glob chars.
 SCAN=$(printf '%s' "$SCAN" \
   | sed 's/\\\(.\)/\1/g' \
+  | sed "s/\\\$\\([\"${SQ}]\\)/\\1/g" \
   | sed "s/[\"${SQ}]//g" \
   | sed -E 's/\$\(which[[:space:]]+([A-Za-z0-9_.-]+)[[:space:]]*\)/\1/g' \
   | sed 's/\$(/\x01/g' \
@@ -156,7 +174,10 @@ SCAN=$(printf '%s' "$SCAN" \
 # $HOME/{*,.*}) expands to that dir's contents — the same wipe as the literal
 # root. The glob metachar must be in the segment IMMEDIATELY under the root, so
 # a scoped /home/u/proj/*.log (glob deeper down) is untouched.
-GLOBUNDERROOT="(^|[[:space:]])(/+(home/[^/[:space:]]+|home|etc|nix|var|usr|boot|opt|srv|root)|~[A-Za-z0-9._-]*|\\\$\\{?HOME\\}?)/[^/[:space:]]*[*?[{][^/[:space:]]*"
+# The glob must be the final real path component (optionally with a trailing
+# slash): /home/u/?* and /home/u/*/ wipe the home's contents, but /home/u/*/x
+# removes x within each subdir, not the home itself.
+GLOBUNDERROOT="(^|[[:space:]])(/+(home/[^/[:space:]]+|home|etc|nix|var|usr|boot|opt|srv|root)|~[A-Za-z0-9._-]*|\\\$\\{?HOME\\}?)/[^/[:space:]]*[*?[{][^/[:space:]]*/?([[:space:]]|\$)"
 # Tools invoked by absolute path still sit at command position.
 ABS="(/[A-Za-z0-9._/-]*/)?"
 # No force-flag requirement: with non-tty stdin (an agent's reality) GNU rm
@@ -208,21 +229,39 @@ fi
 # Block-device path, covering the stable aliases (/dev/disk/by-id, /dev/mapper)
 # and the kernel names. /dev/null, /dev/stdout, /dev/zero etc. are NOT devices
 # to protect — dd/tee/cp to them is routine, so only real block devices match.
-DEV='/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop|disk/|mapper/)'
+DEV='/dev/(sd|hd|vd|nvme|mmcblk|dm-|loop|md|zram|disk/|mapper/|block/)'
 # dd/tee/cp run on SCAN (not STRIPPED) so a fully-quoted "of=/dev/sda" argument
 # cannot delete itself before matching. Mentions stay immune (command position).
 if echo "$SCAN" | grep -qE "${PFX}${ABS}dd[[:space:]][^|&;]*of=${DEV}"; then
   block "dd writing to a block device is not allowed from an agent session."
 fi
-if echo "$SCAN" | grep -qE "${PFX}${ABS}(tee|cp)[[:space:]][^|&;]*${DEV}"; then
-  block "writing onto a block device via tee/cp is not allowed."
+# tee writes to every file argument, so a device anywhere after it is a write.
+# cp only writes to its LAST argument, so block a device only as the final
+# token (cp file /dev/sda), not as a source being read (cp /dev/sda file).
+if echo "$SCAN" | grep -qE "${PFX}${ABS}tee[[:space:]][^|&;]*${DEV}"; then
+  block "writing onto a block device via tee is not allowed."
 fi
-if echo "$STRIPPED" | grep -qE "${PFX}${ABS}(mkfs(\\.[A-Za-z0-9]+)?|mke2fs|mkdosfs|mkntfs|mkswap|wipefs|blkdiscard)([[:space:]]|\$)" \
-  || echo "$SCAN" | grep -qE "${PFX}${ABS}nvme[[:space:]]+format[[:space:]]"; then
+if echo "$SCAN" | grep -qE "${PFX}${ABS}cp[[:space:]][^|&;]*[[:space:]]${DEV}[^[:space:]|&;]*[[:space:]]*(\$|[|&;])"; then
+  block "copying onto a block device is not allowed."
+fi
+if echo "$STRIPPED" | grep -qE "${PFX}${ABS}(mkfs(\\.[A-Za-z0-9]+)?|mke2fs|mkdosfs|mkntfs|mkexfatfs|mkswap|wipefs|blkdiscard)([[:space:]]|\$)" \
+  || echo "$SCAN" | grep -qE "${PFX}${ABS}nvme[[:space:]]+(format|sanitize)[[:space:]]" \
+  || echo "$SCAN" | grep -qE "${PFX}${ABS}truncate[[:space:]][^|&;]*${DEV}"; then
   block "filesystem creation / block-device wipe tools are not allowed from an agent session."
 fi
-if echo "$SCAN" | grep -qE "${PFX}${ABS}(shred|sgdisk|sfdisk|fdisk|parted|badblocks)[[:space:]][^|&;]*${DEV}"; then
-  block "partitioning or wiping a block device is not allowed from an agent session."
+# shred always writes. The partition tools have read-only modes (fdisk -l,
+# sgdisk -p, sfdisk -d, parted print, badblocks without -w) that must NOT be
+# blocked — only block them when a read-only indicator is absent (and badblocks
+# only with -w). Reading a device (cp /dev/sda file) is not matched here.
+if echo "$SCAN" | grep -qE "${PFX}${ABS}shred[[:space:]][^|&;]*${DEV}"; then
+  block "shredding a block device is not allowed from an agent session."
+fi
+if echo "$SCAN" | grep -qE "${PFX}${ABS}badblocks[[:space:]][^|&;]*-w[^|&;]*${DEV}"; then
+  block "badblocks write-mode test destroys a block device and is not allowed."
+fi
+if echo "$SCAN" | grep -qE "${PFX}${ABS}(sgdisk|sfdisk|fdisk|parted)[[:space:]][^|&;]*${DEV}" \
+  && ! echo "$SCAN" | grep -qE "${PFX}${ABS}(sgdisk[^|&;]*-p|fdisk[^|&;]*(-l|--list)|sfdisk[^|&;]*(-d|--dump|-l|--list)|parted[^|&;]*(print|-l|--list))"; then
+  block "partitioning a block device is not allowed from an agent session."
 fi
 if echo "$SCAN" | grep -qiE "${PFX}${ABS}cryptsetup[[:space:]][^|&;]*(luksformat|reencrypt|lukserase|erase)"; then
   block "cryptsetup format/erase of a device is not allowed from an agent session."
