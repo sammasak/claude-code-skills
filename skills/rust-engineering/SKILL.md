@@ -27,7 +27,7 @@ Repos with `platform.sdlc` are driven by the `sdlc-pipeline` skill. Toolchain is
 
 ## Anti-bloat (debloat/deslop)
 
-The platform `clippy.toml` sets the thresholds that make the deny bite: `excessive-nesting-threshold = 5` (this lint is inert at clippy's default 0, so the threshold is what turns it on), `too-many-lines-threshold = 80`, `too-many-arguments-threshold = 5`. These are the mechanical backstop for the `lean-code` and `deep-modules` skills — nesting depth, function length, and argument count are the bloat signals clippy *can* measure.
+The platform `clippy.toml` sets the thresholds that make the deny bite: `excessive-nesting-threshold = 5` (this lint is inert at clippy's default 0, so the threshold is what turns it on) and `too-many-arguments-threshold = 5`. `too_many_lines` is left at pedantic's default 100 on purpose — at 80 it fired on ordinary snapshot/table `#[test]` bodies and manufactured `#[expect]` ceremony, the noise the gate exists to remove. These are the mechanical backstop for the `lean-code` and `deep-modules` skills — nesting depth, argument count, and (loosely) function length are the bloat signals clippy *can* measure.
 
 Unused dependencies are owned by `rust:shear` (cargo-shear) in strict CI — a superset of cargo-machete; `rust:deps` only checks staleness. Dead in-crate code is rustc's `dead_code`/`unused` (warn-by-default).
 

@@ -60,9 +60,10 @@ dispatch one Agent call per category in that chunk's `categories[]` — all Agen
 ALL chunks go in the same single message.
 
 **Force `leanness` on code.** For any chunk whose files include a code extension
-(`.rs .py .ts .js .go .java .rb .nix`), dispatch a `leanness` reviewer even if the
-assessor did not select it — debloat/deslop is mandatory for code, exactly as
-`spec-compliance` is forced when a spec is present. Pass its verbatim catalog description.
+(`.rs .py .ts .js .go .java .rb .nix`), ensure exactly one `leanness` reviewer is
+dispatched (add it if the assessor did not select it; do not duplicate it if it did)
+— debloat/deslop is mandatory for code, exactly as `spec-compliance` is forced when a
+spec is present. Pass its verbatim catalog description.
 
 Use the Agent tool with `subagent_type=general-purpose`, `model: opus`, and the reviewer prompt at
 `~/knowledge/workflows/recursive-review/prompts/reviewer.md`, replacing:
