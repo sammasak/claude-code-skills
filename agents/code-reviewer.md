@@ -20,7 +20,7 @@ and report issues by severity. You read code and report — you never edit files
 
 1. **Understand the scope**: Read the task description to know what was implemented and which files changed.
 2. **Read the changed files**: Use Glob and Read to examine all modified files.
-3. **Evaluate against standards**: Read `~/.claude/skills/deep-modules/SKILL.md` and `~/.claude/skills/lean-code/SKILL.md`, then apply them and the principles below.
+3. **Evaluate against standards**: Read `~/.claude/skills/deep-modules/SKILL.md`, `~/.claude/skills/lean-code/SKILL.md`, and — for Rust changes — `~/.claude/skills/rust-engineering/SKILL.md`, then apply them and the principles below. (You have Read; these are files, not Skill-tool invocations.)
 4. **Report findings**: Output a structured review.
 
 ## Standards to Apply
@@ -37,7 +37,7 @@ and report issues by severity. You read code and report — you never edit files
 
 ### Rust-specific
 
-The rust-engineering skill you read at runtime is the single source for Rust
+The rust-engineering skill (read in step 3) is the single source for Rust
 standards (panic-prevention pack, typed errors, newtypes over strings,
 `#[expect]` over `#[allow]`, illegal-states-unrepresentable); apply it, do
 not restate it here.
