@@ -59,12 +59,22 @@ opaque list of file paths.
 dispatch one Agent call per category in that chunk's `categories[]` — all Agent calls for
 ALL chunks go in the same single message.
 
+**Force `leanness` on code.** For any chunk whose files include a code extension
+(`.rs .py .ts .js .go .java .rb .nix`), dispatch a `leanness` reviewer even if the
+assessor did not select it — debloat/deslop is mandatory for code, exactly as
+`spec-compliance` is forced when a spec is present. Pass its verbatim catalog description.
+
 Use the Agent tool with `subagent_type=general-purpose`, `model: opus`, and the reviewer prompt at
 `~/knowledge/workflows/recursive-review/prompts/reviewer.md`, replacing:
 
 - `{{CHUNK_FILES}}` — file paths in this chunk
 - `{{CATEGORY}}` — category name
-- `{{CATEGORY_DESCRIPTION}}` — category description from assessor output
+- `{{CATEGORY_DESCRIPTION}}` — for a `source: catalog` category, the VERBATIM
+  description from `categories.yaml` (look it up by name in `{{CATEGORIES_YAML}}`),
+  NOT the assessor's paraphrase. The assessor shortens descriptions into chunk
+  one-liners; catalog categories like `leanness` carry load-bearing instructions
+  (e.g. SKILL.md paths the reviewer must read) that have to reach the reviewer
+  intact. For a `source: proposed` category, use the assessor's description.
 - `{{ITERATION}}` — always `1` in this skill — the reviewer uses it to adjust focus (iteration 1 = fresh review; higher values would focus on previously flagged issues), but this skill always passes 1; prior run context is conveyed via `## Prior Findings` instead
 
 Each reviewer returns JSON:
