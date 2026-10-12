@@ -109,10 +109,14 @@ if echo "$GITSCAN" | grep -qE "${PFX}git([[:space:]]|\$)" \
   block "overriding git hooks/aliases via GIT_CONFIG_* env is not allowed."
 fi
 # Per-segment so a read-only `git config --get` in one command cannot license a
-# write in the next (`git config --get x; git config core.hooksPath /dev/null`).
+# write in the next. `git` tolerates its global-flag region (-C <dir>,
+# --git-dir=, -c <x>) before the `config` subcommand, so match that too — the
+# repo's own HM script uses `git -C "$d" config --local core.hooksPath`.
+GGLOBAL="([[:space:]]+(-c[[:space:]]+[^[:space:]]+|-[a-z][[:space:]]*[^[:space:]]+|--[a-z-]+(=[^[:space:]]+)?))*"
 while IFS= read -r gseg; do
-  printf '%s' "$gseg" | grep -qE "git[[:space:]]+config[[:space:]].*(${GBYP})" || continue
-  printf '%s' "$gseg" | grep -qE "(--get|--list|--get-regexp|[[:space:]]-l([[:space:]]|\$))" && continue
+  printf '%s' "$gseg" | grep -qE "git${GGLOBAL}[[:space:]]+config[[:space:]].*(${GBYP})" || continue
+  # read-only forms (flags and the git>=2.46 get/list subcommands) are fine
+  printf '%s' "$gseg" | grep -qE "(--get|--list|--get-regexp|--get-all|[[:space:]]-l([[:space:]]|\$)|config[[:space:]]+(get|list)([[:space:]]|\$))" && continue
   block "persistently setting core.hooksPath/alias via git config is not allowed."
 done < <(echo "$GITSCAN" | tr ';|&' '\n')
 # Impersonating the Kyverno-exempt controllers (--as) clears the admission
@@ -125,9 +129,19 @@ while IFS= read -r kseg; do
   printf '%s' "$kseg" | grep -qiE "auth[[:space:]]+can-i[[:space:]]" && continue
   block "kubectl --as impersonation bypasses the admission policy and is not allowed."
 done < <(echo "$STRIPPED" | tr ';|&' '\n')
-if echo "$STRIPPED" | grep -qiE "$KD"; then
-  block "destructive kubectl delete (pvc/namespace/Flux object/admission policy) needs the human; see the stateful-volume safety policy."
+# The break-glass annotation is the HUMAN's confirmation step; an agent applying
+# it (then deleting via the accepted file-indirection residual) would clear the
+# admission layer on its own. Block the agent from setting it.
+if echo "$STRIPPED" | grep -qiE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]](annotate|label|patch)[^|&;]*allow-delete"; then
+  block "setting the sammasak.dev/allow-delete break-glass annotation is the human's step, not the agent's."
 fi
+# Per-segment, excluding read-only `auth can-i delete …` introspection, which
+# names a verb+resource but mutates nothing.
+while IFS= read -r dseg; do
+  printf '%s' "$dseg" | grep -qiE "$KD" || continue
+  printf '%s' "$dseg" | grep -qiE "auth[[:space:]]+can-i[[:space:]]" && continue
+  block "destructive kubectl delete (pvc/namespace/Flux object/admission policy) needs the human; see the stateful-volume safety policy."
+done < <(echo "$STRIPPED" | tr ';|&' '\n')
 # `flux delete <kustomization|helmrelease|source>` prunes the same stateful
 # objects via the flux-system SA, which Kyverno exempts — so the gate is here.
 # Global flags (-n, --context) may sit between `flux` and `delete`.
@@ -233,7 +247,7 @@ if echo "$SCAN" | grep -oE "${PFX}${ABS}rsync[[:space:]][^|&;]*" 2>/dev/null \
 fi
 # A home ROOT (/home/<user>) counts for find — "not user subdirs" means
 # /home/<user>/<dir>, never the whole home itself.
-FINDROOT="(^|[[:space:]])(~[A-Za-z0-9._-]*|\\\$\\{?HOME\\}?|/+(home(/[A-Za-z0-9._@-]+)?/?|(etc|nix|var|usr|boot|opt|srv|root)/?)?)([[:space:]]|\$)"
+FINDROOT="(^|[[:space:]])(~[A-Za-z0-9._-]*/?|\\\$\\{?HOME\\}?/?|/+(home(/[A-Za-z0-9._@-]+)?/?|(etc|nix|var|usr|boot|opt|srv|root)/?)?)([[:space:]]|\$)"
 if echo "$SCAN" | grep -oE "${PFX}${ABS}find[[:space:]][^|&;]*" 2>/dev/null \
   | grep -E -- '(-delete|-exec(dir)?[[:space:]][^|&;]*rm)' | tr -s '/' | grep -qE "$FINDROOT"; then
   block "find -delete sweeping a filesystem root is not allowed."

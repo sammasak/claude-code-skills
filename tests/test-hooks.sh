@@ -393,6 +393,19 @@ check "kubectl auth can-i --as allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"kubectl auth can-i --list --as=system:serviceaccount:app:sa"}')"
 check "can-i then impersonate-delete blocked" 2 "BLOCKED: kubectl --as" - \
   validate-bash.sh "$(j b1 '{"command":"kubectl auth can-i --list --as=foo && kubectl --as=foo delete -f x.yaml"}')"
+# ── round-33: git -C config, break-glass annotate, find ~/, read-only FPs ──
+check "git -C config hooksPath blocked" 2 "BLOCKED: persistently setting" - \
+  validate-bash.sh "$(j b1 '{"command":"git -C /home/x/repo config --local core.hooksPath /dev/null"}')"
+check "git config get subcommand allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git config get core.hooksPath"}')"
+check "kubectl annotate allow-delete blocked" 2 "BLOCKED: setting the sammasak" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl annotate pvc data-0 sammasak.dev/allow-delete=true"}')"
+check "kubectl auth can-i delete pvc allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl auth can-i delete pvc -n app"}')"
+check "find tilde-slash delete blocked" 2 "BLOCKED: find -delete" - \
+  validate-bash.sh "$(j b1 '{"command":"find ~/ -delete"}')"
+check "git -C normal config allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git -C /home/x/repo config --local user.name Lukas"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 
