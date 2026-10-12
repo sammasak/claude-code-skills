@@ -7,7 +7,10 @@ set -uo pipefail
 
 HOOKS="$(cd "$(dirname "$0")/../hooks" && pwd)"
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"; rm -f "${XDG_RUNTIME_DIR:-/tmp}"/claude-hook-state-hooktest-*.json "${XDG_RUNTIME_DIR:-/tmp}"/claude-loop-hooktest-*.log' EXIT
+# State/loop files land under the SAME fallback the hooks use ($HOME/.cache),
+# not /tmp — clean both so bare-env runs leave nothing behind.
+STATE_DIR="${XDG_RUNTIME_DIR:-$HOME/.cache}"
+trap 'rm -rf "$TMP"; rm -f "$STATE_DIR"/claude-hook-state-hooktest-*.json "$STATE_DIR"/claude-loop-hooktest-*.log' EXIT
 
 PASS=0
 FAIL=0
@@ -163,6 +166,54 @@ check "command-substitution rm blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"$(rm -rf /home/lukas)"}')"
 check "backtick rm blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"echo `rm -rf /home/lukas`"}')"
+check "quoted-command rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"\"rm\" -rf /home/lukas"}')"
+check "empty-quote rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm'\'''\'' -rf /home/lukas"}')"
+check "quoted-fragment target rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /hom\"\"e/lukas"}')"
+check "dotslash-noise path blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/./lukas"}')"
+check "dotdot-collapse path blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas/tmp/../../lukas"}')"
+check "bracket-glob path blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lu[k]as"}')"
+check "brace-glob path blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/{lukas}"}')"
+check "redirect-terminated rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas>/dev/null"}')"
+check "time-wrapped rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"time rm -rf /home/lukas"}')"
+check "env-wrapped rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"/usr/bin/env rm -rf /home/lukas"}')"
+check "nix-shell-wrapped rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"nix shell nixpkgs#coreutils -c rm -rf /home/lukas"}')"
+check "devenv-shell-wrapped rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"devenv shell -- rm -rf /home/lukas"}')"
+check "which-substitution rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"$(which rm) -rf /home/lukas"}')"
+check "git push --no-verify blocked" 2 "BLOCKED: git push --no-verify" - \
+  validate-bash.sh "$(j b1 '{"command":"git push --no-verify origin main"}')"
+check "git -c hooksPath push blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"git -c core.hooksPath=/dev/null push origin main"}')"
+check "git -c alias push blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"git -c alias.p=push p origin main"}')"
+check "GIT_CONFIG_PARAMETERS push blocked" 2 "BLOCKED: overriding git hooks" - \
+  validate-bash.sh "$(j b1 '{"command":"GIT_CONFIG_PARAMETERS='core.hooksPath=/dev/null' git push origin main"}')"
+check "normal git -c commit allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git -c user.email=x@y.z commit -m msg"}')"
+check "mkswap on device blocked" 2 "BLOCKED: filesystem creation" - \
+  validate-bash.sh "$(j b1 '{"command":"mkswap /dev/sdb2"}')"
+check "cryptsetup luksFormat blocked" 2 "BLOCKED: cryptsetup" - \
+  validate-bash.sh "$(j b1 '{"command":"cryptsetup luksFormat /dev/sda"}')"
+check "tee onto by-id device blocked" 2 "BLOCKED: writing onto" - \
+  validate-bash.sh "$(j b1 '{"command":"tee /dev/disk/by-id/wwn-0x5 < img"}')"
+check "kubectl delete CamelCase pvc blocked" 2 "BLOCKED: destructive kubectl" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl delete PersistentVolumeClaim data-0 -n app"}')"
+check "rm bare glob from home cwd blocked" 2 "BLOCKED: recursive rm of a bare glob" - \
+  validate-bash.sh "$(printf '{"session_id":"hooktest-cwd","cwd":"/home/lukas","tool_input":{"command":"rm -rf *"}}')"
+check "rm bare glob from project cwd allowed" 0 - - \
+  validate-bash.sh "$(printf '{"session_id":"hooktest-cwd2","cwd":"/home/lukas/proj","tool_input":{"command":"rm -rf *"}}')"
 check "rm -r relative dir allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -r ./build"}')"
 check "rm -rf sibling dir allowed" 0 - - \

@@ -133,21 +133,25 @@ Reports include per-case inputs, outputs, evaluator scores, and reasons. Use `--
   An earlier uncommitted run landed in the same band (89.5 seed, 88.8 best). A stronger reflection LM (needs an API credential) is the
   only untried lever.
 - Solving (haiku solver, strict = all assertions): **8/15 strict, 9/15
-  BashGrader** — this is the measured task-solving pass rate. The weak
-  skill is kubernetes-gitops at **1–2/5 BashGrader** (run-to-run; see the
-  dedicated `solving-kubernetes-gitops-*.json` artifact).
-  **Diagnosed cause (not merely believed):** the haiku solver's *content*
-  is strong — rubric_mean 0.73 across the five tasks, with task-2/task-4
-  at 0.875–1.0 — but it fails the BashGrader's exact-field/exact-path
-  checks because it wraps YAML in prose or writes to the wrong path, and
-  the per-task n=1 rollout is high-variance (task-1 flips pass/fail across
-  identical runs). So the gap is solver *execution reliability* plus
-  variance, NOT missing cluster knowledge. The 2026-10-12 skill change
-  added the canonical Flux CRD shapes (HelmRelease, the
-  `kustomize.toolkit.fluxcd.io` Kustomization, image-automation interval)
-  the solver was reinventing; this lifted rubric quality but not the
-  mechanical BashGrader pass rate, which is solver-bound. Graders are left
-  strict on purpose — loosening them to raise the number would be the slop
-  this setup exists to prevent.
+  BashGrader** — the measured task-solving pass rate. The weak skill is
+  kubernetes-gitops at **1–2/5 BashGrader** (run-to-run variance; n=1
+  per-task rollout).
+  **CONTAMINATION NOTE (2026-10-12), kept as a standing warning:** the
+  solving runner injects each SKILL.md body as the solver's system prompt
+  (`runner/solving/task.py`). An attempt that day to "fix" the
+  kubernetes-gitops score added a Reference-shapes section that reproduced
+  the eval tasks' own entity names and values (cert-manager/jetstack,
+  monitoring/infrastructure/sops-age, etc.) — i.e. it fed the solver the
+  answers. That is eval-gaming, not a skill improvement; it was reverted
+  the same day and the skill is back to its generic content. **Rule: never
+  put a solving task's specific entities/values into a skill body.** If a
+  skill and a task must share domain facts, hold the task's specifics out
+  of the skill or use a held-out task set.
+  The honest reading of the 1–2/5: the solver's rubric scores vary run to
+  run and the BashGrader's exact-field/path checks are strict; whether the
+  true lever is solver capability or grader contract is **not yet
+  established** without a de-contaminated n≥3 measurement, which has not
+  been run. Graders stay strict; loosening them to raise the number would
+  be the slop this setup exists to prevent.
   "0 failures" in any run output means evaluator infrastructure health,
   never the pass rate; quote the strict number.

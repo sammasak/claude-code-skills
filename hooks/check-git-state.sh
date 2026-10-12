@@ -41,6 +41,11 @@ if UPSTREAM=$(git -C "$PWD" rev-parse --abbrev-ref '@{upstream}' 2>/dev/null); t
   COUNTS=$(git -C "$PWD" rev-list --left-right --count "HEAD...$UPSTREAM" 2>/dev/null || echo "0	0")
   AHEAD=$(echo "$COUNTS" | cut -f1)
   BEHIND=$(echo "$COUNTS" | cut -f2)
+elif git -C "$PWD" config --get "branch.$BRANCH.remote" >/dev/null 2>&1; then
+  # upstream configured but its ref is gone (never pushed / deleted): report
+  # the whole branch as unpushed rather than a misleading "(no upstream)".
+  AHEAD=$(git -C "$PWD" rev-list --count HEAD 2>/dev/null || echo 0)
+  UPSTREAM="(upstream gone)"
 else
   UPSTREAM="(no upstream)"
 fi

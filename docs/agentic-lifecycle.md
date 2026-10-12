@@ -39,7 +39,7 @@ graph TD
 
     subgraph "Dispatcher"
         DESC["Skill descriptions\nloaded from SKILL.md frontmatter"]
-        DISP["Dispatcher Agent\n(claude-haiku-4-5)\nReads query + descriptions\nReturns skill name or none"]
+        DISP["Dispatcher Agent\n(claude-haiku-4-5-20251001)\nReads query + descriptions\nReturns skill name or none"]
         SKILLDOCS -->|"description field"| DESC
         DESC --> DISP
         QUERY([User Query]) --> DISP
@@ -48,8 +48,8 @@ graph TD
     subgraph "Agent Pool"
         A1["k8s-debugger\n(claude-sonnet-5)\ntools: Bash, Read, Grep, Glob\nK8s cluster diagnosis"]
         A2["nix-explorer\n(claude-sonnet-5)\ntools: Read, Glob, Grep\nNixOS config exploration"]
-        A3["validate-k8s\n(claude-haiku-4-5)\ntools: Bash, Read\nManifest security validation"]
-        A4["verify-deployment\n(claude-haiku-4-5)\ntools: Bash\nPod + HTTP health check"]
+        A3["validate-k8s\n(claude-haiku-4-5-20251001)\ntools: Bash, Read\nManifest security validation"]
+        A4["verify-deployment\n(claude-haiku-4-5-20251001)\ntools: Bash\nPod + HTTP health check"]
         A5["code-reviewer\n(claude-opus-5-5)\ntools: Read, Glob, Grep\nStructured code review\n(5 of 7 agents shown; also\nmeta-reviewer opus, skill-optimizer sonnet)"]
         DISP -->|"route"| A1
         DISP -->|"route"| A2
@@ -102,7 +102,7 @@ flowchart TD
     BG -->|"fail"| BG_FAIL["Record: functional_fail\nCapture stdout+stderr\nContinue to next evaluators"]
     BG_FAIL --> SRJ
 
-    SRJ["StructuredRubricJudge\nLLM judge (claude-haiku-4-5)\nReads quality.md rubric\nScores per dimension"]
+    SRJ["StructuredRubricJudge\nLLM judge (claude-haiku-4-5-20251001)\nReads quality.md rubric\nScores per dimension"]
     SRJ -->|"quality.md present"| SRJ_SCORE{"Score >= minimum?"}
     SRJ -->|"quality.md absent"| SDE
     SRJ_SCORE -->|"yes — rubric_passed=true"| SDE

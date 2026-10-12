@@ -13,3 +13,4 @@ read_hook_input() {
 
 hook_file_path() { echo "${HOOK_INPUT:-}" | jq -r '.tool_input.file_path // ""' 2>/dev/null || true; }
 hook_command() { echo "${HOOK_INPUT:-}" | jq -r '.tool_input.command // ""' 2>/dev/null || true; }
+hook_cwd() { echo "${HOOK_INPUT:-}" | jq -r '.cwd // ""' 2>/dev/null || true; }
