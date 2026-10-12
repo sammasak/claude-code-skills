@@ -5,6 +5,9 @@
 
 set -uo pipefail
 
+# Tests exercise the WORKTREE hooks (../hooks), not the deployed nix store copy.
+# "suite green" proves the store only together with the separate pin==HEAD==store
+# byte-diff the deploy flow runs; this suite does not read the store.
 HOOKS="$(cd "$(dirname "$0")/../hooks" && pwd)"
 TMP=$(mktemp -d)
 # State/loop files land under the SAME fallback the hooks use ($HOME/.cache),
@@ -388,6 +391,8 @@ check "git push --no-verbose allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"git push --no-verbose origin main"}')"
 check "kubectl auth can-i --as allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"kubectl auth can-i --list --as=system:serviceaccount:app:sa"}')"
+check "can-i then impersonate-delete blocked" 2 "BLOCKED: kubectl --as" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl auth can-i --list --as=foo && kubectl --as=foo delete -f x.yaml"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 
@@ -498,11 +503,12 @@ if command -v jq >/dev/null 2>&1; then
 fi
 
 SKIPPED=0
-command -v jq >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 1))
-command -v nix-instantiate >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 2))
-command -v shellcheck >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 2))
-command -v yq >/dev/null 2>&1 || SKIPPED=$((SKIPPED + 4))
+MISSING=""
+command -v jq >/dev/null 2>&1 || { SKIPPED=$((SKIPPED + 1)); MISSING="$MISSING jq"; }
+command -v nix-instantiate >/dev/null 2>&1 || { SKIPPED=$((SKIPPED + 2)); MISSING="$MISSING nix-instantiate"; }
+command -v shellcheck >/dev/null 2>&1 || { SKIPPED=$((SKIPPED + 2)); MISSING="$MISSING shellcheck"; }
+command -v yq >/dev/null 2>&1 || { SKIPPED=$((SKIPPED + 4)); MISSING="$MISSING yq"; }
 echo "---"
 echo "passed=$PASS failed=$FAIL skipped=$SKIPPED"
-if [ "$SKIPPED" -gt 0 ] && [ "${ALLOW_SKIP:-0}" != "1" ]; then echo "refusing a silently under-tested run (set ALLOW_SKIP=1 to accept)" >&2; exit 1; fi
+if [ "$SKIPPED" -gt 0 ] && [ "${ALLOW_SKIP:-0}" != "1" ]; then echo "refusing a silently under-tested run — missing tools:$MISSING (set ALLOW_SKIP=1 to accept; the pre-push gate runs them via nix shell)" >&2; exit 1; fi
 [ "$FAIL" -eq 0 ]

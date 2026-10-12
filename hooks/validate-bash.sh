@@ -117,12 +117,14 @@ while IFS= read -r gseg; do
 done < <(echo "$GITSCAN" | tr ';|&' '\n')
 # Impersonating the Kyverno-exempt controllers (--as) clears the admission
 # layer. The one legitimate --as is the read-only `kubectl auth can-i … --as`
-# (RBAC introspection, mutates nothing); everything else is refused, named
+# (RBAC introspection, mutates nothing). Checked PER-SEGMENT so a read-only
+# can-i in one command cannot license impersonation in the next, and named
 # before the resource match so `--as … delete -f` reports impersonation.
-if echo "$STRIPPED" | grep -qiE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]--as[=[:space:]]" \
-  && ! echo "$STRIPPED" | grep -qiE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[[:space:]]+auth[[:space:]]+can-i[[:space:]]"; then
+while IFS= read -r kseg; do
+  printf '%s' "$kseg" | grep -qiE "[[:space:]]--as[=[:space:]]" || continue
+  printf '%s' "$kseg" | grep -qiE "auth[[:space:]]+can-i[[:space:]]" && continue
   block "kubectl --as impersonation bypasses the admission policy and is not allowed."
-fi
+done < <(echo "$STRIPPED" | tr ';|&' '\n')
 if echo "$STRIPPED" | grep -qiE "$KD"; then
   block "destructive kubectl delete (pvc/namespace/Flux object/admission policy) needs the human; see the stateful-volume safety policy."
 fi
