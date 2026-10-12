@@ -3,16 +3,20 @@
 # mistakes, NOT a security boundary. It deliberately does NOT chase exotic
 # spellings, wrappers, block-device tools, remote exec, or impersonation; the
 # real boundaries own all of that:
-#   - git history: the pre-push ancestry guard fires inside git and refuses
-#     every force / non-fast-forward / branch-deletion spelling regardless of
-#     how the push is written here, so this check is just early feedback.
+#   - git history: the pre-push ancestry guard runs INSIDE git's pre-push hook
+#     and refuses every force / non-fast-forward / branch-deletion once it runs,
+#     so this check is just early feedback. The one way past it is to skip the
+#     hook entirely (`git push --no-verify`), which the permission deny list
+#     refuses for the agent (git run by hand by the human is the escape hatch).
 #   - cluster state: the fail-closed Kyverno policy denies PVC/PV/Namespace
 #     (and the pruning Flux kinds) deletion; the operator is deliberately
 #     cluster-admin, so impersonation / policy deletion are an accepted trade.
 #   - everything else is UNOWNED by this hook, by design.
 # Simplified 2026-10-12 from a 334-line spelling-matcher back to this: the arms
-# race against adversarial spellings was itself slop. Quoted content is stripped
-# first so a MENTION (echo, commit message, grep pattern) is never blocked.
+# race against adversarial spellings was itself slop. Quoted spans are replaced
+# with a placeholder first so a MENTION (echo, commit message, grep pattern) is
+# never blocked, while a quoted variable like "$TMP"/* does not collapse into a
+# false root target.
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -31,12 +35,12 @@ block() {
 }
 
 SQ="'"
-S=$(echo "$CMD" | sed -z "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
+S=$(echo "$CMD" | sed -z "s/${SQ}[^${SQ}]*${SQ}/Q/g; s/\"[^\"]*\"/Q/g")
 
 # 1. git force-push (common spelling only; the pre-push ancestry guard is the
 #    real backstop and catches every other spelling).
 if echo "$S" | grep -qE "git[[:space:]]+([^|&;]+[[:space:]]+)?push([[:space:]][^|&;]*)?([[:space:]]--force([^-]|\$)|[[:space:]]-[A-Za-z]*f[A-Za-z]*([[:space:]]|\$)|[[:space:]][+][^[:space:]])"; then
-  block "force push is not allowed; revert with a new commit or push a branch (the pre-push guard enforces this regardless of spelling)."
+  block "force push is not allowed; revert with a new commit or push a branch (the pre-push guard also refuses it once it runs)."
 fi
 
 # 2. recursive rm of a filesystem root or whole home — the catastrophic accident.
@@ -50,7 +54,7 @@ if echo "$S" | grep -qiE "kubectl[[:space:]]+([^|&;]+[[:space:]]+)?delete[[:spac
 fi
 
 # 4. SOPS encrypt from /tmp loses the repo's recipient set.
-if echo "$S" | grep -qE "sops[^|&;]*(-e|encrypt)[^|&;]*/tmp/"; then
+if echo "$S" | grep -qE "sops[^|&;]*([[:space:]]-e([[:space:]]|\$)|[[:space:]]--encrypt([[:space:]]|\$)|[[:space:]]encrypt[[:space:]])[^|&;]*/tmp/"; then
   block "SOPS encrypt from /tmp is unsafe; write to the repo path, then sops -e --in-place."
 fi
 

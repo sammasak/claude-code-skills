@@ -81,6 +81,10 @@ check "rm -rf deep path allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas/tmp/build"}')"
 check "rm -f non-recursive allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -f /tmp/x.lock"}')"
+check "rm -rf quoted-var glob allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf \"$TMP\"/*"}')"
+check "rm -rf quoted-var trailing-slash allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf \"$out\"/"}')"
 check "rm mention in echo allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"echo 'never rm -rf /' >> doc.md"}')"
 # 3. destructive kubectl delete
@@ -101,6 +105,8 @@ check "sops from /tmp blocked" 2 "BLOCKED: SOPS" - \
   validate-bash.sh "$(j b1 '{"command":"sops -e /tmp/secret.yaml"}')"
 check "sops in repo allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"sops -d apps/x/secret.yaml"}')"
+check "sops --extract to /tmp allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"sops -d --extract '\''[\"k\"]'\'' x.yaml > /tmp/val"}')"
 check "normal command allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"cargo test"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
