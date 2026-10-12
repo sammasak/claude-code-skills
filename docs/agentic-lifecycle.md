@@ -59,7 +59,7 @@ graph TD
     end
 
     subgraph "Hook System"
-        H1["PreToolUse / Bash\nvalidate-bash.sh + check-loop.sh\nBlocks: force-push incl. plus-refspec,\ndestructive kubectl deletes, SOPS from /tmp,\nrm/dd/tee/mkfs against roots and devices;\nloop advisory at 5 repeats, block at 12"]
+        H1["PreToolUse / Bash\nvalidate-bash.sh + check-loop.sh\nSpeed-bump, 4 guards: force-push,\nrm -rf of root/home, kubectl delete\npvc/pv/ns, SOPS from /tmp.\nLoop advisory at 5, block at 12.\nReal boundaries own the rest (guard, Kyverno)"]
         H2["PostToolUse / Write+Edit\nvalidate-nix.sh, validate-shell.sh,\nvalidate-manifest.sh\nexit 2 feeds the error to the model\n(Rust verification is the pre-push gate's, not per-edit)"]
         H3["Stop Hook\ncheck-git-state.sh\nreports dirty/unpushed state and\nstale hook generations; never blocks"]
     end
