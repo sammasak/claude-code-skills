@@ -44,6 +44,10 @@ block() {
 #     interpreter payloads (python -c shutil.rmtree), file indirection (Write a
 #     script then bash it), cwd-relative parent escapes, and destructive tools
 #     outside the named set.
+#   - REMOTE execution is out of scope: this hook sees only the local command
+#     string, so `ssh host rm -rf /` or `rsync --delete … host:/` run their
+#     destruction on the remote, UNOWNED here — the remote host's own gate (or
+#     its absence) owns that.
 # Structural, not substring: an invocation must sit at command position
 # (VAR=/wrappers/escaped-\git/global-flags tolerated; shell -c and $(...)
 # payloads unwrapped and rescanned); quoted CONTENT is stripped so mentions stay
@@ -52,7 +56,14 @@ block() {
 # definition, never implied coverage. Do not read this list as a guarantee.
 SQ="'"
 PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|busybox|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
-GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+(push|send-pack)"
+# A git global-flag token: value-taking short (-C/-c/-O <v>), value long
+# (--git-dir=…, --work-tree=…, --namespace=…, --config-env=…), or a boolean
+# short/long (-p, -P, --no-pager, --no-optional-locks, --bare, …). Boolean
+# forms do NOT consume the next token, so `git --no-pager push` still ends at
+# `push`. Any un-enumerated global flag used to smuggle `push --no-verify -f`
+# past the guard is covered by the generic boolean-long branch.
+GGIT="([[:space:]]+(-[CcO][[:space:]]+[^[:space:]]+|--[a-z][a-z-]*=[^[:space:]]+|--[a-z][a-z-]*|-[a-zA-Z]+))*"
+GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)${GGIT}[[:space:]]+(push|send-pack)"
 KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?([a-z,-]+,)?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns|kustomizations?|ks|helmreleases?|hr|clusterpolic(y|ies)|cpol|policyexceptions?|polex)([[:space:],/.]|\$)"
 
 # Backslash-newline continuations are joined first (a command split across
@@ -76,7 +87,7 @@ for _ in 1 2 3; do
 done
 STRIPPED=$(echo "$SCAN" | sed -z "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
 
-if echo "$STRIPPED" | grep -qE "${GP}[^|&;]*([[:space:]]--force([^-]|\$)|[[:space:]]-[A-Za-z]*f[A-Za-z]*([[:space:]]|\$)|[[:space:]][+][^[:space:]])"; then
+if echo "$STRIPPED" | grep -qE "${GP}[^|&;]*([[:space:]]--force([^-]|\$)|[[:space:]]-[A-Za-z0-9]*f[A-Za-z0-9]*([[:space:]]|\$)|[[:space:]][+][^[:space:]])"; then
   block "force push (including plus-refspec) is not allowed; revert with a new commit or push a branch."
 fi
 if echo "$SCAN" | grep -qE "${GP}[^|&;]*[\"${SQ}][[:space:]]*-"; then
@@ -119,29 +130,32 @@ while IFS= read -r gseg; do
   printf '%s' "$gseg" | grep -qE "(--get|--list|--get-regexp|--get-all|[[:space:]]-l([[:space:]]|\$)|config[[:space:]]+(get|list)([[:space:]]|\$))" && continue
   block "persistently setting core.hooksPath/alias via git config is not allowed."
 done < <(echo "$GITSCAN" | tr ';|&' '\n')
+# The kubectl checks run on a DEQUOTED, comment-stripped view: a patch/annotate
+# JSON value is always quoted (STRIPPED would delete it), and a trailing
+# `# auth can-i` comment must not exempt a real command. GITSCAN is already
+# dequoted + case-folded; strip trailing ` #…` comments per line too.
+KGS=$(printf '%s' "$GITSCAN" | sed 's/[[:space:]]#.*$//')
 # Impersonating the Kyverno-exempt controllers (--as) clears the admission
-# layer. The one legitimate --as is the read-only `kubectl auth can-i … --as`
-# (RBAC introspection, mutates nothing). Checked PER-SEGMENT so a read-only
-# can-i in one command cannot license impersonation in the next, and named
-# before the resource match so `--as … delete -f` reports impersonation.
+# layer. The one legitimate --as is the read-only `kubectl auth can-i … --as`.
+# Per-segment so a can-i in one command cannot license impersonation in the
+# next, and named before the resource match so `--as … delete -f` reports it.
 while IFS= read -r kseg; do
-  printf '%s' "$kseg" | grep -qiE "[[:space:]]--as[=[:space:]]" || continue
-  printf '%s' "$kseg" | grep -qiE "auth[[:space:]]+can-i[[:space:]]" && continue
+  printf '%s' "$kseg" | grep -qE "[[:space:]]--as[=[:space:]]" || continue
+  printf '%s' "$kseg" | grep -qE "auth[[:space:]]+can-i([[:space:]]|\$)" && continue
   block "kubectl --as impersonation bypasses the admission policy and is not allowed."
-done < <(echo "$STRIPPED" | tr ';|&' '\n')
+done < <(echo "$KGS" | tr ';|&' '\n')
 # The break-glass annotation is the HUMAN's confirmation step; an agent applying
-# it (then deleting via the accepted file-indirection residual) would clear the
-# admission layer on its own. Block the agent from setting it.
-if echo "$STRIPPED" | grep -qiE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]](annotate|label|patch)[^|&;]*allow-delete"; then
+# it (annotate/label, or a patch whose JSON carries allow-delete) then deleting
+# via the accepted file-indirection residual would clear the admission layer.
+if echo "$KGS" | grep -qE "${PFX}(\\\$[a-z_][a-z0-9_]*|kubectl)[^|&;]*[[:space:]](annotate|label|patch)[^|&;]*allow-delete"; then
   block "setting the sammasak.dev/allow-delete break-glass annotation is the human's step, not the agent's."
 fi
-# Per-segment, excluding read-only `auth can-i delete …` introspection, which
-# names a verb+resource but mutates nothing.
+# Per-segment, excluding read-only `auth can-i delete …` introspection.
 while IFS= read -r dseg; do
-  printf '%s' "$dseg" | grep -qiE "$KD" || continue
-  printf '%s' "$dseg" | grep -qiE "auth[[:space:]]+can-i[[:space:]]" && continue
+  printf '%s' "$dseg" | grep -qE "$KD" || continue
+  printf '%s' "$dseg" | grep -qE "auth[[:space:]]+can-i([[:space:]]|\$)" && continue
   block "destructive kubectl delete (pvc/namespace/Flux object/admission policy) needs the human; see the stateful-volume safety policy."
-done < <(echo "$STRIPPED" | tr ';|&' '\n')
+done < <(echo "$KGS" | tr ';|&' '\n')
 # `flux delete <kustomization|helmrelease|source>` prunes the same stateful
 # objects via the flux-system SA, which Kyverno exempts — so the gate is here.
 # Global flags (-n, --context) may sit between `flux` and `delete`.
@@ -170,7 +184,7 @@ fi
 # ~ or ~user, $HOME braced or not, ../-escapes back to a root, and
 # top-level system dirs down to one segment. Segments are slash-squeezed
 # before matching so //home//lukas is /home/lukas.
-FSROOT="(^|[[:space:]])(/+|/+[^/[:space:]]*[*?[{][^/[:space:]]*(/[]A-Za-z0-9._@*?[{}-]+)?|~[A-Za-z0-9._-]*(/\\.?\\*|/)?|\\\$\\{?HOME\\}?(/\\.?\\*|/)?|(\\.\\./)+(home|etc|nix|var|usr|boot|opt|srv|root)(/[]A-Za-z0-9._@*?[{}-]+)?/?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[]A-Za-z0-9._@*?[{}-]+)?(/\\.?\\*|/)?)([[:space:]]|\$)"
+FSROOT="(^|[[:space:]])(/+|/+[^/[:space:]]*[*?[{][^/[:space:]]*(/[]A-Za-z0-9._@*?[{}-]+)?/?|~[A-Za-z0-9._-]*(/\\.?\\*|/)?|\\\$\\{?HOME\\}?(/\\.?\\*|/)?|(\\.\\./)+(home|etc|nix|var|usr|boot|opt|srv|root)(/[]A-Za-z0-9._@*?[{}-]+)?/?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[]A-Za-z0-9._@*?[{}-]+)?(/\\.?\\*|/)?)([[:space:]]|\$)"
 # The fs tier scans a NORMALISED copy so a destructive command cannot hide
 # behind shell cosmetics. In order: unquote backslash escapes (r\m, /ho\me);
 # drop quote characters (so "rm"/'rm'/rm'' and "/home/luka"s are the bare token);
@@ -285,8 +299,25 @@ fi
 if echo "$SCAN" | grep -qE "${PFX}${ABS}badblocks[[:space:]][^|&;]*-w[^|&;]*${DEV}"; then
   block "badblocks write-mode test destroys a block device and is not allowed."
 fi
-if echo "$SCAN" | grep -qE "${PFX}${ABS}(sgdisk|sfdisk|fdisk|parted)[[:space:]][^|&;]*${DEV}" \
-  && ! echo "$SCAN" | grep -qE "${PFX}${ABS}(sgdisk[^|&;]*-p|fdisk[^|&;]*(-l|--list)|sfdisk[^|&;]*(-d|--dump|-l|--list)|parted[^|&;]*(print|-l|--list))"; then
+# Block on an explicit WRITE indicator (so a read-only `sgdisk -p` passes but
+# `sgdisk -p -Z` still blocks — a read flag must not exempt a destructive one),
+# word-boundaried so `--delete` is not read as the `-d` dump flag.
+if echo "$SCAN" | grep -qE "${PFX}${ABS}sgdisk[[:space:]][^|&;]*${DEV}" \
+  && echo "$SCAN" | grep -qE "sgdisk[^|&;]*([[:space:]](-Z|-o|-g|-G|-n|-d|-D|-C|-A|-t)([[:space:]=]|\$)|--(zap-all|zap|clear|mbrtogpt|new|delete|change-name|typecode|move-second-header))"; then
+  block "partitioning a block device is not allowed from an agent session."
+fi
+if echo "$SCAN" | grep -qE "${PFX}${ABS}sfdisk[[:space:]][^|&;]*${DEV}" \
+  && echo "$SCAN" | grep -qE "sfdisk[^|&;]*(--delete|--part-|-N([[:space:]]|\$)|-A([[:space:]]|\$)|--(re)?order)" \
+  || { echo "$SCAN" | grep -qE "${PFX}${ABS}sfdisk[[:space:]][^|&;]*${DEV}" \
+       && ! echo "$SCAN" | grep -qE "sfdisk[^|&;]*(--dump|[[:space:]]-d([[:space:]]|\$)|--list|[[:space:]]-l([[:space:]]|\$)|--json|[[:space:]]-J)"; }; then
+  block "partitioning a block device is not allowed from an agent session."
+fi
+if echo "$SCAN" | grep -qE "${PFX}${ABS}fdisk[[:space:]][^|&;]*${DEV}" \
+  && ! echo "$SCAN" | grep -qE "fdisk[^|&;]*([[:space:]]-l([[:space:]]|\$)|--list)"; then
+  block "partitioning a block device is not allowed from an agent session."
+fi
+if echo "$SCAN" | grep -qE "${PFX}${ABS}parted[[:space:]][^|&;]*${DEV}" \
+  && echo "$SCAN" | grep -qE "parted[^|&;]*[[:space:]](mklabel|mkpart|mkpartfs|rm|resizepart|resize|move|rescue|toggle|set|disk_set|disk_toggle)([[:space:]]|\$)"; then
   block "partitioning a block device is not allowed from an agent session."
 fi
 if echo "$SCAN" | grep -qiE "${PFX}${ABS}cryptsetup[[:space:]][^|&;]*(luksformat|reencrypt|lukserase|erase)"; then

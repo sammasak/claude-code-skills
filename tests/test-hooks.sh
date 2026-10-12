@@ -406,6 +406,37 @@ check "find tilde-slash delete blocked" 2 "BLOCKED: find -delete" - \
   validate-bash.sh "$(j b1 '{"command":"find ~/ -delete"}')"
 check "git -C normal config allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"git -C /home/x/repo config --local user.name Lukas"}')"
+# ── round-34: git global-flag smuggling, digit-bundle, quoted annotate, partition ──
+check "no-pager push no-verify force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"git --no-pager push --no-verify -f origin main"}')"
+check "no-optional-locks push no-verify blocked" 2 "BLOCKED: git push --no-verify" - \
+  validate-bash.sh "$(j b1 '{"command":"git --no-optional-locks push --no-verify origin main"}')"
+check "work-tree global-flag force blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"git --work-tree=/x push -f origin main"}')"
+check "digit-bundle force flag blocked" 2 "BLOCKED: force push" - \
+  validate-bash.sh "$(j b1 '{"command":"git push -4f origin main"}')"
+check "git -P status allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git -P status"}')"
+check "quoted annotate allow-delete blocked" 2 "BLOCKED: setting the sammasak" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl annotate pvc data-0 '\''sammasak.dev/allow-delete=true'\''"}')"
+check "patch-json allow-delete blocked" 2 "BLOCKED: setting the sammasak" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl patch pvc data-0 -p '\''{\"metadata\":{\"annotations\":{\"sammasak.dev/allow-delete\":\"true\"}}}'\''"}')"
+check "as-delete with trailing comment blocked" 2 "BLOCKED: kubectl --as" - \
+  validate-bash.sh "$(j b1 '{"command":"kubectl --as=system:serviceaccount:flux-system:kustomize-controller delete -f pvc.yaml # auth can-i first"}')"
+check "sgdisk print-then-zap blocked" 2 "BLOCKED: partitioning" - \
+  validate-bash.sh "$(j b1 '{"command":"sgdisk -p -Z /dev/sda"}')"
+check "sgdisk print-only allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"sgdisk -p /dev/sda"}')"
+check "parted mklabel-with-print blocked" 2 "BLOCKED: partitioning" - \
+  validate-bash.sh "$(j b1 '{"command":"parted -s /dev/sda mklabel gpt print"}')"
+check "sfdisk delete blocked" 2 "BLOCKED: partitioning" - \
+  validate-bash.sh "$(j b1 '{"command":"sfdisk --delete /dev/sda 1"}')"
+check "sfdisk dump allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"sfdisk -d /dev/sda"}')"
+check "rm root glob trailing slash blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /*/"}')"
+check "rm root charclass-glob slash blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /e*/"}')"
 check "empty input tolerated" 0 - - validate-bash.sh ""
 check "garbage input tolerated" 0 - - validate-bash.sh "not json at all"
 

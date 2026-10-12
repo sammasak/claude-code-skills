@@ -47,11 +47,14 @@ For deeper diagnosis dispatch the `k8s-debugger` agent.
 ## Destructive deletes (kyverno-enforced)
 
 Deleting a PVC, PV, or Namespace — or a Flux `Kustomization`/`HelmRelease`
-whose prune would cascade to them — is admission-denied for humans until the
-object carries the break-glass annotation — annotate, re-read the denial you
-are overriding, then delete:
+whose prune would cascade to them — is admission-denied until the object
+carries the break-glass annotation. That annotation is the HUMAN's
+confirmation step, not the agent's: the validate-bash hook blocks an agent
+from setting `sammasak.dev/allow-delete`. So do not run the annotate — instead
+surface the denial and ask the human to perform the two-step themselves:
 
 ```bash
+# Human runs these after re-reading the denial they are overriding:
 kubectl -n <ns> annotate pvc <name> sammasak.dev/allow-delete=true
 kubectl -n <ns> delete pvc <name>
 ```
