@@ -32,16 +32,18 @@ block() {
 # Statically unknowable spellings (eval "$X", git $SUB, kubectl delete -f,
 # rm -rf "$DIR") are owned by the semantic layers where one exists: the
 # pre-push ancestry guard and the fail-closed kyverno admission policy.
-# Filesystem ops have NO deeper layer. The fs tier below covers literal
-# spellings of a NAMED tool set (rm, dd, tee/cp, mkfs-family, partitioners,
-# rsync --delete, find -delete). The accepted residual is wider than
-# variable targets alone: interpreter payloads (python -c shutil.rmtree),
-# file indirection (Write a script, then bash script.sh — the hook sees
-# only the command string), and destructive tools outside the named set.
-# That residual is documented here precisely so it is never mistaken for
-# coverage; the only full fix is the permission layer, not this hook.
+# Filesystem ops have NO deeper layer, and none is pending: the permission
+# layer is blanket-allow with prefix-only denies (a recorded trade), so
+# the fs residual is UNOWNED and accepted, not deferred. The residual:
+# variable and ${IFS}-expanded targets, interpreter payloads (python -c
+# shutil.rmtree), file indirection (Write a script, then bash script.sh —
+# the hook sees only the command string), and destructive tools outside
+# the named set (rm, dd, tee/cp, mkfs-family, partitioners, rsync
+# --delete, find -delete). The coverage SPECIFICATION is the blocked set
+# in tests/test-hooks.sh — a spelling without a test case there is
+# residual by definition, never implied coverage.
 SQ="'"
-PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
+PFX='(^|[|&;`]|\$\()[[:space:]]*(\\?([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|command|sudo|nice|eval|nohup|setsid|xargs|stdbuf|ionice|timeout|busybox|bash|sh|zsh|fish|-[^[:space:]]+|[0-9]+[smhd]?)[[:space:]]+)*\\?'
 GP="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|git)([[:space:]]+(-C[[:space:]]+[^[:space:]]+|--git-dir=[^[:space:]]+|-c[[:space:]]+[^[:space:]]+))*[[:space:]]+push"
 KD="${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|kubectl)[^|&;]*[[:space:]]delete[[:space:]]([^|&;]*[[:space:]])?([a-z,-]+,)?(pvc|persistentvolumeclaims?|persistentvolumes?|pv|namespaces?|ns)([[:space:],/]|\$)"
 
@@ -55,6 +57,8 @@ for _ in 1 2 3; do
     | sed -E "s/^.*-c[[:space:]]+[${SQ}\"]//; s/[${SQ}\"]\$//"; \
     echo "$SCAN" | grep -oE "${PFX}(bash|sh|zsh|fish)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*-c[[:space:]]+[^|&;]+" 2>/dev/null \
     | sed -E 's/^.*-c[[:space:]]+//' | sed "s/[\"${SQ}]//g"; \
+    echo "$SCAN" | grep -oE "${PFX}eval[[:space:]]+[^|&;]+" 2>/dev/null \
+    | sed -E 's/^.*eval[[:space:]]+//' | sed "s/[\"${SQ}]//g"; \
     echo "$SCAN" | grep -oE '\$\([[:space:]]*(echo|printf)[[:space:]]+[^)]*\)' 2>/dev/null \
     | sed -E 's/^\$\([[:space:]]*(echo|printf)[[:space:]]+//; s/\)$//' \
     | sed "s/^[\"${SQ}]//; s/[\"${SQ}]\$//"; } | sort -u)
@@ -86,29 +90,47 @@ fi
 # that residual risk is accepted and documented, not silently covered.
 # Targets quoted at the call site are still matched (quotes allowed around
 # the path token), so quoting is not an evasion.
-# Root/home target: bare slashes, any root-level glob (* ? [), ~ or ~user,
-# $HOME braced or not, and top-level system dirs down to one segment.
-FSROOT="(^|[[:space:]])[\"${SQ}]?(/+|/+[^/[:space:]]*[*?][^/[:space:]]*|~[A-Za-z0-9._-]*/?\\*?|\\\$\\{?HOME\\}?/?\\*?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?/?\\*?)[\"${SQ}]?([[:space:]]|\$)"
+# Root/home target: bare slashes, root-level globs (incl. a first-segment
+# glob with one tail segment, and dot-globs that take a home's dotfiles),
+# ~ or ~user, $HOME braced or not, ../-escapes back to a root, and
+# top-level system dirs down to one segment. Segments are slash-squeezed
+# before matching so //home//lukas is /home/lukas.
+FSROOT="(^|[[:space:]])[\"${SQ}]?(/+|/+[^/[:space:]]*[*?][^/[:space:]]*(/[A-Za-z0-9._@-]+)?|~[A-Za-z0-9._-]*(/\\.?\\*|/)?|\\\$\\{?HOME\\}?(/\\.?\\*|/)?|(\\.\\./)+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?/?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?(/\\.?\\*|/)?)[\"${SQ}]?([[:space:]]|\$)"
 # Tools invoked by absolute path still sit at command position.
 ABS="(/[A-Za-z0-9._/-]*/)?"
+# No force-flag requirement: with non-tty stdin (an agent's reality) GNU rm
+# deletes write-protected trees silently even without -f, so recursion
+# against a root/home target is the whole signal.
 while IFS= read -r seg; do
   [ -z "$seg" ] && continue
   flags=$(printf '%s' "$seg" | sed "s/${SQ}[^${SQ}]*${SQ}//g; s/\"[^\"]*\"//g")
   printf '%s' "$flags" | grep -qE -- '(^|[[:space:]])(-[A-Za-z]*[rR][A-Za-z]*|--recursive)([[:space:]]|$)' || continue
-  printf '%s' "$flags" | grep -qE -- '(^|[[:space:]])(-[A-Za-z]*f[A-Za-z]*|--force)([[:space:]]|$)' || continue
-  if printf '%s' "$seg" | grep -qE "$FSROOT"; then
-    block "recursive force rm of a filesystem root or whole home is not allowed."
+  if printf '%s' "$seg" | tr -s '/' | grep -qE "$FSROOT"; then
+    block "recursive rm of a filesystem root or whole home is not allowed."
   fi
 done < <(echo "$SCAN" | grep -oE "${PFX}(\\\$[A-Za-z_][A-Za-z0-9_]*|${ABS}rm)[[:space:]]+[^|&;]*" 2>/dev/null)
+# cd into a root/home followed by a glob-target recursive rm is the same
+# wipe spelled relatively.
+CDROOT="${PFX}cd[[:space:]]+[\"${SQ}]?(/+|~[A-Za-z0-9._-]*|\\\$\\{?HOME\\}?|/+(home|etc|nix|var|usr|boot|opt|srv|root)(/[A-Za-z0-9._@-]+)?)/?[\"${SQ}]?([[:space:]]|\$)"
+if echo "$SCAN" | tr -s '/' | grep -qE "$CDROOT" \
+  && echo "$SCAN" | grep -qE "${PFX}${ABS}rm[[:space:]][^|&;]*-[A-Za-z]*[rR][A-Za-z]*[^|&;]*[[:space:]](\\./)?\\.?\\*[\"${SQ}]?([[:space:]]|\$)"; then
+  block "cd into a root/home followed by recursive rm of * is not allowed."
+fi
+if echo "$SCAN" | grep -qE '\|[[:space:]]*xargs[[:space:]]+[^|&;]*rm[[:space:]]+[^|&;]*-[A-Za-z]*[rR]' \
+  && echo "$SCAN" | tr -s '/' | grep -qE "$FSROOT"; then
+  block "piping filesystem roots into xargs rm is not allowed."
+fi
 # rsync --delete and find -delete/-exec rm with a root/home target are the
 # same destruction through sibling tools.
 if echo "$SCAN" | grep -oE "${PFX}${ABS}rsync[[:space:]][^|&;]*" 2>/dev/null \
-  | grep -E -- '--delete' | grep -qE "$FSROOT"; then
+  | grep -E -- '--delete' | tr -s '/' | grep -qE "$FSROOT"; then
   block "rsync --delete targeting a filesystem root or whole home is not allowed."
 fi
-FINDROOT="(^|[[:space:]])[\"${SQ}]?/+((home|etc|nix|var|usr|boot|opt|srv|root)/?)?[\"${SQ}]?([[:space:]]|\$)"
+# A home ROOT (/home/<user>) counts for find — "not user subdirs" means
+# /home/<user>/<dir>, never the whole home itself.
+FINDROOT="(^|[[:space:]])[\"${SQ}]?/+(home(/[A-Za-z0-9._@-]+)?/?|(etc|nix|var|usr|boot|opt|srv|root)/?)?[\"${SQ}]?([[:space:]]|\$)"
 if echo "$SCAN" | grep -oE "${PFX}${ABS}find[[:space:]][^|&;]*" 2>/dev/null \
-  | grep -E -- '(-delete|-exec[[:space:]][^|&;]*rm)' | grep -qE "$FINDROOT"; then
+  | grep -E -- '(-delete|-exec[[:space:]][^|&;]*rm)' | tr -s '/' | grep -qE "$FINDROOT"; then
   block "find -delete sweeping a filesystem root is not allowed."
 fi
 # dd/tee/cp run on SCAN (not STRIPPED) so a fully-quoted "of=/dev/sda" or

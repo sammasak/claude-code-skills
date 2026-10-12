@@ -105,17 +105,17 @@ check "kubectl delete pod allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"kubectl delete pod crashed-xyz -n app"}')"
 check "kubectl mention in echo allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"echo 'kubectl delete pvc x' >> runbook.md"}')"
-check "rm -rf slash blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf slash blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf /"}')"
-check "rm -fr whole home blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -fr whole home blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -fr /home/lukas"}')"
-check "rm -rf HOME var blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf HOME var blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf $HOME"}')"
-check "rm -rf quoted home blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf quoted home blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf \"/home/lukas\""}')"
-check "rm -rf tilde blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf tilde blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf ~"}')"
-check "rm -rf etc after chain blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf etc after chain blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"cd /x && rm -rf /etc"}')"
 check "rm -rf project dir allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf ./target"}')"
@@ -125,27 +125,55 @@ check "rm non-recursive allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -f /tmp/x.lock"}')"
 check "rm mention in echo allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"echo 'never rm -rf /' >> doc.md"}')"
-check "rm -rf double slash blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf double slash blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf //"}')"
-check "rm -rf root glob blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf root glob blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf /e*"}')"
-check "rm -rf tilde-user blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf tilde-user blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf ~lukas"}')"
-check "rm continuation line blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm continuation line blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm \\\n-rf /etc"}')"
-check "quoted printf rm payload blocked" 2 "BLOCKED: recursive force rm" - \
+check "quoted printf rm payload blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"$(printf \"rm -rf /etc\")"}')"
 check "rm -rf tilde-user subdir allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf ~lukas/tmp/build"}')"
-check "rm -rf braced HOME blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -r home no force blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -r /home/lukas"}')"
+check "rm -r slash no force blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -r /"}')"
+check "rm doubled slashes blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf //home//lukas"}')"
+check "rm first-segment glob tail blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /ho*/lukas"}')"
+check "rm dotdot escape to home blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf ../../../../home/lukas"}')"
+check "rm home dot-glob blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf /home/lukas/.*"}')"
+check "rm HOME dot-glob blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf $HOME/.*"}')"
+check "cd home glob rm blocked" 2 "BLOCKED: cd into a root" - \
+  validate-bash.sh "$(j b1 '{"command":"cd /home/lukas && rm -rf ./*"}')"
+check "xargs rm root pipe blocked" 2 "BLOCKED: piping filesystem roots" - \
+  validate-bash.sh "$(j b1 '{"command":"echo / | xargs rm -rf"}')"
+check "quoted eval rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"eval '\''rm -rf /'\''"}')"
+check "busybox rm blocked" 2 "BLOCKED: recursive rm" - \
+  validate-bash.sh "$(j b1 '{"command":"busybox rm -rf /"}')"
+check "rm -r relative dir allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -r ./build"}')"
+check "rm -rf sibling dir allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"rm -rf ../build"}')"
+check "xargs rm without roots allowed" 0 - - \
+  validate-bash.sh "$(j b1 '{"command":"git ls-files -o | xargs rm -f"}')"
+check "rm -rf braced HOME blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf ${HOME}"}')"
-check "rm -rf question glob blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf question glob blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf /?*"}')"
-check "rm -rf charclass glob blocked" 2 "BLOCKED: recursive force rm" - \
+check "rm -rf charclass glob blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"rm -rf /[a-z]*"}')"
-check "abs-path rm blocked" 2 "BLOCKED: recursive force rm" - \
+check "abs-path rm blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"/bin/rm -rf /etc"}')"
-check "quote-concat sh payload blocked" 2 "BLOCKED: recursive force rm" - \
+check "quote-concat sh payload blocked" 2 "BLOCKED: recursive rm" - \
   validate-bash.sh "$(j b1 '{"command":"sh -c \"rm -rf \"/"}')"
 check "rsync delete to root blocked" 2 "BLOCKED: rsync --delete" - \
   validate-bash.sh "$(j b1 '{"command":"rsync -a --delete /tmp/empty/ /"}')"
@@ -153,6 +181,8 @@ check "rsync without delete allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"rsync -a src/ dest/"}')"
 check "find root delete blocked" 2 "BLOCKED: find -delete" - \
   validate-bash.sh "$(j b1 '{"command":"find / -xdev -delete"}')"
+check "find whole-home delete blocked" 2 "BLOCKED: find -delete" - \
+  validate-bash.sh "$(j b1 '{"command":"find /home/lukas -delete"}')"
 check "find project delete allowed" 0 - - \
   validate-bash.sh "$(j b1 '{"command":"find ./build -name *.o -delete"}')"
 check "find home-subdir delete allowed" 0 - - \
