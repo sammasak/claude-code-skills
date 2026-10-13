@@ -29,5 +29,4 @@ sops updatekeys <file> && sops rotate -i <file>    # after changing recipients
 
 - Never write plaintext to `/tmp`; write to the real repo path and `sops -e --in-place` so `.sops.yaml` path rules match.
 - The filename must end `.secret.yaml` under `apps/`, or no creation rule matches.
-- `apps/sandboxes/secrets/registry-secret.secret.yaml` is still named `harbor-registry-secret` but is a live zot pull secret. Leave the name alone (renaming needs re-encryption and a coordinated deploy).
 - A plaintext secret that reached a commit must be rotated; rewriting history is not enough.

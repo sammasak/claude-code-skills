@@ -14,7 +14,7 @@ Pick the URL by where the caller runs:
 
 | Caller | URL |
 |---|---|
-| pod, Job, Alertmanager/incident-responder webhook, host resolving cluster DNS | `http://ntfy.ntfy.svc.cluster.local/<topic>` (preferred) |
+| pod, Job, Alertmanager webhook, host resolving cluster DNS | `http://ntfy.ntfy.svc.cluster.local/<topic>` (preferred) |
 | LAN or tailnet host without cluster DNS | `https://ntfy.sammasak.dev/<topic>` |
 | cluster network reach, no DNS at all | `http://10.43.19.253/<topic>` (ClusterIP, not stable across Service recreation; re-check with `kubectl get svc -n ntfy ntfy`) |
 
@@ -30,7 +30,7 @@ Reuse existing topics; if you add one, add a row here in the same change.
 
 | Topic | Used by |
 |---|---|
-| `homelab-alerts` | Alertmanager (via `alertmanager-ntfy-bridge`), incident-responder |
+| `homelab-alerts` | Alertmanager (via `alertmanager-ntfy-bridge`) |
 | `homelab-improvements` | improvement/DevEx loops |
 
 Headers: `Title` short subject; `Tags` emoji shortcodes (`wrench`, `white_check_mark`, `warning`); `Priority` `min` / `default` / `high`.
