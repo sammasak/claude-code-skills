@@ -17,7 +17,7 @@ allowed-tools: Bash, Read, Grep, Glob
 | `msi-ms7758` | intermittent opt-in worker, taint `sammasak.dev/intermittent=true:NoSchedule`; scheduled power window Mon-Fri ~09:00-21:00 (WoL from lenovo), otherwise off; never WoL it at night |
 | `black-pi` | Raspberry Pi 4 (4GB, arm64) opt-in worker, label `node-pool=arm64`, taint `sammasak.dev/arch=arm64:NoSchedule`; workloads need both plus a `linux/arm64` image. Ethernet `end0` .136, Wi-Fi `wlan0` .137; Cilium `devices` must list both |
 
-Platform: Flux, Cilium (CNI + kube-proxy replacement), MetalLB (pool 192.168.10.202-204), Traefik v3 on .203 (`*.sammasak.dev`), cert-manager (`letsencrypt-prod`, Cloudflare DNS-01), Authentik, KEDA + HTTP add-on, Kyverno, zot. Gone (do not reintroduce without an ADR): ingress-nginx, Harbor, Falco, Tempo, Pushgateway, Cloudflare tunnel, VM workloads.
+Platform: Flux, Cilium (CNI + kube-proxy replacement), MetalLB (pool 192.168.10.202-204), Traefik v3 on .203 (`*.sammasak.dev`), cert-manager (`letsencrypt-prod`, Cloudflare DNS-01), Authentik, KEDA + HTTP add-on, Kyverno, zot. Gone (do not reintroduce without an ADR): ingress-nginx, Harbor, Falco, Tempo, Pushgateway, Cloudflare tunnel, VM workloads, incident-responder, sandboxes, forge, collab-vault.
 
 ## Conventions
 
@@ -26,7 +26,7 @@ Platform: Flux, Cilium (CNI + kube-proxy replacement), MetalLB (pool 192.168.10.
 - `chat` and `llm` are separate Flux Kustomizations so slow model pulls cannot block `apps`.
 - Ingress: `ingressClassName: traefik`, `traefik.ingress.kubernetes.io/*` annotations, `router.tls: "true"`, `cert-manager.io/cluster-issuer: letsencrypt-prod`. Authentik-gated apps add `traefik.ingress.kubernetes.io/router.middlewares: "authentik-authentik-forward-auth@kubernetescrd"`. ntfy is deliberately un-gated.
 - Resources: CPU/memory requests and a memory limit; CPU limits are optional and usually wrong. Namespace PSS: `enforce: baseline`, `warn`/`audit: restricted`.
-- Images by `@sha256:` digest from `registry.sammasak.dev/lab/`.
+- Images by `@sha256:` digest from `registry.sammasak.dev/lab/`. Static sites are amd64+arm64 indexes: after pushing the amd64 image, `scripts/add-arm64.sh` adds the arm64 variant without a rebuild.
 
 ## Scale-to-zero traps
 
@@ -59,3 +59,9 @@ surface the denial and ask the human to perform the two-step themselves:
 kubectl -n <ns> annotate pvc <name> sammasak.dev/allow-delete=true
 kubectl -n <ns> delete pvc <name>
 ```
+
+Removing an app's manifests from Git is the other path: Flux's own service
+account is exempt, so the prune deletes its namespace and PVCs (reclaim
+`Delete`) with no annotation. The Git change is the gate, so get the owner's
+explicit OK and archive the volumes first (`/var/lib/rancher/k3s/storage/pvc-*`
+on the node, as root).
