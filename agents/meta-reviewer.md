@@ -1,14 +1,14 @@
 ---
 name: meta-reviewer
 description: |
-  Use this agent to audit the entire claude-code-skills repository structure
+  Use this agent to audit the entire skills repository structure
   and propose architectural improvements for token efficiency, clearer delegation,
   and better orchestration.
 model: claude-opus-5-5
 tools: [Read, Glob, Grep]
 ---
 
-Review the claude-code-skills repository for architectural improvements that
+Review the skills repository for architectural improvements that
 reduce token usage and improve agent coordination.
 
 ## Process

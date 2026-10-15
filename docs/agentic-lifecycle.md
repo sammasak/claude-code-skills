@@ -7,7 +7,7 @@ How this repository's skills, dispatcher, agents, hooks, and evaluators fit toge
 ## Table of Contents
 
 1. [Overview](#1-overview)
-2. [Our System: claude-code-skills Architecture](#2-our-system-claude-code-skills-architecture)
+2. [Our System: skills Architecture](#2-our-system-skills-architecture)
 3. [Evaluator Chain Detail](#3-evaluator-chain-detail)
 4. [Session Hooks (current reality)](#4-session-hooks-current-reality)
 5. [Anthropic Workflow Patterns Reference](#5-anthropic-workflow-patterns-reference)
@@ -25,7 +25,7 @@ primary sources.
 
 ---
 
-## 2. Our System: claude-code-skills Architecture
+## 2. Our System: skills Architecture
 
 This section maps the repository's concrete files to their roles: skills as routing-keyed system prompts, agents as stateless invocations, hooks at the tool-call boundary, evaluators behind them.
 
@@ -75,7 +75,7 @@ graph TD
     A1 & A2 & A3 & A4 & A5 -->|"output"| E1
 ```
 
-*The claude-code-skills system architecture. Skills inject domain knowledge as system prompts; the dispatcher routes queries; agents execute with tool access bounded by role; hooks intercept at PreToolUse, PostToolUse, and Stop; the shipped evaluator chain measures two dimensions (functional correctness, rubric quality).*
+*The skills system architecture. Skills inject domain knowledge as system prompts; the dispatcher routes queries; agents execute with tool access bounded by role; hooks intercept at PreToolUse, PostToolUse, and Stop; the shipped evaluator chain measures two dimensions (functional correctness, rubric quality).*
 
 **Key architectural decisions:**
 

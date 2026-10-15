@@ -8,7 +8,7 @@ set -euo pipefail
 # refs/heads/main|master, on git's own stdin
 # (<local ref> <local sha> <remote ref> <remote sha> per line).
 # Single source of truth for this block — manual .githooks copies in
-# nixos-config/claude-code-skills/homelab-gitops/knowledge must stay
+# nixos-config, homelab-gitops, and knowledge copies must stay
 # byte-identical. Bump the version marker on ANY behavioral change.
 stdin=$(cat)
 zeros=0000000000000000000000000000000000000000

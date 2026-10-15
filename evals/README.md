@@ -1,6 +1,6 @@
 # Eval Runner
 
-This directory contains the evaluation framework for `claude-code-skills`. There are three distinct eval modes, each testing a different aspect of skill quality.
+This directory contains the evaluation framework for `skills`. There are three distinct eval modes, each testing a different aspect of skill quality.
 
 ## Overview
 
