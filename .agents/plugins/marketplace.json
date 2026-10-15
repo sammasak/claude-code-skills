@@ -1,0 +1,21 @@
+{
+  "name": "sammasak-skills",
+  "interface": {
+    "displayName": "Sammasak Skills"
+  },
+  "plugins": [
+    {
+      "name": "sammasak-skills",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/sammasak/skills.git",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer tools"
+    }
+  ]
+}

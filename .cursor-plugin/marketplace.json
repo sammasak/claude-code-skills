@@ -1,0 +1,17 @@
+{
+  "name": "sammasak-skills",
+  "owner": {
+    "name": "sammasak"
+  },
+  "metadata": {
+    "description": "Personal agent skills for software development and homelab workflows",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "sammasak-skills",
+      "source": ".",
+      "description": "Personal agent skills for software development and homelab workflows"
+    }
+  ]
+}

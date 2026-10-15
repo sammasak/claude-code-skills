@@ -1,0 +1,28 @@
+{
+  "name": "sammasak-skills",
+  "owner": {
+    "name": "sammasak"
+  },
+  "metadata": {
+    "description": "Personal agent skills, agents, and hooks",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "sammasak-skills",
+      "source": ".",
+      "description": "Personal skills, agents, and hooks for Claude Code",
+      "version": "0.1.0",
+      "author": {
+        "name": "sammasak",
+        "url": "https://github.com/sammasak"
+      },
+      "homepage": "https://github.com/sammasak/skills",
+      "repository": "https://github.com/sammasak/skills",
+      "license": "MIT",
+      "keywords": ["skills", "agents", "developer-tools"],
+      "category": "Development",
+      "tags": ["skills", "agents", "hooks"]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "sammasak-skills",
+  "version": "0.1.0",
+  "description": "Personal agent skills for software development and homelab workflows.",
+  "author": {
+    "name": "sammasak",
+    "url": "https://github.com/sammasak"
+  },
+  "homepage": "https://github.com/sammasak/skills",
+  "repository": "https://github.com/sammasak/skills",
+  "license": "MIT",
+  "keywords": ["skills", "agents", "developer-tools"],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Sammasak Skills",
+        "shortDescription": "Personal development and homelab workflows",
+        "longDescription": "A collection of reusable agent skills for software development, Nix, Rust, Kubernetes, and homelab workflows.",
+        "developerName": "sammasak",
+        "category": "Developer tools"
+      }
+    }
+  }
+}
