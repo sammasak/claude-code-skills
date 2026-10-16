@@ -11,6 +11,12 @@
 - Move work between machines by commit + push to a private GitHub repo, never rsync.
 - A deploy is "live" only after an end-to-end check as a user would hit it — for Authentik-protected sites, through the auth flow, not pod status.
 
+## The Owner Is Never the Blocker
+
+- Never park work waiting on the owner. Where a step calls for owner input (drafting or commenting on an issue, a review verdict, a merge call), dispatch a Fable subagent (`model: "fable"`) to stand in, record that it did, and drive the work to completion.
+- PRs are review checkpoints, not stop points: an independent subagent reviews, findings get fixed, then merge and keep going.
+- Stop only for what no agent can do: physical access, a real-terminal `sudo`, or spending money.
+
 ## Knowledge Vault
 
 Personal knowledge base at `~/knowledge`. Organised as rooms — directories with `INDEX.md` (what's in this room) and `CONTEXT.md` (how to operate in it). Read `~/knowledge/CLAUDE.md` for the full routing map of what lives where.
