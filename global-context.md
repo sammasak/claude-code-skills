@@ -13,7 +13,7 @@
 
 ## The Owner Is Never the Blocker
 
-- Never park work waiting on the owner. Where a step calls for owner input (drafting or commenting on an issue, a review verdict, a merge call), dispatch a Fable subagent (`model: "fable"`) to stand in, record that it did, and drive the work to completion.
+- Never park work waiting on the owner. Where a step calls for owner input (drafting or commenting on an issue, a review verdict, a merge call), dispatch a Fable subagent (`model: "fable"`; if Fable is unavailable, e.g. out of credits, use `opus`) to stand in, record who stood in, and drive the work to completion.
 - PRs are review checkpoints, not stop points: an independent subagent reviews, findings get fixed, then merge and keep going.
 - Stop only for what no agent can do: physical access, a real-terminal `sudo`, or spending money.
 
