@@ -16,6 +16,7 @@
 - Never park work waiting on the owner. Where a step calls for owner input (drafting or commenting on an issue, a review verdict, a merge call), dispatch a Fable subagent (`model: "fable"`; if Fable is unavailable, e.g. out of credits, use `opus`) to stand in, record who stood in, and drive the work to completion.
 - PRs are review checkpoints, not stop points: an independent subagent reviews, findings get fixed, then merge and keep going.
 - Stop only for what no agent can do: physical access, a real-terminal `sudo`, or spending money.
+- **A human-accepted hardware blocker is a valid terminal state.** When the only remaining work depends solely on one of those no-agent-can-do things, and the human has explicitly accepted the blocker, stopping is correct and complete — not abandonment. Record the acceptance verbatim (quote it) and leave the unmet criterion documented as blocked, with everything buildable/testable already done and the exact operator steps written down. This never weakens the criterion: it stays unmet, and simulated or partial evidence is never relabeled as satisfying it. For a `/goal` or loop whose condition still needs such a blocker, treat the condition as terminal once the transcript contains that explicit human acceptance, and phrase future such conditions as "X holds, OR the human has explicitly accepted the hardware blocker" so the check can clear honestly.
 
 ## Knowledge Vault
 
