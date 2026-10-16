@@ -15,7 +15,7 @@ mechanical work against a machine check. Rules:
    this shape:
 
 Title: <short imperative title>
-Labels: size:xs or size:s, risk:low
+Labels: <size:xs|size:s>, risk:low
 
 ~~~markdown
 ## Goal
