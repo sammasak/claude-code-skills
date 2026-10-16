@@ -91,3 +91,9 @@ not test as untested — never fill a gap with a datasheet claim.
 
 In the homelab, `iw`/`ethtool` discovery like this is the first step before any
 rf-lab capture; the `pcap-evidence-analysis` skill then handles traces offline.
+
+## Provenance
+
+The evidence-first / observed-vs-inferred / record-versions discipline is adapted
+from [morluto/rea](https://github.com/morluto/rea) (MIT) — design patterns only,
+no code. See `docs/rea-wireless-re-comparison.md`.

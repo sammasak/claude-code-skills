@@ -68,3 +68,9 @@ analyse captures with the `pcap-evidence-analysis` skill.
 Approve only when all hold: enrolled owned target, bounded, dry-run inspected,
 machine-readable metrics with a baseline, rollback defined, and provenance
 labelled. A miss on any one is a block, not a suggestion — record which and why.
+
+## Provenance
+
+The evidence-first / dry-run / observed-vs-inferred / record-versions discipline
+is adapted from [morluto/rea](https://github.com/morluto/rea) (MIT) — design
+patterns only, no code. See `docs/rea-wireless-re-comparison.md`.

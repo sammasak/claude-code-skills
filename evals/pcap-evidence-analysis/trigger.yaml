@@ -1,0 +1,27 @@
+skill: pcap-evidence-analysis
+
+# Queries that should activate pcap-evidence-analysis
+positives:
+  - "Can you go through this .pcap and tell me which APs were beaconing?"
+  - "Break down the management frames in capture.pcap by subtype"
+  - "My laptop dropped off the wifi at 14:02, was there a deauth in the trace?"
+  - "What do the reason codes on these disassoc frames mean?"
+  - "Pull the SSIDs, channels and signal levels out of the beacons in this capture"
+  - "Was that disconnect an AP-managed deauth or just channel degradation? I have the pcap"
+  - "Analyse the newest file in ~/rf-lab-captures without touching the adapter"
+  - "Count deauth frames per source MAC in this 802.11 capture"
+  - "Turn this capture into a sanitized, reproducible finding about the disconnect"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "What modes does my USB wifi adapter support?"                         # → wireless-lab-diagnostics
+  - "Does this adapter actually pass monitor mode, or just advertise it?"  # → wireless-lab-diagnostics
+  - "Review my chaos experiment spec before I run it against the AP"      # → rf-chaos-experiment-review
+  - "Is this deauth-flood experiment bounded and scoped to my own devices?"  # → rf-chaos-experiment-review
+  - "Write a Rust parser for radiotap headers with typed errors"          # → rust-engineering
+
+# Queries that should activate no skill
+true_negatives:
+  - "How does the 802.11 4-way handshake work?"
+  - "What is the difference between 2.4 GHz and 5 GHz wifi?"
+  - "Explain how TCP slow start works"

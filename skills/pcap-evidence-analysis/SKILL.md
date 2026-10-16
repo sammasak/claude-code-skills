@@ -54,3 +54,9 @@ SSIDs come out hex; decode with a small awk `strtonum("0x"..)` loop per byte.
 in `~/rf-lab-captures` (set `RF_PCAP` for a specific file). Capture with the
 rf-lab kit's `rf:beacons` / `rf:capture`; analyse here. Never present a simulated
 or crafted fixture as a hardware observation.
+
+## Provenance
+
+The evidence-first / observed-vs-inferred / record-versions discipline is adapted
+from [morluto/rea](https://github.com/morluto/rea) (MIT) — design patterns only,
+no code. See `docs/rea-wireless-re-comparison.md`.

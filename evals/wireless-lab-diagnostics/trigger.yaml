@@ -1,0 +1,27 @@
+skill: wireless-lab-diagnostics
+
+# Queries that should activate wireless-lab-diagnostics
+positives:
+  - "What chipset and driver is my USB wifi adapter using?"
+  - "Does my adapter actually support monitor mode? Test it, don't trust the box"
+  - "Show me the supported interface modes and valid interface combinations for wlan0"
+  - "What's the regulatory domain set to, and which channels are no-IR?"
+  - "Before I plan any wireless work, find out what this radio can really do"
+  - "Check the firmware version and driver for the rf-lab kit's adapter"
+  - "The listing says it supports monitor mode and injection, is that true for this card?"
+  - "Can this adapter run managed and AP at the same time?"
+  - "Give me a capability record for the Wi-Fi adapter I own, with monitor-mode pass/fail"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "Which APs were beaconing in this pcap?"                                 # → pcap-evidence-analysis
+  - "What reason code is on the deauth frames in this capture?"             # → pcap-evidence-analysis
+  - "Review my Wi-Fi chaos experiment for bounded execution and rollback"   # → rf-chaos-experiment-review
+  - "Gate this RF experiment: does it cap duration and transmit power before it runs?"  # → rf-chaos-experiment-review
+  - "Add the wifi firmware package to my NixOS host config"                 # → nix-flake-development
+
+# Queries that should activate no skill
+true_negatives:
+  - "What is the difference between Wi-Fi 5 and Wi-Fi 6?"
+  - "Why is my home wifi slow in the evening?"
+  - "Recommend a good book on radio engineering"

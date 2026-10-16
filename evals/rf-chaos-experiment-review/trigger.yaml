@@ -1,0 +1,28 @@
+skill: rf-chaos-experiment-review
+
+# Queries that should activate rf-chaos-experiment-review
+positives:
+  - "Review this Wi-Fi chaos experiment spec before we run it"
+  - "Is this RF resilience test bounded? It has no duration cap or power ceiling"
+  - "Check that the experiment only targets my own enrolled AP by BSSID"
+  - "Does this Bluetooth chaos test have a dry-run mode and a rollback path?"
+  - "Audit the results of the link-stress run, are the metrics machine-readable with a baseline?"
+  - "Review whether this experiment's RSSI metrics are labelled as mac80211_hwsim simulation versus real-hardware measurement"
+  - "Gate this experiment: it broadcasts deauths with a wildcard target, should it pass review?"
+  - "Check this chaos experiment defines a rollback that restores the radio to managed mode"
+  - "Give me an approve or block verdict on this RF experiment design"
+
+# Queries that look similar but should activate a different skill
+hard_negatives:
+  - "What chipset and monitor-mode support does my wifi adapter have?"      # → wireless-lab-diagnostics
+  - "Check the regulatory domain and valid interface combinations for wlan0"  # → wireless-lab-diagnostics
+  - "Count the deauth frames and reason codes in this capture"              # → pcap-evidence-analysis
+  - "List the beacons and SSIDs from this pcap"                             # → pcap-evidence-analysis
+  - "Review the implementation after the task is finished"                  # → orchestrated-review
+  - "Write chaos tests for my Kubernetes deployment"                        # → kubernetes-gitops
+
+# Queries that should activate no skill
+true_negatives:
+  - "What is chaos engineering and where did it come from?"
+  - "How does frequency hopping spread spectrum work?"
+  - "Explain how Bluetooth pairing works"
