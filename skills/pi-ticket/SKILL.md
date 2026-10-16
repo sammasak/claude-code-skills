@@ -68,7 +68,7 @@ Do not check gateway headroom by hand: `run` reads `/status`, the daily cap (5 r
 Outcomes:
 
 - Draft PR, issue labelled `agent:pi-review`: go to G4.
-- `agent:pi-blocked` with an evidence comment: read the gate and reason. Gate `quota`: wait for headroom (daily quotas reset at 00:00 UTC), then `gh issue edit N -R OWNER/REPO --remove-label agent:pi-blocked --add-label agent:pi-ready` and run again. Gate `prepare` (record or Verification changed): `pi-ticket prepare` again. Any other gate: re-prune (split, sharpen the contract, new red tests); never just rerun. A leftover `agent:pi-running` after a killed run must be relabelled by hand.
+- `agent:pi-blocked` with an evidence comment: read the gate and reason. Gate `quota`: wait for headroom (daily quotas reset at 00:00 UTC), then `gh issue edit N -R OWNER/REPO --remove-label agent:pi-blocked --add-label agent:pi-ready` and run again. Gate `prepare` (record or Verification changed): `pi-ticket prepare` again. Gate `pr`: the `agent/*` branch is pushed with a passing change; open the draft PR from it by hand. Gates `push` or `internal`: fix the cause, then relabel as for quota. Gates `lint`, `g2`, `g3`: re-prune (split, sharpen the contract, new red tests); never just rerun. A leftover `agent:pi-running` after a killed run must be relabelled by hand.
 
 ## G4: review and merge
 
