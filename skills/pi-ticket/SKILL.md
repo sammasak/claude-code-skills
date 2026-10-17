@@ -46,7 +46,7 @@ gh issue create -R OWNER/REPO --title "..." --body-file body.md --label size:xs,
 pi-ticket lint OWNER/REPO#N
 ```
 
-G1 prepare. You (Claude) write the failing tests as a commit (or patch) off the default branch. Then:
+G1 prepare. You (Claude) write the failing tests as a commit (or patch) off the default branch: at least one red test per acceptance criterion, so Pi cannot pass with a criterion unchecked. Then:
 
 ```bash
 pi-ticket prepare OWNER/REPO#N --red <commit-or-patch> [--green <known-good>] --repo <checkout>
